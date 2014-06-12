@@ -164,7 +164,7 @@ BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(_Inout_ OVS_NET_BUFFER* pOvsNb, ULON
 
 OVS_NET_BUFFER* ONB_Create(ULONG bufSize);
 
-NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG mtu, const OVS_ETHERNET_HEADER* pEthHeader, ULONG ethSize, ULONG dataOffsetAdd);
+NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG mtu, const OVS_ETHERNET_HEADER* pEthHeader, ULONG dataOffset);
 NET_BUFFER* ONB_CreateNb(ULONG dataLen, ULONG dataOffset);
 
 BOOLEAN ONB_OriginateArpRequest(const BYTE targetIp[4]);

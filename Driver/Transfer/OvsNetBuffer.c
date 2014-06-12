@@ -725,7 +725,9 @@ BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(OVS_NET_BUFFER* pOvsNb, ULONG mtu, O
 
 //TODO: we currently assume that all Ipv4 frames have no options!
 // when performing ipv4 fragmentation, we MUST take into account the ipv4 options as well!
-NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG mtu, const OVS_ETHERNET_HEADER* pEthHeader, ULONG ethSize, ULONG dataOffsetAdd)
+//mtu - the mtu of the interface minus the bytes required for encapsulation (so that packet bytes + encap bytes <= mtu)
+//dataOffsetAdd: the bytes in front of the packet that need to be reserved (in this area we will later put: eth, ipv4, gre/vxlan headers)
+NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG maxPacketSize, const OVS_ETHERNET_HEADER* pEthHeader, ULONG dataOffset)
 {
     VOID* originalPacketBuffer = ONB_GetData(pOvsNb);
     ULONG packetSize = 0;
@@ -738,8 +740,9 @@ NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG m
     //1. compute how many fragments to create, based on buffer size and mtu
     OVS_IPV4_HEADER* pIpv4Header = (OVS_IPV4_HEADER*)originalPacketBuffer;
 
-    //must have eth header advanced
+	OVS_CHECK(pEthHeader->type != OVS_ETHERTYPE_QTAG);
     OVS_CHECK(ONB_GetDataOffset(pOvsNb) > 0);
+	OVS_CHECK(pIpv4Header->Version == 4);
 
     if (pIpv4Header->HeaderLength > 5)
     {
@@ -807,6 +810,8 @@ NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG m
         }
     }
 
+	//if mtu = 1500 and NET_BUFFER data length = 1514 (1500 ip + 14 eth) =>
+	//packetSize = size - ipv4header = 1494
     packetSize = ONB_GetDataLength(pOvsNb);
     ipv4HeaderSize = sizeof(OVS_IPV4_HEADER);
     packetSize -= ipv4HeaderSize;
@@ -840,9 +845,11 @@ NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG m
         ULONG dataSize = 0;
         UINT16 totalLength = 0;
 
-        if (packetSize + ipv4HeaderSize > mtu)
+		//curPacketSize will be the packet size for the current fragment, so that
+		//its size (excluding eth header) will be multiple of 8 bytes, and will be less than mtu
+        if (packetSize + ipv4HeaderSize > maxPacketSize)
         {
-            curPacketSize = ((mtu - ipv4HeaderSize) / 8) * 8 + ipv4HeaderSize;
+			curPacketSize = ((maxPacketSize - ipv4HeaderSize) / 8) * 8 + ipv4HeaderSize;
         }
 
         else
@@ -850,6 +857,7 @@ NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG m
             curPacketSize = packetSize + ipv4HeaderSize;
         }
 
+		//dataSize = payload size = size of packet, excluding eth and ipv4 header.
         dataSize = curPacketSize;
         dataSize -= ipv4HeaderSize;
 
@@ -920,7 +928,7 @@ NET_BUFFER_LIST* ONB_FragmentBuffer_Ipv4(_Inout_ OVS_NET_BUFFER* pOvsNb, ULONG m
         OVS_CHECK(buffer);
 
         pFragEthHeader = GetEthernetHeader(buffer, &ethSize);
-        RtlCopyMemory(pFragEthHeader, pEthHeader, sizeof(OVS_ETHERNET_HEADER));
+        RtlCopyMemory(pFragEthHeader, pEthHeader, ethSize);
 
         DbgPrintNb(pNb, "fragment: ");
 

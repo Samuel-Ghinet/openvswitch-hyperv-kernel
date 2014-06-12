@@ -298,21 +298,32 @@ VOID _ComputePacketsAndBytesSent(NET_BUFFER_LIST* pNbl, _Out_ ULONG* pBytesSent,
     *pPacketsSent = packetsSent;
 }
 
-static BOOLEAN _FragmentAndEncapsulateIpv4Packet(_In_ OVS_NET_BUFFER* pOvsNb, OVS_ENCAPSULATOR* pEncapsulator, OVS_OUTER_ENCAPSULATION_DATA* pEncapsData)
+static BOOLEAN _FragmentAndEncapsulateIpv4Packet(_In_ OVS_NET_BUFFER* pOvsNb, OVS_ENCAPSULATOR* pEncapsulator, OVS_OUTER_ENCAPSULATION_DATA* pEncapsData, ULONG ethSize)
 {
     NET_BUFFER_LIST* pFragmentedNbl = NULL;
-    ULONG newMtu = 0, nbLen = 0;
-    ULONG encapBytesNeeded = 0;
+    //ULONG newMtu = 0, nbLen = 0;
+    //ULONG encapBytesNeeded = 0;
     NDIS_STATUS status = NDIS_STATUS_SUCCESS;
     PNDIS_SWITCH_FORWARDING_DETAIL_NET_BUFFER_LIST_INFO pFwdDetail = NULL;
     BOOLEAN ok = TRUE;
+	//max ipv4 packet size (i.e. not including eth header)
+	ULONG maxIpPacketSize = 0;
+	//the amount of bytes to reserve, for encapsulation. For gre, it is: eth delivery + ipv4 delivery + gre + eth payload.
+	ULONG dataOffset = 0;
 
-    nbLen = ONB_GetDataLength(pOvsNb);
-    newMtu = pEncapsData->mtu - pEncapsData->encapsHeadersSize;
+	maxIpPacketSize = pEncapsData->mtu - pEncapsData->encapsHeadersSize;
+	dataOffset = pEncapsData->encapsHeadersSize + sizeof(OVS_ETHERNET_HEADER);
+
+    //nbLen = ONB_GetDataLength(pOvsNb);
+	//for GRE, encaps headers = eth + ipv4 + gre headers.
+    //newMtu = pEncapsData->mtu - pEncapsData->encapsHeadersSize;
     //encaps bytes needed: e.g. gre_h size + outer ipv4_h size + outer eth_h size
-    encapBytesNeeded = pEncapsData->encapsHeadersSize + nbLen - pEncapsData->mtu;
+    //encapBytesNeeded = pEncapsData->encapsHeadersSize + nbLen - pEncapsData->mtu;
 
-    pFragmentedNbl = ONB_FragmentBuffer_Ipv4(pOvsNb, newMtu, pEncapsData->pPayloadEthHeader, sizeof(OVS_ETHERNET_HEADER), encapBytesNeeded);
+	ONB_Advance(pOvsNb, sizeof(OVS_ETHERNET_HEADER));
+	//This function will fragment the ipv4 packet, having dataOffset bytes as unused bytes in the beginning of the packet.
+	pFragmentedNbl = ONB_FragmentBuffer_Ipv4(pOvsNb, maxIpPacketSize, pEncapsData->pPayloadEthHeader, dataOffset);
+	ONB_Retreat(pOvsNb, sizeof(OVS_ETHERNET_HEADER));
 
     status = pOvsNb->pSwitchInfo->switchHandlers.CopyNetBufferListInfo(pOvsNb->pSwitchInfo->switchContext, pFragmentedNbl, pOvsNb->pNbl, 0);
     if (status != NDIS_STATUS_SUCCESS)

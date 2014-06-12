@@ -250,7 +250,7 @@ BOOLEAN Encaps_EncapsulateOnb(const OVS_ENCAPSULATOR* pEncapsulator, OVS_OUTER_E
     LE16 ethType = 0;
 
     pOvsNb = pData->pOvsNb;
-    OVS_CHECK(pOvsNb->pNbl->FirstNetBuffer->Next == NULL);
+    //OVS_CHECK(pOvsNb->pNbl->FirstNetBuffer->Next == NULL);
     OVS_CHECK(pOvsNb->pNbl->Next == NULL);
 
     innerData.pPayloadEthHeader = pData->pPayloadEthHeader;

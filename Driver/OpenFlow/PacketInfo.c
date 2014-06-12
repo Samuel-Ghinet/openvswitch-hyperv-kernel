@@ -386,6 +386,18 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ovsSourcePo
             pArp->harwareLength == OVS_ETHERNET_ADDRESS_LENGTH &&
             pArp->protocolLength == OVS_IPV4_ADDRESS_LENGTH)
         {
+			BYTE srcIp[4] = { 10, 10, 1, 11 }, destIp[4] = { 10, 10, 1, 13 };
+
+			if (!memcmp(pArp->senderProtocolAddress, srcIp, 4))
+			{
+				DEBUGP(LOG_ERROR, "break: sender ip = .136\n");
+			}
+
+			if (!memcmp(pArp->targetProtocolAddress, destIp, 4))
+			{
+				DEBUGP(LOG_ERROR, "break: sender ip = .229\n");
+			}
+
             pPacketInfo->ipInfo.protocol = (UINT8)RtlUshortByteSwap(pArp->operation);
 
             RtlCopyMemory(&pPacketInfo->netProto.arpInfo.source, pArp->senderProtocolAddress, OVS_IPV4_ADDRESS_LENGTH);
@@ -399,6 +411,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ovsSourcePo
                 //we must update our arp table, to be able to find dest eth addresses, given dest ipv4 addresses (for tunneling)
                 Arp_InsertTableEntry(pArp->senderProtocolAddress, pArp->senderHardwareAddress);
             }
+
         }
     }
 

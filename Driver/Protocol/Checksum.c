@@ -269,7 +269,7 @@ VOID HandleChecksumOffload(_In_ OVS_NET_BUFFER* pOvsNb, BOOLEAN isFromExternal, 
                     }
                     else
                     {
-                        OVS_CHECK(pChecksumOffloadInfo->Transmit.TcpHeaderOffset == 0);
+                        //OVS_CHECK(pChecksumOffloadInfo->Transmit.TcpHeaderOffset == 0);
                         pTcpHeader = Ipv6_FindExtensionHeader((OVS_IPV6_HEADER*)netHeader, OVS_IPV6_EXTH_TCP, /*ext lens*/ NULL);
                     }
 

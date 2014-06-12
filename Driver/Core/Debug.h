@@ -48,7 +48,7 @@ extern ULONG g_debugLevel;
 #define OVS_DBGPRINT_LOCK		0
 
 #define OVS_VERIFY_WINL_MESSAGES	1
-#define OVS_USE_ASSERTS				0
+#define OVS_USE_ASSERTS				1
 
 #ifdef DBG
 
