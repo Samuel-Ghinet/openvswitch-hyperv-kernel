@@ -355,7 +355,7 @@ VOID FreeDuplicateNbl(const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* pNbl)
         OVS_CHECK(pMdl->Next == NULL);
 
         buffer = MmGetMdlVirtualAddress(pMdl);
-        ExFreePoolWithTag(buffer, g_extAllocationTag);
+        KFree(buffer);
 
         IoFreeMdl(pMdl);
         NdisFreeNetBuffer(pNb);

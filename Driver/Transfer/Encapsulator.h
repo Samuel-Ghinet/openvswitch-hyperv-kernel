@@ -36,6 +36,7 @@ typedef struct _OVS_INNER_ENCAPSULATOR_DATA {
 
     //in
     BOOLEAN isFromExternal;
+	//BE16	ipv4Identification;
 
     //in
     const OVS_ETHERNET_HEADER* pDeliveryEthHeader;

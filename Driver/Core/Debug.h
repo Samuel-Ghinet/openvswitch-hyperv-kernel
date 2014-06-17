@@ -50,6 +50,8 @@ extern ULONG g_debugLevel;
 #define OVS_VERIFY_WINL_MESSAGES	1
 #define OVS_USE_ASSERTS				1
 
+#define OVS_TEST_REASSEMBLE_FRAGMENTED_PACKET		0
+
 #ifdef DBG
 
 #if OVS_USE_ASSERTS

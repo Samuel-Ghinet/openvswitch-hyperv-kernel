@@ -171,7 +171,7 @@ static BOOLEAN _WriteEncapsulation(_In_ const OVS_ENCAPSULATOR* pEncapsulator, _
     {
         pIpv4PayloadHeader = (OVS_IPV4_HEADER*)writeBuffer;
 
-        pIpv4PayloadHeader->DontFragment = (pTunnelInfo->tunnelFlags & OVS_TUNNEL_FLAG_DONT_FRAGMENT ? 1 : 0);;
+		pIpv4PayloadHeader->DontFragment = 0;// (pTunnelInfo->tunnelFlags & OVS_TUNNEL_FLAG_DONT_FRAGMENT ? 1 : 0);;
 
         //NORMALLY we wouldn't worry about the payload ip header's checksum, because the checksum offloading mechanism requires the
         //NET_BUFFER_LIST to have NDIS_TCP_IP_CHECKSUM_NET_BUFFER_LIST_INFO field completed CORRECTLY.
@@ -203,7 +203,7 @@ static BOOLEAN _Encaps_EncapsulateNb(_In_ const OVS_ENCAPSULATOR* pEncapsulator,
     NDIS_STATUS status = STATUS_SUCCESS;
     ULONG deltaSize = 0;
     BOOLEAN ok = TRUE;
-    NET_BUFFER* pNb;
+    NET_BUFFER* pNb = 0;
 
     pNb = pData->pNb;
 
@@ -215,6 +215,24 @@ static BOOLEAN _Encaps_EncapsulateNb(_In_ const OVS_ENCAPSULATOR* pEncapsulator,
     //NOTE: this retreat must NOT allocate any memory / mdl-s.
     //We expect the "unused space" to be sufficient enough.
     OVS_CHECK(unusedLength >= deltaSize);
+
+#if 0
+	if (RtlUshortByteSwap(pData->pPayloadEthHeader->type) == OVS_ETHERTYPE_IPV4)
+	{
+		VOID* buffer = NULL;
+		OVS_ETHERNET_HEADER* pEthHeader = NULL;
+		OVS_IPV4_HEADER* pIpv4Header = NULL;
+		ULONG ethSize = 0;
+
+		buffer = NdisGetDataBuffer(pNb, NET_BUFFER_DATA_LENGTH(pNb), NULL, 1, 0);
+		OVS_CHECK(buffer);
+
+		pEthHeader = GetEthernetHeader(buffer, &ethSize);
+		pIpv4Header = AdvanceEthernetHeader(pEthHeader, ethSize);
+
+		pData->ipv4Identification = pIpv4Header->Identification;
+	}
+#endif
 
     status = NdisRetreatNetBufferDataStart(pNb, deltaSize, 0, NULL);
     if (status != STATUS_SUCCESS)
@@ -263,7 +281,7 @@ BOOLEAN Encaps_EncapsulateOnb(const OVS_ENCAPSULATOR* pEncapsulator, OVS_OUTER_E
 
     len = ONB_GetDataLength(pOvsNb);
 
-    OVS_CHECK(len + innerData.encBytesNeeded <= pData->mtu);
+    OVS_CHECK(len + innerData.encBytesNeeded <= pData->mtu + sizeof(OVS_ETHERNET_HEADER));
 
     ethType = ReadEthernetType(pData->pPayloadEthHeader);
 
