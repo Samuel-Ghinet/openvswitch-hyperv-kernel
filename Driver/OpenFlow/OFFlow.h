@@ -28,6 +28,7 @@ typedef struct _OVS_MESSAGE OVS_MESSAGE;
 typedef struct _OVS_ACTIONS OVS_ACTIONS;
 
 typedef struct _OVS_PI_RANGE {
+	//TODO: consider using UINT16 instead
     SIZE_T startRange;
     SIZE_T endRange;
 }OVS_PI_RANGE, *POVS_PI_RANGE;
@@ -61,6 +62,9 @@ typedef struct _OVS_FLOW
 	//list entry in OVS_FLOW_TABLE
 	LIST_ENTRY		listEntry;
 
+	//i.e. NUMA node id
+	UINT lastStatsWriter;
+
 	//once set, cannot be modified
     OVS_OFPACKET_INFO	maskedPacketInfo;
 	//once set, cannot be modified
@@ -71,7 +75,8 @@ typedef struct _OVS_FLOW
 	//once set in a flow, the actions can only be replaced, but the struct OVS_ARGUMENT_GROUP itself cannot be modified
 	OVS_ACTIONS*	pActions;
 
-	OVS_FLOW_STATS	stats;
+	//we should have one stats struct for each NUMA node
+	OVS_FLOW_STATS**	statsArray;
 }OVS_FLOW, *POVS_FLOW;
 
 #define FLOW_LOCK_READ(pFlow, pLockState) NdisAcquireRWLockRead(pFlow->pRwLock, pLockState, 0)
@@ -108,16 +113,16 @@ OVS_FLOW* Flow_Create();
 VOID Flow_DestroyNow_Unsafe(OVS_FLOW* pFlow);
 
 //NOTE: must lock with pFlow's lock
-//TODO: remove this function and use RtlZeroMemory instead
-static __inline void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
-{
-    pFlow->stats.lastUsedTime = 0;
-    pFlow->stats.tcpFlags = 0;
-    pFlow->stats.packetsMached = 0;
-    pFlow->stats.bytesMatched = 0;
-}
+void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow);
 
+#if OVS_VERSION == OVS_VERSION_1_11
 void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
+
+#elif OVS_VERSION >= OVS_VERSION_2_3
+
+void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
+void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats, _Out_ UINT64* pLastUsedTime, _Out_ BE16* pTcpFlags);
+#endif
 
 /*********************************** FLOW MATCH ***********************************/
 void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacketInfo, OVS_FLOW_MASK* pFlowMask);

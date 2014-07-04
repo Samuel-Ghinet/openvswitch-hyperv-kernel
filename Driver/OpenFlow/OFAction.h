@@ -41,6 +41,17 @@ typedef struct _OVS_ACTION_PUSH_VLAN {
     BE16 vlanTci;
 } OVS_ACTION_PUSH_VLAN;
 
+typedef enum _OVS_HASH_ALGORITHM_TYPE {
+	//i.e. the fields used for computing the hash are the Layer 4 (Transport) fields
+	OVS_HASH_ALGORITHM_TRANSPORT,
+}OVS_HASH_ALGORITHM_TYPE;
+
+typedef struct _OVS_ACTION_FLOW_HASH {
+	//values: constant(s) of enum OVS_HASH_ALGORITHM_TYPE
+	UINT32		hashAlgorithm;
+	UINT32		basis;
+}OVS_ACTION_FLOW_HASH, *POVS_ACTION_FLOW_HASH;
+
 /**********************************************/
 
 typedef BOOLEAN(*OutputToPortCallback)(_Inout_ OVS_NET_BUFFER* pOvsNb);

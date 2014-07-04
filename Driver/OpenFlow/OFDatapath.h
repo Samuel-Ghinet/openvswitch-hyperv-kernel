@@ -26,10 +26,14 @@ typedef struct _OVS_FLOW_TABLE OVS_FLOW_TABLE;
 typedef struct _OVS_DATAPATH_STATS {
     UINT64 flowTableMatches;
     UINT64 flowTableMissed;
-    //i.e. lost = not sent to usr space
+    //i.e. packets lost = not sent to user space (had no flow)
     UINT64 countLost;
     //# of flows present
+#if OVS_VERSION == OVS_VERSION_1_11
     UINT64 countFlows;
+#elif OVS_VERSION == OVS_VERSION_2_3
+	UINT64 masksMatched;
+#endif
 }OVS_DATAPATH_STATS, *POVS_DATAPATH_STATS;
 
 typedef struct _OVS_DATAPATH
@@ -63,6 +67,8 @@ typedef struct _OVS_DATAPATH
 	ULONG				switchIfIndex;
 
     OVS_DATAPATH_STATS	statistics;
+
+	UINT32				userFeatures;
 }OVS_DATAPATH, *POVS_DATAPATH;
 
 #define DATAPATH_LOCK_READ(pDatapath, pLockState) NdisAcquireRWLockRead(pDatapath->pRwLock, pLockState, 0)

@@ -23,6 +23,11 @@ limitations under the License.
 #define __NOT_IMPLEMENTED__		0
 #define __UNEXPECTED__			0
 
+#define OVS_VERSION_1_11		111
+#define OVS_VERSION_2_3			203
+
+#define OVS_VERSION OVS_VERSION_2_3
+
 #define KAlloc(size) ExAllocatePoolWithTag(NonPagedPool, size, g_extAllocationTag)
 #define KFree(p) ExFreePoolWithTag(p, g_extAllocationTag)
 
@@ -110,3 +115,19 @@ static __inline VOID* KZAlloc(SIZE_T size)
     RtlZeroMemory(p, size);
     return p;
 }
+
+//NOTE: experimental
+static __inline VOID* ConstCast(const VOID* value)
+{
+	return (VOID*)value;
+}
+
+#define CONST_CAST_TYPE(Type)	\
+	static __inline Type* ConstCast##Type(const Type* value)	\
+{														\
+	return (Type*)value;									\
+}
+
+#define CONST_CAST(Type, value) ConstCast##Type(value)
+
+//use e.g.: CONST_CAST_TYPE(OVS_FLOW_STATS)

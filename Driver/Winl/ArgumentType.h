@@ -218,7 +218,13 @@ typedef enum _OVS_ARGTYPE {
     //TODO: NOT IMPLEMENTED!
     OVS_ARGTYPE_ACTION_POP_MPLS,			//0x0A5
 
-    OVS_ARGTYPE_LAST_ACTION = OVS_ARGTYPE_ACTION_POP_MPLS,
+	//data type: OVS_ACTION_FLOW_HASH
+	OVS_ARGTYPE_ACTION_HASH,				//0x0A6
+
+	//data type: UINT32
+	OVS_ARGTYPE_ACTION_RECIRCULATION,		//0x0A7
+
+	OVS_ARGTYPE_LAST_ACTION = OVS_ARGTYPE_ACTION_RECIRCULATION,
 
     /************************************ TARGET: FLOW / PACKET; group = ACTIONS / UPCALL **********************************************/
 

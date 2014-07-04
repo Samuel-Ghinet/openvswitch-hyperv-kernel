@@ -97,20 +97,10 @@ static BOOLEAN _CreateTcpArgs(const OVS_OFPACKET_INFO* pPacketInfo, const OVS_OF
 {
     OVS_PI_TCP tcpPI = { 0 };
 
-    if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4))
-    {
-        const OVS_IP4_INFO* pIpv4Info = (pMask ? &pMask->netProto.ipv4Info : &pPacketInfo->netProto.ipv4Info);
+	const OVS_TRANSPORT_LAYER_INFO* pTransportInfo = (pMask ? &pMask->tpInfo : &pPacketInfo->tpInfo);
 
-        tcpPI.source = pIpv4Info->sourcePort;
-        tcpPI.destination = pIpv4Info->destinationPort;
-    }
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
-    {
-        const OVS_IPV6_INFO* pIpv6Info = (pMask ? &pMask->netProto.ipv6Info : &pPacketInfo->netProto.ipv6Info);
-
-        tcpPI.source = pIpv6Info->sourcePort;
-        tcpPI.destination = pIpv6Info->destinationPort;
-    }
+	tcpPI.source = pTransportInfo->sourcePort;
+	tcpPI.destination = pTransportInfo->destinationPort;
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_TCP, &tcpPI, ppArgList))
 
@@ -126,20 +116,10 @@ static BOOLEAN _CreateUdpArgs(const OVS_OFPACKET_INFO* pPacketInfo, const OVS_OF
 {
     OVS_PI_UDP udpPI = { 0 };
 
-    if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4))
-    {
-        const OVS_IP4_INFO* pIpv4Info = (pMask ? &pMask->netProto.ipv4Info : &pPacketInfo->netProto.ipv4Info);
+	const OVS_TRANSPORT_LAYER_INFO* pTransportInfo = (pMask ? &pMask->tpInfo : &pPacketInfo->tpInfo);
 
-        udpPI.source = pIpv4Info->sourcePort;
-        udpPI.destination = pIpv4Info->destinationPort;
-    }
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
-    {
-        const OVS_IPV6_INFO* pIpv6Info = (pMask ? &pMask->netProto.ipv6Info : &pPacketInfo->netProto.ipv6Info);
-
-        udpPI.source = pIpv6Info->sourcePort;
-        udpPI.destination = pIpv6Info->destinationPort;
-    }
+	udpPI.source = pTransportInfo->sourcePort;
+	udpPI.destination = pTransportInfo->destinationPort;
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_UDP, &udpPI, ppArgList))
 
@@ -155,20 +135,10 @@ static BOOLEAN _CreateSctpArgs(const OVS_OFPACKET_INFO* pPacketInfo, const OVS_O
 {
     OVS_PI_SCTP sctpPI = { 0 };
 
-    if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4))
-    {
-        const OVS_IP4_INFO* pIpv4Info = (pMask ? &pMask->netProto.ipv4Info : &pPacketInfo->netProto.ipv4Info);
+	const OVS_TRANSPORT_LAYER_INFO* pTransportInfo = (pMask ? &pMask->tpInfo : &pPacketInfo->tpInfo);
 
-        sctpPI.source = pIpv4Info->sourcePort;
-        sctpPI.destination = pIpv4Info->destinationPort;
-    }
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
-    {
-        const OVS_IPV6_INFO* pIpv6Info = (pMask ? &pMask->netProto.ipv6Info : &pPacketInfo->netProto.ipv6Info);
-
-        sctpPI.source = pIpv6Info->sourcePort;
-        sctpPI.destination = pIpv6Info->destinationPort;
-    }
+	sctpPI.source = pTransportInfo->sourcePort;
+	sctpPI.destination = pTransportInfo->destinationPort;
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_SCTP, &sctpPI, ppArgList))
 
@@ -184,8 +154,8 @@ static BOOLEAN _CreateIcmp4Args(const OVS_OFPACKET_INFO* pPacketInfo, OVS_ARGUME
 {
     OVS_PI_ICMP icmpPI = { 0 };
 
-    icmpPI.type = (UINT8)RtlUshortByteSwap(pPacketInfo->netProto.ipv4Info.sourcePort);
-    icmpPI.code = (UINT8)RtlUshortByteSwap(pPacketInfo->netProto.ipv4Info.destinationPort);
+    icmpPI.type = (UINT8)RtlUshortByteSwap(pPacketInfo->tpInfo.sourcePort);
+	icmpPI.code = (UINT8)RtlUshortByteSwap(pPacketInfo->tpInfo.destinationPort);
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_ICMP, &icmpPI, ppArgList))
 
@@ -201,8 +171,8 @@ static BOOLEAN _CreateIcmp6Args(const OVS_OFPACKET_INFO* pPacketInfo, OVS_ARGUME
 {
     OVS_CHECK(pIcmp6PI);
 
-    pIcmp6PI->type = (UINT8)RtlUshortByteSwap(pPacketInfo->netProto.ipv6Info.sourcePort);
-    pIcmp6PI->code = (UINT8)RtlUshortByteSwap(pPacketInfo->netProto.ipv6Info.destinationPort);
+	pIcmp6PI->type = (UINT8)RtlUshortByteSwap(pPacketInfo->tpInfo.sourcePort);
+	pIcmp6PI->code = (UINT8)RtlUshortByteSwap(pPacketInfo->tpInfo.destinationPort);
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_ICMP6, pIcmp6PI, ppArgList))
 
@@ -1322,10 +1292,14 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
 	maskedPacketInfo = pFlow->maskedPacketInfo;
 	packetInfoMask = pFlow->pMask->packetInfo;
 
+#if OVS_VERSION == OVS_VERSION_1_11
 	tickCount = pFlow->stats.lastUsedTime;
 	stats.noOfMatchedPackets = pFlow->stats.packetsMached;
 	stats.noOfMatchedBytes = pFlow->stats.bytesMatched;
 	tcpFlags = pFlow->stats.tcpFlags;
+#elif OVS_VERSION == OVS_VERSION_2_3
+	//TODO: Flow_GetStats()
+#endif
 
 	FLOW_UNLOCK(pFlow, &lockState);
 

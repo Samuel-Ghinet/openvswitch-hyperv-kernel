@@ -68,15 +68,20 @@ OVS_DATAPATH* GetDefaultDatapath_Ref(const char* funcName)
 static void _GetDatapathStats(OVS_DATAPATH* pDatapath, OVS_DATAPATH_STATS* pStats)
 {
     OVS_FLOW_TABLE* pFlowTable = NULL;
-    LOCK_STATE_EX lockStateData = { 0 }, lockStateFlowTable = { 0 };
+	LOCK_STATE_EX lockStateData = { 0 };
+#if OVS_VERSION == OVS_VERSION_1_11
+	LOCK_STATE_EX lockStateFlowTable = { 0 };
+#endif
 
     DATAPATH_LOCK_READ(pDatapath, &lockStateData);
 
     pFlowTable = pDatapath->pFlowTable;
 
+#if OVS_VERSION == OVS_VERSION_1_11
     FLOWTABLE_LOCK_READ(pFlowTable, &lockStateFlowTable);
     pStats->countFlows = pFlowTable->countFlows;
     FLOWTABLE_UNLOCK(pFlowTable, &lockStateFlowTable);
+#endif
 
     pStats->flowTableMatches = pDatapath->statistics.flowTableMatches;
     pStats->flowTableMissed = pDatapath->statistics.flowTableMissed;

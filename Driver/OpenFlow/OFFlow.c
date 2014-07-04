@@ -137,6 +137,34 @@ OVS_FLOW_MASK* FlowMask_Create()
     return pFlowMask;
 }
 
+void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
+{
+#if OVS_VERSION == OVS_VERSION_1_11
+	pFlow->stats.lastUsedTime = 0;
+	pFlow->stats.tcpFlags = 0;
+	pFlow->stats.packetsMached = 0;
+	pFlow->stats.bytesMatched = 0;
+#elif OVS_VERSION >= OVS_VERSION_2_3
+
+	USHORT maxNodeNumber = 0;
+
+	maxNodeNumber = KeQueryHighestNodeNumber();
+
+	for (USHORT i = 0; i <= maxNodeNumber; ++i)
+	{
+		OVS_FLOW_STATS* pFlowStats = NULL;
+
+		pFlowStats = pFlow->statsArray[i];
+
+		if (pFlowStats)
+			RtlZeroMemory(pFlowStats, sizeof(OVS_FLOW_STATS));
+	}
+
+#endif
+}
+
+#if OVS_VERSION == OVS_VERSION_1_11
+
 void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
 {
     UINT8 tcpFlags = 0;
@@ -163,6 +191,70 @@ void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
 
     //NdisReleaseSpinLock(&pFlow->spinLock);
 }
+
+#elif OVS_VERSION >= OVS_VERSION_2_3
+
+void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
+{
+	OVS_FLOW_STATS* pFlowStats = NULL;
+	USHORT numaNodeId = 0;
+	ULONG bufferLen = 0;
+
+	bufferLen = ONB_GetDataLength(pOvsNb);
+
+	numaNodeId = KeGetCurrentNodeNumber();
+
+	pFlowStats = pFlow->statsArray[numaNodeId];
+
+	if (pFlowStats)
+	{
+		//TODO
+	}
+
+	else
+	{
+		//TODO
+	}
+
+	pFlowStats->packetsMached++;
+	pFlowStats->bytesMatched += bufferLen;
+
+	pFlowStats->lastUsedTime = KeQueryPerformanceCounter(NULL).QuadPart;
+	pFlowStats->tcpFlags |= pOvsNb->pOriginalPacketInfo->tpInfo.tcpFlags;
+}
+
+void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats, _Out_ UINT64* pLastUsedTime, _Out_ BE16* pTcpFlags)
+{
+	USHORT maxNodeNumber = 0;
+
+	*pLastUsedTime = *pTcpFlags = 0;
+
+	maxNodeNumber = KeQueryHighestNodeNumber();
+
+	for (USHORT i = 0; i <= maxNodeNumber; ++i)
+	{
+		OVS_FLOW_STATS* pCurFlowStats = NULL;
+
+		pCurFlowStats = pFlow->statsArray[i];
+
+		if (pCurFlowStats)
+		{
+			UINT64 lastUsedTime = *pLastUsedTime;
+
+			pFlowStats->packetsMached += pCurFlowStats->packetsMached;
+			pFlowStats->bytesMatched += pCurFlowStats->bytesMatched;
+
+			*pTcpFlags |= pCurFlowStats->tcpFlags;
+
+			if (!lastUsedTime || pCurFlowStats->lastUsedTime > lastUsedTime)
+			{
+				*pLastUsedTime = pCurFlowStats->lastUsedTime;
+			}
+		}
+	}
+}
+
+#endif
 
 #if OVS_DBGPRINT_FLOW
 
