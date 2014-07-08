@@ -36,6 +36,7 @@ typedef struct _PORT_FETCH_CTXT{
     UINT sequence;
     UINT dpIfIndex;
     UINT pid;
+	BOOLEAN multipleUpcallPids;
 }PORT_FETCH_CTXT;
 
 /************************/
@@ -135,9 +136,9 @@ static BOOLEAN _CreateMsgFromPersistentPort(int i, _In_ const OVS_PERSISTENT_POR
 	port.type = pPort->ofPortType;
 	port.name = pPort->ovsPortName;
 	port.stats = pPort->stats;
-	port.upcallId = pPort->upcallPortId;
+	port.upcallPortIds = pPort->upcallPortIds;
 
-    ok = CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid);
+    ok = CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid, pContext->multipleUpcallPids);
     if (!ok)
     {
         goto Cleanup;
@@ -248,6 +249,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+	context.multipleUpcallPids = ;
 
 	PORT_LOCK_READ(pPersPort, &lockState);
 	locked = TRUE;
@@ -417,6 +419,7 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+	context.multipleUpcallPids = ;
 
     if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
     {
@@ -508,6 +511,7 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+	context.multipleUpcallPids = ;
 
 	PORT_LOCK_READ(pPersPort, &lockState);
 	locked = TRUE;
@@ -609,6 +613,8 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+	context.multipleUpcallPids = ;
+
 
 	PORT_LOCK_WRITE(pPersPort, &lockState);
 	locked = TRUE;
@@ -669,6 +675,7 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.sequence = pMsg->sequence;
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pid = pMsg->pid;
+	context.multipleUpcallPids = ;
 
     pForwardInfo = pSwitchInfo->pForwardInfo;
 

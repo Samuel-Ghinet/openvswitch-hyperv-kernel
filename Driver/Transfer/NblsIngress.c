@@ -813,7 +813,17 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_PERSISTENT_
         upcallInfo.command = OVS_MESSAGE_COMMAND_PACKET_UPCALL_MISS;
         upcallInfo.pPacketInfo = &packetInfo;
         upcallInfo.pUserData = NULL;
-        upcallInfo.portId = pSourcePort ? pSourcePort->upcallPortId : 0;
+
+		if (pSourcePort)
+		{
+			//TODO: normally, we should do a "find"
+			upcallInfo.portId = (pSourcePort->upcallPortIds.count > 0) ? pSourcePort->upcallPortIds.ids[0] : 0;
+		}
+
+		else
+		{
+			upcallInfo.portId = 0;
+		}
 
         //sendpacket to userspace only if the datapath has been 'created' (i.e. activated) from userspace
         //and we have a persistent port associated with the source NDIS_SWITCH_PORT_ID
@@ -835,6 +845,7 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_PERSISTENT_
 #if OVS_VERSION == OVS_VERSION_1_11
 	Flow_UpdateTimeUsed_Unsafe(pFlow, pOvsNb);
 #elif OVS_VERSION >= OVS_VERSION_2_3
+	Flow_UpdateStats_Unsafe(pFlow, pOvsNb);
 #endif
 
 	FLOW_UNLOCK(pFlow, &lockState);
@@ -854,6 +865,8 @@ Cleanup:
     if (pFlow)
     {
         ++pDatapath->statistics.flowTableMatches;
+		//TODO: don't know when exactly to increase this
+		++pDatapath->statistics.masksMatched;
 
 		//we don't use the pActions anymore
 		//the actions are not modified, once set in a flow, so there's no need to lock the pFlow to dereference pActions

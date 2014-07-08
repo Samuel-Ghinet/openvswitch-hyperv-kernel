@@ -110,6 +110,7 @@ static __inline SIZE_T RoundDown(SIZE_T a, SIZE_T b)
 /*********************************** FLOW ***********************************/
 
 OVS_FLOW* Flow_Create();
+
 VOID Flow_DestroyNow_Unsafe(OVS_FLOW* pFlow);
 
 //NOTE: must lock with pFlow's lock
@@ -121,7 +122,7 @@ void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
 #elif OVS_VERSION >= OVS_VERSION_2_3
 
 void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
-void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats, _Out_ UINT64* pLastUsedTime, _Out_ BE16* pTcpFlags);
+void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats);
 #endif
 
 /*********************************** FLOW MATCH ***********************************/

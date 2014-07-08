@@ -25,7 +25,7 @@ extern OVS_SWITCH_INFO* g_pSwitchInfo;
 static LIST_ENTRY g_grePorts;
 static LIST_ENTRY g_vxlanPorts;
 
-static BOOLEAN g_haveInternal = FALSE;
+//static BOOLEAN g_haveInternal = FALSE;
 NDIS_RW_LOCK_EX* g_pLogicalPortsLock = NULL;
 
 /***************************************************/
@@ -291,7 +291,7 @@ BOOLEAN _PersPort_AddByNumber_Unsafe(_Inout_ OVS_PERSISTENT_PORTS_INFO* pPorts, 
     pPorts->portsArray[pPort->ovsPortNumber] = pPort;
     pPorts->count++;
 
-    if (first == OVS_LOCAL_PORT_NUMBER && !g_haveInternal)
+    if (first == OVS_LOCAL_PORT_NUMBER/* && !g_haveInternal*/)
     {
         OVS_CHECK(pPort->ovsPortNumber <= MAXUINT16);
 
@@ -513,6 +513,7 @@ Cleanup:
 
 /***************************************************/
 
+#if 0
 BOOLEAN PersPort_HaveInternal_Unsafe()
 {
     BOOLEAN have = FALSE;
@@ -521,6 +522,7 @@ BOOLEAN PersPort_HaveInternal_Unsafe()
 
     return have;
 }
+#endif
 
 _Use_decl_annotations_
 OVS_PERSISTENT_PORT* PersPort_FindExternal_Ref()

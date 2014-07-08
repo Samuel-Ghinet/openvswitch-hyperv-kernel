@@ -31,10 +31,23 @@ typedef struct _OVS_DATAPATH_STATS {
     //# of flows present
 #if OVS_VERSION == OVS_VERSION_1_11
     UINT64 countFlows;
-#elif OVS_VERSION == OVS_VERSION_2_3
+#elif OVS_VERSION >= OVS_VERSION_2_3
 	UINT64 masksMatched;
 #endif
 }OVS_DATAPATH_STATS, *POVS_DATAPATH_STATS;
+
+typedef struct _OVS_DATAPATH_MEGAFLOW_STATS {
+	UINT64 masksMatched;
+	UINT32 countMasks;
+	//may be used in the future. ATM these values are unused
+	BYTE padding[20];
+}OVS_DATAPATH_MEGAFLOW_STATS, *POVS_DATAPATH_MEGAFLOW_STATS;
+
+//NOTE: this enum is used as FLAGS: multiple values can be used, OR-ed together
+typedef enum _OVS_DATAPATH_FEATURE {
+	OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED = 1,
+	OVS_DATAPATH_MULITPLE_PIDS_PER_VPORT = 2
+}OVS_DATAPATH_FEATURE;
 
 typedef struct _OVS_DATAPATH
 {
@@ -68,6 +81,7 @@ typedef struct _OVS_DATAPATH
 
     OVS_DATAPATH_STATS	statistics;
 
+	//values: constants of enum OVS_DATAPATH_FEATURE
 	UINT32				userFeatures;
 }OVS_DATAPATH, *POVS_DATAPATH;
 

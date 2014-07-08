@@ -104,6 +104,31 @@ OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, 
     return pFlow;
 }
 
+OVS_FLOW* FlowTable_FindExactFlow_Unsafe(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MATCH* pFlowMatch)
+{
+	OVS_FLOW* pFlow = NULL;
+	OVS_FLOW_MASK* pFlowMask = NULL;
+
+	pFlowMask = CONTAINING_RECORD(pFlowTable->pMaskList->Flink, OVS_FLOW_MASK, listEntry);
+
+	while (&pFlowMask->listEntry != pFlowTable->pMaskList)
+	{
+		pFlow = _FindFlowMatchingMaskedPI_Unsafe(pFlowTable, pFlowMatch->pPacketInfo, pFlowMask);
+		if (pFlow)
+		{
+			if (PacketInfo_Equal(&pFlow->unmaskedPacketInfo, pFlowMatch->pPacketInfo, pFlowMatch->piRange.endRange))
+			{
+				break;
+			}
+		}
+
+		//advance flow mask to next in list
+		pFlowMask = CONTAINING_RECORD(pFlowMask->listEntry.Flink, OVS_FLOW_MASK, listEntry);
+	}
+
+	return pFlow;
+}
+
 OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Ref(OVS_FLOW_TABLE* pFlowTable, const OVS_OFPACKET_INFO* pPacketInfo)
 {
 	OVS_FLOW* pFlow = NULL;
@@ -117,6 +142,45 @@ OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Ref(OVS_FLOW_TABLE* pFlowTable, con
 	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 
 	return pFlow;
+}
+
+OVS_FLOW* FlowTable_FindExactFlow_Ref(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MATCH* pFlowMatch)
+{
+	OVS_FLOW* pFlow = NULL;
+	LOCK_STATE_EX lockState;
+
+	FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
+
+	pFlow = FlowTable_FindExactFlow_Unsafe(pFlowTable, pFlowMatch);
+	pFlow = OVS_REFCOUNT_REFERENCE(pFlow);
+
+	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
+
+	return pFlow;
+}
+
+UINT64 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable)
+{
+	LIST_ENTRY* pListEntry = NULL;
+	LIST_ENTRY* pHeadEntry = NULL;
+	LOCK_STATE_EX lockState = { 0 };
+	UINT64 count = 0;
+
+	FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
+
+	pHeadEntry = pFlowTable->pMaskList;
+	pListEntry = pHeadEntry->Flink;
+
+	while (pListEntry != pHeadEntry)
+	{
+		++count;
+
+		pListEntry = pListEntry->Flink;
+	}
+
+	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
+
+	return count;
 }
 
 OVS_FLOW_MASK* FlowTable_FindFlowMask(const OVS_FLOW_TABLE* pFlowTable, const OVS_FLOW_MASK* pFlowMask)

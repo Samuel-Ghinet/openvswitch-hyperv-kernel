@@ -101,49 +101,50 @@ static BOOLEAN _ExecuteAction_Set(OVS_NET_BUFFER* pONb, const OVS_ARGUMENT_GROUP
 
     switch (argType)
     {
+		//NOTE FOR OVS 2.3: 
+		//OVS_ARGTYPE_PI_TCP_FLAGS and OVS_ARGTYPE_PI_DATAPATH_HASH and OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID
+		//are not settable
     case OVS_ARGTYPE_PI_PACKET_MARK:
         pONb->packetMark = GET_ARG_DATA(pArg, UINT32);
         break;
 
     case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-
         pONb->packetPriority = GET_ARG_DATA(pArg, UINT32);
         break;
 
     case OVS_ARGTYPE_PI_IPV4_TUNNEL:
-
         pONb->pTunnelInfo = pArg->data;
         break;
 
     case OVS_ARGTYPE_PI_ETH_ADDRESS:
-
         ok = ONB_SetEthernetAddress(pONb, pArg->data);
         break;
 
     case OVS_ARGTYPE_PI_IPV4:
-
         ok = ONB_SetIpv4(pONb, pArg->data);
         break;
 
     case OVS_ARGTYPE_PI_IPV6:
-
         ok = ONB_SetIpv6(pONb, pArg->data);
         break;
 
     case OVS_ARGTYPE_PI_TCP:
-
         ok = ONB_SetTcp(pONb, pArg->data);
         break;
 
     case OVS_ARGTYPE_PI_UDP:
-
         ok = ONB_SetUdp(pONb, pArg->data);
         break;
 
     case OVS_ARGTYPE_PI_SCTP:
-
         ok = ONB_SetSctp(pONb, pArg->data);
         break;
+
+	case OVS_ARGTYPE_PI_MPLS:
+		OVS_CHECK(__NOT_IMPLEMENTED__);
+		//TODO:
+		//ok = ONB_SetMpls(pOvsNb, pArg->data);
+		break;
     }
 
     return ok;
@@ -173,7 +174,7 @@ static BOOLEAN _ExecuteAction_Sample(_Inout_ OVS_NET_BUFFER *pOvsNb, _In_ const 
         }
             break;
 
-        case OVS_ARGTYPE_GROUP_ACTIONS_SAMPLE:
+        case OVS_ARGTYPE_GROUP_ACTIONS:
             pSampleActionsArgs = pArg->data;
             break;
         }
@@ -379,6 +380,14 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
             ok = Vlan_Pop(pOvsNb);
             break;
 
+		case OVS_ARGTYPE_ACTION_PUSH_MPLS:
+			OVS_CHECK(__NOT_IMPLEMENTED__);
+			break;
+
+		case OVS_ARGTYPE_ACTION_POP_MPLS:
+			OVS_CHECK(__NOT_IMPLEMENTED__);
+			break;
+
 		case OVS_ARGTYPE_ACTION_HASH:
 			ok = _ExecuteAction_Hash(pOvsNb, pArg->data);
 #if !OVS_ACTION_HASH_IMPLEMENTED
@@ -462,35 +471,17 @@ static BOOLEAN _VerifyAction_Upcall(const OVS_ARGUMENT* pArg)
 
 static BOOLEAN _ValidateTransportPort(const OVS_OFPACKET_INFO* pPacketInfo)
 {
-    if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4))
-    {
-        if (pPacketInfo->tpInfo.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16) ||
-			pPacketInfo->tpInfo.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
-        {
-            return TRUE;
-        }
+	if (pPacketInfo->tpInfo.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16) ||
+		pPacketInfo->tpInfo.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
+	{
+		return TRUE;
+	}
 
-        else
-        {
-            DEBUGP(LOG_ERROR, __FUNCTION__ " src port == wildcard & dest port == wildcard: invalid\n");
-            return FALSE;
-        }
-    }
-
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
-    {
-		if (pPacketInfo->tpInfo.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16) ||
-			pPacketInfo->tpInfo.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
-        {
-            return TRUE;
-        }
-
-        else
-        {
-            DEBUGP(LOG_ERROR, __FUNCTION__ " src port == wildcard & dest port == wildcard: invalid\n");
-            return FALSE;
-        }
-    }
+	else
+	{
+		DEBUGP(LOG_ERROR, __FUNCTION__ " src port == wildcard & dest port == wildcard: invalid\n");
+		return FALSE;
+	}
 
     DEBUGP(LOG_ERROR, "packet info's eth type != ipv4 & != ipv6\n");
     return FALSE;
@@ -550,10 +541,10 @@ static BOOLEAN _Action_SetInfo(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
 
     switch (argType)
     {
+	case OVS_ARGTYPE_PI_DATAPATH_HASH:
+	case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
     case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-
     case OVS_ARGTYPE_PI_PACKET_MARK:
-
     case OVS_ARGTYPE_PI_ETH_ADDRESS:
 
         //nothing to do here
@@ -644,7 +635,6 @@ static BOOLEAN _Action_SetInfo(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
         break;
 
     case OVS_ARGTYPE_PI_TCP:
-
         if (pPacketInfo->ipInfo.protocol != IPPROTO_TCP)
         {
             DEBUGP(LOG_ERROR, __FUNCTION__ " packet info's proto != tcp\n");
@@ -652,6 +642,15 @@ static BOOLEAN _Action_SetInfo(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
         }
 
         return _ValidateTransportPort(pPacketInfo);
+
+	case OVS_ARGTYPE_PI_TCP_FLAGS:
+		if (pPacketInfo->ipInfo.protocol != IPPROTO_TCP)
+		{
+			DEBUGP(LOG_ERROR, __FUNCTION__ " packet info's proto != tcp\n");
+			return FALSE;
+		}
+
+		return TRUE;
 
     case OVS_ARGTYPE_PI_UDP:
         if (pPacketInfo->ipInfo.protocol != IPPROTO_UDP)
@@ -670,6 +669,16 @@ static BOOLEAN _Action_SetInfo(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
         }
 
         return _ValidateTransportPort(pPacketInfo);
+
+	case OVS_ARGTYPE_PI_MPLS:
+		if (RtlUshortByteSwap(pPacketInfo->ethInfo.type) != OVS_ETHERTYPE_MPLS_UNICAST ||
+			RtlUshortByteSwap(pPacketInfo->ethInfo.type) != OVS_ETHERTYPE_MPLS_MULTICAST)
+		{
+			return FALSE;
+		}
+
+		return TRUE;
+
     default:
         DEBUGP(LOG_ERROR, __FUNCTION__ " invalid PI type to set: 0x%x\n", argType);
         return FALSE;
@@ -706,9 +715,19 @@ BOOLEAN ProcessReceivedActions(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
             break;
 
         case OVS_ARGTYPE_GROUP_ACTIONS_SAMPLE:
-            OVS_CHECK(__NOT_IMPLEMENTED__);
-            return FALSE;
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
             break;
+
+		case OVS_ARGTYPE_ACTION_RECIRCULATION:
+			break;
+
+		case OVS_ARGTYPE_ACTION_HASH:
+		{
+			OVS_ACTION_FLOW_HASH* pHashAction = pArg->data;
+			if (pHashAction->hashAlgorithm != OVS_HASH_ALGORITHM_TRANSPORT)
+				return FALSE;
+		}
+			break;
 
         case OVS_ARGTYPE_GROUP_ACTIONS_SETINFO:
             OVS_CHECK(IsArgTypeGroup(pArg->type));
@@ -749,6 +768,14 @@ BOOLEAN ProcessReceivedActions(_Inout_ OVS_ARGUMENT_GROUP* pActionGroup, const O
 
         case OVS_ARGTYPE_ACTION_POP_VLAN:
             break;
+
+		case OVS_ARGTYPE_ACTION_PUSH_MPLS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+		case OVS_ARGTYPE_ACTION_POP_MPLS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
 
         default:
             return FALSE;

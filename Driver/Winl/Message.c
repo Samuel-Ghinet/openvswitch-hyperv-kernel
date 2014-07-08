@@ -23,6 +23,8 @@ limitations under the License.
 #include "AttrToArgument.h"
 #include "ArgToAttribute.h"
 
+#include "OFDatapath.h"
+
 static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ OVS_ARGUMENT* pOutArg, OVS_ARGTYPE parentArgType, UINT16 targetType, UINT8 cmd)
 {
     OVS_ARGUMENT* pAttribute = (OVS_ARGUMENT*)*pBuffer;
@@ -1139,6 +1141,24 @@ static BOOLEAN _VerifyDatapathMessageReply(OVS_MESSAGE_COMMAND_TYPE cmd, _In_ OV
             OVS_CHECK(0);
             return FALSE;
         }
+
+#if OVS_VERSION >= OVS_VERSION_2_3
+		pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS);
+		if (!pArg)
+		{
+			DEBUGP_ARG(LOG_ERROR, "datapath reply does not have arg: megaflow stats\n");
+			OVS_CHECK(0);
+			return FALSE;
+		}
+
+		pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
+		if (!pArg)
+		{
+			DEBUGP_ARG(LOG_ERROR, "datapath reply does not have arg: user features\n");
+			OVS_CHECK(0);
+			return FALSE;
+		}
+#endif
     }
         break;
 
@@ -1153,7 +1173,9 @@ static BOOLEAN _VerifyDatapathMessageReply(OVS_MESSAGE_COMMAND_TYPE cmd, _In_ OV
         UINT argType = pMainGroupArg->type;
 
         if (!(argType == OVS_ARGTYPE_DATAPATH_NAME ||
-            argType == OVS_ARGTYPE_DATAPATH_STATS))
+            argType == OVS_ARGTYPE_DATAPATH_STATS ||
+			argType == OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS ||
+			argType == OVS_ARGTYPE_DATAPATH_USER_FEATURES))
         {
             DEBUGP_ARG(LOG_ERROR, "reply should not have main argtype: 0x%x", argType);
             OVS_CHECK(0);
@@ -1174,6 +1196,18 @@ static BOOLEAN _VerifyDatapathMessageReply(OVS_MESSAGE_COMMAND_TYPE cmd, _In_ OV
 
         case OVS_ARGTYPE_DATAPATH_STATS:
             break;
+
+		case OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS:
+			break;
+
+		case OVS_ARGTYPE_DATAPATH_USER_FEATURES:
+		{
+			UINT32 features = GET_ARG_DATA(pMainGroupArg, UINT32);
+			UINT32 allFeatures = (OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED | OVS_DATAPATH_MULITPLE_PIDS_PER_VPORT);
+
+			OVS_CHECK_RET(features == features & allFeatures, FALSE);
+		}
+			break;
 
         default:
             OVS_CHECK(0);

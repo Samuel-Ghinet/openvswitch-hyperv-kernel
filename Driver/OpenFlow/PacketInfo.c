@@ -488,9 +488,17 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-
             tunnelFlags |= OVS_TUNNEL_FLAG_CHECKSUM;
             break;
+
+		case OVS_ARGTYPE_PI_TUNNEL_OAM:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+		case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
 
         default:
             return FALSE;
@@ -565,9 +573,16 @@ BOOLEAN GetIpv4TunnelFromArgumentsSimple(const OVS_ARGUMENT_GROUP* pArgs, _Inout
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-
             tunnelFlags |= OVS_TUNNEL_FLAG_CHECKSUM;
             break;
+
+		case OVS_ARGTYPE_PI_TUNNEL_OAM:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+		case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
 
         default:
             return FALSE;
@@ -588,6 +603,28 @@ VOID PIFromArg_PacketPriority(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OV
 
     _UpdateRange(pPiRange, offset, size);
     pPacketInfo->physical.packetPriority = GET_ARG_DATA(pArg, UINT32);
+}
+
+VOID PIFromArg_DatapathHash(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
+{
+	SIZE_T offset = 0, size = 0;
+
+	offset = OFFSET_OF(OVS_OFPACKET_INFO, flowHash);
+	size = sizeof(pPacketInfo->flowHash);
+
+	_UpdateRange(pPiRange, offset, size);
+	pPacketInfo->flowHash = GET_ARG_DATA(pArg, UINT32);
+}
+
+VOID PIFromArg_DatapathRecirculationId(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
+{
+	SIZE_T offset = 0, size = 0;
+
+	offset = OFFSET_OF(OVS_OFPACKET_INFO, recirculationId);
+	size = sizeof(pPacketInfo->recirculationId);
+
+	_UpdateRange(pPiRange, offset, size);
+	pPacketInfo->recirculationId = GET_ARG_DATA(pArg, UINT32);
 }
 
 BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
@@ -888,6 +925,34 @@ static BOOLEAN _GetPIFromArg_Arp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     return TRUE;
 }
 
+static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, _In_ BOOLEAN isMask)
+{
+	const OVS_PI_MPLS* pMplsPI = pArg->data;
+	SIZE_T size = 0, offset = 0;
+
+	offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ipInfo, OVS_NET_LAYER_INFO, mplsTopLabelStackEntry);
+	size = sizeof(pPacketInfo->ipInfo.mplsTopLabelStackEntry);
+
+	_UpdateRange(pPiRange, offset, size);
+	pPacketInfo->ipInfo.mplsTopLabelStackEntry = pMplsPI->mplsLse;
+
+	return TRUE;
+}
+
+static BOOLEAN _GetPIFromArg_TcpFlags(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, _In_ BOOLEAN isMask)
+{
+	BE16 tcpFlags = GET_ARG_DATA(pArg, BE16);
+	SIZE_T size = 0, offset = 0;
+
+	offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, tpInfo, OVS_TRANSPORT_LAYER_INFO, tcpFlags);
+	size = sizeof(pPacketInfo->tpInfo.tcpFlags);
+
+	_UpdateRange(pPiRange, offset, size);
+	pPacketInfo->tpInfo.tcpFlags = tcpFlags;
+
+	return TRUE;
+}
+
 static VOID _GetPIFromArg_Tcp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pTcpArg, BOOLEAN haveIpv4)
 {
     const OVS_PI_TCP* pTcpPI = pTcpArg->data;
@@ -1089,13 +1154,19 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
         switch (argType)
         {
-        case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+		case OVS_ARGTYPE_PI_DATAPATH_HASH:
+			PIFromArg_DatapathHash(pPacketInfo, pPiRange, pArg);
+			break;
 
+		case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+			PIFromArg_DatapathRecirculationId(pPacketInfo, pPiRange, pArg);
+			break;
+
+        case OVS_ARGTYPE_PI_PACKET_PRIORITY:
             PIFromArg_PacketPriority(pPacketInfo, pPiRange, pArg);
             break;
 
         case OVS_ARGTYPE_PI_DP_INPUT_PORT:
-
             pDatapathInPortArg = pArg;
             if (!PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask))
             {
@@ -1172,10 +1243,17 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
             break;
 
-        case OVS_ARGTYPE_PI_TCP:
+		case OVS_ARGTYPE_PI_MPLS:
+			_GetPIFromArg_Mpls(pPacketInfo, pPiRange, pArg, haveIpv4);
+			break;
 
+        case OVS_ARGTYPE_PI_TCP:
             _GetPIFromArg_Tcp(pPacketInfo, pPiRange, pArg, haveIpv4);
             break;
+
+		case OVS_ARGTYPE_PI_TCP_FLAGS:
+			_GetPIFromArg_TcpFlags(pPacketInfo, pPiRange, pArg, haveIpv4);
+			break;
 
         case OVS_ARGTYPE_PI_UDP:
 

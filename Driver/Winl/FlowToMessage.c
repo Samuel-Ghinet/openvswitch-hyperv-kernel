@@ -93,21 +93,43 @@ static BOOLEAN _CreateArpArgs(const OVS_OFPACKET_INFO* pPacketInfo, OVS_ARGUMENT
     return TRUE;
 }
 
+static BOOLEAN _CreateMplsArgs(const OVS_OFPACKET_INFO* pPacketInfo, OVS_ARGUMENT_SLIST_ENTRY** ppArgList)
+{
+	OVS_PI_MPLS mplsPI = { 0 };
+
+	mplsPI.mplsLse = pPacketInfo->ipInfo.mplsTopLabelStackEntry;
+
+	if (!CreateArgInList(OVS_ARGTYPE_PI_MPLS, &mplsPI, ppArgList))
+	{
+		DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending mpls packet info\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static BOOLEAN _CreateTcpArgs(const OVS_OFPACKET_INFO* pPacketInfo, const OVS_OFPACKET_INFO* pMask, OVS_ARGUMENT_SLIST_ENTRY** ppArgList)
 {
     OVS_PI_TCP tcpPI = { 0 };
+	BE16 tcpFlags = 0;
 
 	const OVS_TRANSPORT_LAYER_INFO* pTransportInfo = (pMask ? &pMask->tpInfo : &pPacketInfo->tpInfo);
 
 	tcpPI.source = pTransportInfo->sourcePort;
 	tcpPI.destination = pTransportInfo->destinationPort;
+	tcpFlags = pTransportInfo->tcpFlags;
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_TCP, &tcpPI, ppArgList))
-
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending tcp packet info\n");
         return FALSE;
     }
+
+	if (!CreateArgInList(OVS_ARGTYPE_PI_TCP_FLAGS, &tcpFlags, ppArgList))
+	{
+		DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending tcp flags\n");
+		return FALSE;
+	}
 
     return TRUE;
 }
@@ -240,6 +262,17 @@ static BOOLEAN _CreateArgsFromLayer3And4InList(const OVS_OFPACKET_INFO* pPacketI
             return FALSE;
         }
     }
+
+	else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_MPLS_UNICAST) ||
+		pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_MPLS_MULTICAST))
+	{
+		if (!_CreateMplsArgs(pInfoToWrite, ppArgList))
+		{
+			DEBUGP(LOG_ERROR, __FUNCTION__ " create mpls args failed\n");
+			ok = FALSE;
+			return FALSE;
+		}
+	}
 
     //TRANSPORT LAYER: AVAILABLE ONLY FOR IPV4 / IPV6 AND WHEN THE PACKET IS NOT FRAGMENTED
     if (pPacketInfo->ethInfo.type != RtlUshortByteSwap(OVS_ETHERTYPE_IPV4) &&
@@ -1116,7 +1149,7 @@ static OVS_ARGUMENT_SLIST_ENTRY* _CreateArgListFromPacketInfo(const OVS_OFPACKET
     OVS_ARGUMENT_SLIST_ENTRY* pArgHead = NULL;
     BOOLEAN ok = TRUE;
     BOOLEAN encapsulated = FALSE;
-    UINT32 packetPriority = 0, packetMark = 0;
+    UINT32 packetPriority = 0, packetMark = 0, datapathHash = 0, recircId = 0;
 
     pArgListCur = AllocateArgListItem();
 
@@ -1130,9 +1163,22 @@ static OVS_ARGUMENT_SLIST_ENTRY* _CreateArgListFromPacketInfo(const OVS_OFPACKET
 
     packetPriority = (pMask ? pMask->physical.packetPriority : pPacketInfo->physical.packetPriority);
     packetMark = (pMask ? pMask->physical.packetMark : pPacketInfo->physical.packetMark);
+	datapathHash = (pMask ? pMask->flowHash : pPacketInfo->flowHash);
+	recircId = (pMask ? pMask->recirculationId : pPacketInfo->recirculationId);
+
+	if (!CreateArgInList(OVS_ARGTYPE_PI_DATAPATH_HASH, &datapathHash, &pArgListCur))
+	{
+		DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending datapath hash\n");
+		return NULL;
+	}
+
+	if (!CreateArgInList(OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID, &recircId, &pArgListCur))
+	{
+		DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending datapath recirculation id\n");
+		return NULL;
+	}
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_PACKET_PRIORITY, &packetPriority, &pArgListCur))
-
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " failed appending packet priority\n");
         return NULL;
@@ -1272,7 +1318,8 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
     BOOLEAN ok = TRUE;
     UINT16 flowArgCount = 0;
     UINT16 curArg = 0;
-    OVS_WINL_FLOW_STATS stats = { 0 };
+    OVS_WINL_FLOW_STATS winlStats = { 0 };
+	OVS_FLOW_STATS stats = { 0 };
     UINT64 tickCount = 0;
     UINT8 tcpFlags = 0;
     UINT16 argsDataSize = 0;
@@ -1299,6 +1346,9 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
 	tcpFlags = pFlow->stats.tcpFlags;
 #elif OVS_VERSION == OVS_VERSION_2_3
 	//TODO: Flow_GetStats()
+	Flow_GetStats_Unsafe(pFlow, &stats);
+	winlStats.noOfMatchedBytes = stats.bytesMatched;
+	winlStats.noOfMatchedPackets = stats.packetsMached;
 #endif
 
 	FLOW_UNLOCK(pFlow, &lockState);
@@ -1365,7 +1415,7 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
     }
 
     //3.4. Flow Stats
-    if (stats.noOfMatchedPackets > 0)
+    if (winlStats.noOfMatchedPackets > 0)
     {
         pFlowStats = CreateArgument_Alloc(OVS_ARGTYPE_FLOW_STATS, &stats);
         if (!pFlowStats)

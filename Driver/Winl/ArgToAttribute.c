@@ -20,137 +20,34 @@ limitations under the License.
 #include "Message.h"
 #include "Attribute.h"
 
-static BOOLEAN _Reply_SetAttrType_Datapath_New(_Inout_ OVS_ARGUMENT* pArg, OVS_ARGTYPE parentArgType)
-{
-    OVS_ARGTYPE argType = pArg->type;
-
-    UNREFERENCED_PARAMETER(parentArgType);
-    OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
-
-    switch (argType)
-    {
-    case OVS_ARGTYPE_DATAPATH_STATS:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
-        break;
-
-    case OVS_ARGTYPE_DATAPATH_NAME:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_NAME;
-        break;
-
-    default:
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-static BOOLEAN _Reply_SetAttrType_Datapath_Set(_Inout_ OVS_ARGUMENT* pArg, OVS_ARGTYPE parentArgType)
-{
-    OVS_ARGTYPE argType = pArg->type;
-
-    UNREFERENCED_PARAMETER(parentArgType);
-    OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
-
-    switch (argType)
-    {
-    case OVS_ARGTYPE_DATAPATH_STATS:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
-        break;
-
-    default:
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-static BOOLEAN _Reply_SetAttrType_Datapath_Get(_Inout_ OVS_ARGUMENT* pArg, OVS_ARGTYPE parentArgType)
-{
-    OVS_ARGTYPE argType = pArg->type;
-
-    UNREFERENCED_PARAMETER(parentArgType);
-
-    OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
-
-    switch (argType)
-    {
-    case OVS_ARGTYPE_DATAPATH_STATS:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
-        break;
-
-    case OVS_ARGTYPE_DATAPATH_NAME:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_NAME;
-        break;
-
-    default:
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-static BOOLEAN _Reply_SetAttrType_Datapath_Delete(_Inout_ OVS_ARGUMENT* pArg, OVS_ARGTYPE parentArgType)
-{
-    OVS_ARGTYPE argType = pArg->type;
-
-    UNREFERENCED_PARAMETER(parentArgType);
-    OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
-
-    switch (argType)
-    {
-    case OVS_ARGTYPE_DATAPATH_STATS:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
-        break;
-
-    default:
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-static BOOLEAN _Reply_SetAttrType_Datapath_Dump(_Inout_ OVS_ARGUMENT* pArg, OVS_ARGTYPE parentArgType)
-{
-    OVS_ARGTYPE argType = pArg->type;
-
-    UNREFERENCED_PARAMETER(parentArgType);
-    OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
-
-    switch (argType)
-    {
-    case OVS_ARGTYPE_DATAPATH_STATS:
-        pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
-        break;
-
-    default:
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
 static BOOLEAN _Reply_SetAttrType_Datapath(OVS_MESSAGE_COMMAND_TYPE cmd, OVS_ARGTYPE parentArgType, _Inout_ OVS_ARGUMENT* pArg)
 {
-    switch (cmd)
-    {
-    case OVS_MESSAGE_COMMAND_NEW:
-        return _Reply_SetAttrType_Datapath_New(pArg, parentArgType);
+	OVS_ARGTYPE argType = pArg->type;
 
-    case OVS_MESSAGE_COMMAND_SET:
-        return _Reply_SetAttrType_Datapath_Set(pArg, parentArgType);
+	UNREFERENCED_PARAMETER(parentArgType);
+	OVS_CHECK(parentArgType == OVS_ARGTYPE_GROUP_MAIN);
 
-    case OVS_MESSAGE_COMMAND_GET:
-        return _Reply_SetAttrType_Datapath_Get(pArg, parentArgType);
+	switch (argType)
+	{
+	case OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS:
+		pArg->type = OVS_USPACE_DP_ATTRIBUTE_MEGAFLOW_STATS;
+		break;
 
-    case OVS_MESSAGE_COMMAND_DELETE:
-        return _Reply_SetAttrType_Datapath_Delete(pArg, parentArgType);
+	case OVS_ARGTYPE_DATAPATH_USER_FEATURES:
+		pArg->type = OVS_USPACE_DP_ATTRIBUTE_USER_FEATURES;
+		break;
 
-    case OVS_MESSAGE_COMMAND_DUMP:
-        return _Reply_SetAttrType_Datapath_Dump(pArg, parentArgType);
+	case OVS_ARGTYPE_DATAPATH_STATS:
+		pArg->type = OVS_USPACE_DP_ATTRIBUTE_STATS;
+		break;
 
-    default:
-        return FALSE;
-    }
+	case OVS_ARGTYPE_DATAPATH_NAME:
+		pArg->type = OVS_USPACE_DP_ATTRIBUTE_NAME;
+		break;
+
+	default:
+		return FALSE;
+	}
 }
 
 static BOOLEAN _Reply_SetAttrType_PITunnel(OVS_ARGUMENT* pArg)
@@ -194,6 +91,14 @@ static BOOLEAN _Reply_SetAttrType_PITunnel(OVS_ARGUMENT* pArg)
         pArg->type = OVS_USPACE_TUNNEL_KEY_ATTRIBUTE_CSUM;
         break;
 
+	case OVS_ARGTYPE_PI_TUNNEL_OAM:
+		pArg->type = OVS_USPACE_TUNNEL_KEY_ATTRIBUTE_OAM;
+		break;
+
+	case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+		pArg->type = OVS_USPACE_TUNNEL_KEY_ATTRIBUTE_GENEVE_OPTIONS;
+		break;
+
     default:
     {
         DEBUGP(LOG_ERROR, "unexpected flow/key/tunnel arg: %u\n", pArg->type);
@@ -210,8 +115,15 @@ static BOOLEAN _Reply_SetAttrType_PacketInfo(OVS_ARGUMENT* pArg)
 
     switch (argType)
     {
-    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+	case OVS_ARGTYPE_PI_DATAPATH_HASH:
+		pArg->type = OVS_USPACE_KEY_ATTRIBUTE_DP_HASH;
+		break;
 
+	case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+		pArg->type = OVS_USPACE_KEY_ATTRIBUTE_RECIRC_ID;
+		break;
+
+    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
         pArg->type = OVS_USPACE_KEY_ATTRIBUTE_PRIORITY;
         break;
 
@@ -246,9 +158,12 @@ static BOOLEAN _Reply_SetAttrType_PacketInfo(OVS_ARGUMENT* pArg)
         break;
 
     case OVS_ARGTYPE_PI_TCP:
-
         pArg->type = OVS_USPACE_KEY_ATTRIBUTE_TCP;
         break;
+
+	case OVS_ARGTYPE_PI_TCP_FLAGS:
+		pArg->type = OVS_USPACE_KEY_ATTRIBUTE_TCP_FLAGS;
+		break;
 
     case OVS_ARGTYPE_PI_UDP:
 
@@ -259,6 +174,10 @@ static BOOLEAN _Reply_SetAttrType_PacketInfo(OVS_ARGUMENT* pArg)
 
         pArg->type = OVS_USPACE_KEY_ATTRIBUTE_SCTP;
         break;
+
+	case OVS_ARGTYPE_PI_MPLS:
+		pArg->type = OVS_USPACE_KEY_ATTRIBUTE_MPLS;
+		break;
 
     case OVS_ARGTYPE_PI_ICMP:
 
@@ -293,12 +212,6 @@ static BOOLEAN _Reply_SetAttrType_PacketInfo(OVS_ARGUMENT* pArg)
 
         //NOT SUPPORTED - it's a kernel attr only!
         OVS_CHECK(__UNEXPECTED__);
-        break;
-
-    case OVS_ARGTYPE_PI_MPLS:
-
-        pArg->type = OVS_USPACE_KEY_ATTRIBUTE_MPLS;
-        OVS_CHECK(__NOT_IMPLEMENTED__);
         break;
 
     case OVS_ARGTYPE_GROUP_PI_ENCAPSULATION:
@@ -468,9 +381,25 @@ static BOOLEAN _Reply_SetAttrType_PacketActions(_Inout_ OVS_ARGUMENT* pArg)
         pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_POP_VLAN;
         break;
 
+	case OVS_ARGTYPE_ACTION_PUSH_MPLS:
+		pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_PUSH_MPLS;
+		break;
+
+	case OVS_ARGTYPE_ACTION_POP_MPLS:
+		pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_POP_MPLS;
+		break;
+
     case OVS_ARGTYPE_GROUP_ACTIONS_SAMPLE:
         pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_SAMPLE;
         break;
+
+	case OVS_ARGTYPE_ACTION_RECIRCULATION:
+		pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_RECIRC;
+		break;
+
+	case OVS_ARGTYPE_ACTION_HASH:
+		pArg->type = OVS_USPACE_ACTION_ATTRIBUTE_HASH;
+		break;
 
     default:
         DEBUGP(LOG_ERROR, "unexpected packet/actions arg: %u\n", pArg->type);

@@ -45,7 +45,11 @@ typedef struct _OVS_PERSISTENT_PORT
     //OpenFlow / ovs port type
     OVS_OFPORT_TYPE		ofPortType;
     OVS_OFPORT_STATS	stats;
+#if OVS_VERSION == OVS_VERSION_1_11
     UINT32				upcallPortId;
+#elif OVS_VERSION >= OVS_VERSION_2_3
+	OVS_WINL_PORT_IDS	upcallPortIds;
+#endif
 
     OVS_TUNNELING_PORT_OPTIONS*	pOptions;
 
@@ -108,6 +112,8 @@ OVS_PERSISTENT_PORT* PersPort_FindVxlanByDestPort_Ref(LE16 udpDestPort);
 BOOLEAN PersPort_Initialize();
 VOID PersPort_Uninitialize();
 
+#if 0
 BOOLEAN PersPort_HaveInternal_Unsafe();
+#endif
 
 VOID PersPort_DestroyNow_Unsafe(OVS_PERSISTENT_PORT* pPersPort);

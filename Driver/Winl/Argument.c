@@ -63,8 +63,15 @@ static BOOLEAN _GetPIArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize)
 {
     switch (argumentType)
     {
-    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+	case OVS_ARGTYPE_PI_DATAPATH_HASH:
+		*pSize = sizeof(UINT32);
+		return TRUE;
 
+	case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+		*pSize = sizeof(UINT32);
+		return TRUE;
+
+    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
         *pSize = sizeof(UINT32);
         return TRUE;
 
@@ -99,9 +106,12 @@ static BOOLEAN _GetPIArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize)
         return TRUE;
 
     case OVS_ARGTYPE_PI_TCP:
-
         *pSize = sizeof(OVS_PI_TCP);
         return TRUE;
+
+	case OVS_ARGTYPE_PI_TCP_FLAGS:
+		*pSize = sizeof(BE16);
+		return TRUE;
 
     case OVS_ARGTYPE_PI_UDP:
 
@@ -109,10 +119,12 @@ static BOOLEAN _GetPIArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize)
         return TRUE;
 
     case OVS_ARGTYPE_PI_SCTP:
-
-        *pSize = sizeof(OVS_ARGTYPE_PI_SCTP);
-
+        *pSize = sizeof(OVS_PI_SCTP);
         return TRUE;
+
+	case OVS_ARGTYPE_PI_MPLS:
+		*pSize = sizeof(OVS_PI_MPLS);
+		return TRUE;
 
     case OVS_ARGTYPE_PI_ICMP:
 
@@ -142,11 +154,6 @@ static BOOLEAN _GetPIArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize)
     case OVS_ARGTYPE_PI_IPV4_TUNNEL:
 
         *pSize = sizeof(OF_PI_IPV4_TUNNEL);
-        return TRUE;
-
-    case OVS_ARGTYPE_PI_MPLS:
-
-        *pSize = sizeof(OVS_PI_MPLS);
         return TRUE;
 
     default:
@@ -189,9 +196,16 @@ static BOOLEAN _GetFlowKeyTunnelArgExpectedSize(OVS_ARGTYPE argumentType, UINT* 
         return TRUE;
 
     case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-
         *pSize = 0;
         return TRUE;
+
+	case OVS_ARGTYPE_PI_TUNNEL_OAM:
+		*pSize = 0;
+		return TRUE;
+
+	case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+		*pSize = MAXUINT;
+		return TRUE;
 
     default:
         return FALSE;
@@ -232,6 +246,22 @@ static BOOLEAN _GetPacketActionsArgExpectedSize(OVS_ARGTYPE argumentType, UINT* 
     case OVS_ARGTYPE_ACTION_POP_VLAN:
         *pSize = 0;
         return TRUE;
+
+	case OVS_ARGTYPE_ACTION_PUSH_MPLS:
+		*pSize = sizeof(OVS_ACTION_PUSH_MPLS);
+		return TRUE;
+
+	case OVS_ARGTYPE_ACTION_POP_MPLS:
+		*pSize = sizeof(BE16);
+		return TRUE;
+
+	case OVS_ARGTYPE_ACTION_RECIRCULATION:
+		*pSize = sizeof(UINT32);
+		return TRUE;
+
+	case OVS_ARGTYPE_ACTION_HASH:
+		*pSize = sizeof(OVS_ACTION_FLOW_HASH);
+		return TRUE;
 
     default:
         return FALSE;
@@ -284,6 +314,14 @@ static BOOLEAN _GetDatapathArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize
         *pSize = sizeof(OVS_DATAPATH_STATS);
         return TRUE;
 
+	case OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS:
+		*pSize = sizeof(OVS_DATAPATH_MEGAFLOW_STATS);
+		return TRUE;
+
+	case OVS_ARGTYPE_DATAPATH_USER_FEATURES:
+		*pSize = sizeof(UINT32);
+		return TRUE;
+
     default:
         return FALSE;
     }
@@ -306,7 +344,12 @@ static BOOLEAN _GetOFPortArgExpectedSize(OVS_ARGTYPE argumentType, UINT* pSize)
         return TRUE;
 
     case OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID:
+#if OVS_VERSION == OVS_VERSION_1_11
         *pSize = sizeof(UINT32);
+#elif OVS_VERSION >= OVS_VERSION_2_3
+		//TODO: possibly unknown?
+		OVS_CHECK(0);
+#endif
         return TRUE;
 
     case OVS_ARGTYPE_OFPORT_STATS:
@@ -768,11 +811,12 @@ OVS_ARGUMENT* CreateArgumentStringA_Alloc(OVS_ARGTYPE argType, const char* buffe
 
 VOID DestroyArgumentGroup(_In_ OVS_ARGUMENT_GROUP* pGroup)
 {
-    OVS_CHECK(pGroup);
+	if (pGroup)
+	{
+		DestroyArgumentsFromGroup(pGroup);
 
-    DestroyArgumentsFromGroup(pGroup);
-
-    FreeArgGroup(pGroup);
+		FreeArgGroup(pGroup);
+	}
 }
 
 VOID DestroyArguments(_In_ OVS_ARGUMENT* argArray, UINT count)
@@ -1283,8 +1327,15 @@ static __inline VOID _DbgPrintArgType_PacketInfo(OVS_ARGTYPE argType)
 {
     switch (argType)
     {
-    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+	case OVS_ARGTYPE_PI_DATAPATH_HASH:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY: DATAPATH HASH\n");
+		break;
 
+	case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY: DATAPATH RECIRC ID\n");
+		break;
+
+    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
         DEBUGP_ARG(LOG_INFO, "FLOW/KEY: PACKET PRIORITY\n");
         break;
 
@@ -1319,9 +1370,12 @@ static __inline VOID _DbgPrintArgType_PacketInfo(OVS_ARGTYPE argType)
         break;
 
     case OVS_ARGTYPE_PI_TCP:
-
         DEBUGP_ARG(LOG_INFO, "FLOW/KEY: TCP\n");
         break;
+
+	case OVS_ARGTYPE_PI_TCP_FLAGS:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY: TCP FLAGS\n");
+		break;
 
     case OVS_ARGTYPE_PI_UDP:
 
@@ -1332,6 +1386,10 @@ static __inline VOID _DbgPrintArgType_PacketInfo(OVS_ARGTYPE argType)
 
         DEBUGP_ARG(LOG_INFO, "FLOW/KEY: SCTP\n");
         break;
+
+	case OVS_ARGTYPE_PI_MPLS:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY: MPLS\n");
+		break;
 
     case OVS_ARGTYPE_PI_ICMP:
 
@@ -1408,9 +1466,16 @@ static __inline VOID _DbgPrintArgType_PITunnel(OVS_ARGTYPE argType)
         break;
 
     case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-
         DEBUGP_ARG(LOG_INFO, "FLOW/KEY/TUNNEL:CHECKSUM\n");
         break;
+
+	case OVS_ARGTYPE_PI_TUNNEL_OAM:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY/TUNNEL:OAM\n");
+		break;
+
+	case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+		DEBUGP_ARG(LOG_INFO, "FLOW/KEY/TUNNEL:GENEVE\n");
+		break;
 
     default:
         OVS_CHECK(0);
@@ -1457,6 +1522,14 @@ static __inline VOID _DbgPrintArgType_PacketActions(OVS_ARGTYPE argType)
     case OVS_ARGTYPE_ACTION_POP_MPLS:
         DEBUGP_ARG(LOG_INFO, "PACKET/ACTIONS: POP MPLS\n");
         break;
+
+	case OVS_ARGTYPE_ACTION_RECIRCULATION:
+		DEBUGP_ARG(LOG_INFO, "PACKET/ACTIONS: OVS_ARGTYPE_ACTION_RECIRCULATION\n");
+		break;
+
+	case OVS_ARGTYPE_ACTION_HASH:
+		DEBUGP_ARG(LOG_INFO, "PACKET/ACTIONS: OVS_ARGTYPE_ACTION_HASH\n");
+		break;
 
     default:
         OVS_CHECK(0);
@@ -1508,6 +1581,14 @@ static __inline VOID _DbgPrintArgType_Datapath(OVS_ARGTYPE argType)
     case OVS_ARGTYPE_DATAPATH_STATS:
         DEBUGP_ARG(LOG_INFO, "DATAPATH: STATS\n");
         break;
+
+	case OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS:
+		DEBUGP_ARG(LOG_INFO, "DATAPATH: MEGAFLOW STATS\n");
+		break;
+
+	case OVS_ARGTYPE_DATAPATH_USER_FEATURES:
+		DEBUGP_ARG(LOG_INFO, "DATAPATH: USER FEATURES\n");
+		break;
 
     default:
         OVS_CHECK(0);
@@ -1890,8 +1971,14 @@ static __inline BOOLEAN _VerifyGroup_FlowKeyTunnel(OVS_ARGUMENT* pParentArg, BOO
 
         switch (argType)
         {
-        case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
+		case OVS_ARGTYPE_PI_TUNNEL_OAM:
+			break;
 
+		case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
             if (!_VerifyArg_PacketInfoTunnelChecksum(pArg, isMask))
                 return FALSE;
             break;
@@ -2141,7 +2228,6 @@ static __inline BOOLEAN _VerifyArg_PacketInfo_Ipv4(OVS_ARGUMENT* pArg, BOOLEAN i
                 {
                 case OVS_IPPROTO_TCP:
                     if (!FindArgument(pParentArg->data, OVS_ARGTYPE_PI_TCP))
-
                         return FALSE;
                     break;
 
@@ -2227,7 +2313,6 @@ static __inline BOOLEAN _VerifyArg_PacketInfo_Ipv6(OVS_ARGUMENT* pArg, BOOLEAN i
                 {
                 case OVS_IPPROTO_TCP:
                     if (!FindArgument(pParentArg->data, OVS_ARGTYPE_PI_TCP))
-
                         return FALSE;
                     break;
 
@@ -2542,10 +2627,16 @@ static __inline BOOLEAN _VerifyArg_PacketInfo_Encap(OVS_ARGUMENT* pEncArg, BOOLE
             break;
 
         case OVS_ARGTYPE_PI_TCP:
-
             if (!_VerifyArg_PacketInfo_Tcp(pArg, isMask, isRequest, pEncArg, seekIp))
                 return FALSE;
             break;
+
+		case OVS_ARGTYPE_PI_MPLS:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+		case OVS_ARGTYPE_PI_TCP_FLAGS:
+			break;
 
         case OVS_ARGTYPE_PI_UDP:
 
@@ -2650,10 +2741,15 @@ BOOLEAN VerifyGroup_PacketInfo(BOOLEAN isMask, BOOLEAN isRequest, _In_ OVS_ARGUM
             break;
 
         case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-
             if (!_VerifyArg_PacketInfo_PacketPriority(pArg, isMask, isRequest))
                 return FALSE;
             break;
+
+		case OVS_ARGTYPE_PI_DATAPATH_HASH:
+			break;
+
+		case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+			break;
 
         case OVS_ARGTYPE_PI_SCTP:
 
@@ -2662,10 +2758,12 @@ BOOLEAN VerifyGroup_PacketInfo(BOOLEAN isMask, BOOLEAN isRequest, _In_ OVS_ARGUM
             break;
 
         case OVS_ARGTYPE_PI_TCP:
-
             if (!_VerifyArg_PacketInfo_Tcp(pArg, isMask, isRequest, pParentArg, seekIp))
                 return FALSE;
             break;
+
+		case OVS_ARGTYPE_PI_TCP_FLAGS:
+			break;
 
         case OVS_ARGTYPE_PI_UDP:
 
@@ -2984,6 +3082,14 @@ BOOLEAN VerifyGroup_PacketActions(OVS_ARGUMENT* pParentArg, BOOLEAN isRequest)
                 return FALSE;
             }
             break;
+
+		case OVS_ARGTYPE_ACTION_RECIRCULATION:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
+
+		case OVS_ARGTYPE_ACTION_HASH:
+			OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+			break;
 
         case OVS_ARGTYPE_ACTION_POP_MPLS:
             if (!_VerifyArg_PacketActions_PopMpls(pArg))

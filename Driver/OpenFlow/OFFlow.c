@@ -37,6 +37,8 @@ limitations under the License.
 #include "Checksum.h"
 #include "OFFlowTable.h"
 
+#include "PersistentPort.h"
+
 #include <ntstrsafe.h>
 
 /***********************************************/
@@ -79,6 +81,8 @@ void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacket
 {
     RtlZeroMemory(pFlowMatch, sizeof(OVS_FLOW_MATCH));
     RtlZeroMemory(pPacketInfo, sizeof(OVS_OFPACKET_INFO));
+
+	pPacketInfo->physical.ovsInPort = OVS_INVALID_PORT_NUMBER;
 
     pFlowMatch->pPacketInfo = pPacketInfo;
     pFlowMatch->pFlowMask = pFlowMask;
@@ -223,11 +227,12 @@ void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
 	pFlowStats->tcpFlags |= pOvsNb->pOriginalPacketInfo->tpInfo.tcpFlags;
 }
 
-void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats, _Out_ UINT64* pLastUsedTime, _Out_ BE16* pTcpFlags)
+void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats)
 {
 	USHORT maxNodeNumber = 0;
 
-	*pLastUsedTime = *pTcpFlags = 0;
+	pFlowStats->tcpFlags = 0;
+	pFlowStats->lastUsedTime = 0;
 
 	maxNodeNumber = KeQueryHighestNodeNumber();
 
@@ -239,16 +244,16 @@ void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlo
 
 		if (pCurFlowStats)
 		{
-			UINT64 lastUsedTime = *pLastUsedTime;
+			UINT64 lastUsedTime = pFlowStats->lastUsedTime;
 
 			pFlowStats->packetsMached += pCurFlowStats->packetsMached;
 			pFlowStats->bytesMatched += pCurFlowStats->bytesMatched;
 
-			*pTcpFlags |= pCurFlowStats->tcpFlags;
+			pFlowStats->tcpFlags |= pCurFlowStats->tcpFlags;
 
 			if (!lastUsedTime || pCurFlowStats->lastUsedTime > lastUsedTime)
 			{
-				*pLastUsedTime = pCurFlowStats->lastUsedTime;
+				pFlowStats->lastUsedTime = pCurFlowStats->lastUsedTime;
 			}
 		}
 	}
@@ -604,8 +609,23 @@ static void _DbgPrintFlow_Set(_In_ const OVS_ARGUMENT_GROUP* pArgs, _In_ ULONG m
 
     switch (argType)
     {
-    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+	case OVS_ARGTYPE_PI_DATAPATH_HASH:
+	{
+		UINT32 hash = GET_ARG_DATA(pArg, UINT32);
+		RtlStringCchPrintfA(tempStr, 100, "dp hash=%u; ", hash);
+		RtlStringCchCatA(str, maxLen, tempStr);
+	}
+		break;
 
+	case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+	{
+		UINT32 id = GET_ARG_DATA(pArg, UINT32);
+		RtlStringCchPrintfA(tempStr, 100, "dp recirc id=%u; ", id);
+		RtlStringCchCatA(str, maxLen, tempStr);
+	}
+		break;
+
+    case OVS_ARGTYPE_PI_PACKET_PRIORITY:
     {
         UINT32 priority = GET_ARG_DATA(pArg, UINT32);
         RtlStringCchPrintfA(tempStr, 100, "priority=%u; ", priority);
@@ -657,7 +677,6 @@ static void _DbgPrintFlow_Set(_In_ const OVS_ARGUMENT_GROUP* pArgs, _In_ ULONG m
         break;
 
     case OVS_ARGTYPE_PI_TCP:
-
     {
         RtlStringCchCatA(str, maxLen, "tcp; ");
     }
@@ -671,11 +690,19 @@ static void _DbgPrintFlow_Set(_In_ const OVS_ARGUMENT_GROUP* pArgs, _In_ ULONG m
         break;
 
     case OVS_ARGTYPE_PI_SCTP:
-
     {
         RtlStringCchCatA(str, maxLen, "sctp; ");
     }
         break;
+
+	case OVS_ARGTYPE_PI_MPLS:
+	{
+		RtlStringCchCatA(str, maxLen, "mpls; ");
+	}
+		break;
+
+	default:
+		OVS_CHECK(__UNEXPECTED__);
     }
 }
 
@@ -776,6 +803,18 @@ void FlowWithActions_ToString(const char* msg, _In_ const OVS_OFPACKET_INFO* pPa
             }
                 break;
 
+			case OVS_ARGTYPE_ACTION_RECIRCULATION:
+			{
+				RtlStringCchCatA(str, maxLen - 1, "recirc; ");
+			}
+				break;
+
+			case OVS_ARGTYPE_ACTION_HASH:
+			{
+				RtlStringCchCatA(str, maxLen - 1, "hash; ");
+			}
+				break;
+
             case OVS_ARGTYPE_ACTION_PUSH_VLAN:
             {
                 RtlStringCchCatA(str, maxLen - 1, "push vlan; ");
@@ -787,6 +826,18 @@ void FlowWithActions_ToString(const char* msg, _In_ const OVS_OFPACKET_INFO* pPa
                 RtlStringCchCatA(str, maxLen - 1, "pop vlan; ");
             }
                 break;
+
+			case OVS_ARGTYPE_ACTION_PUSH_MPLS:
+			{
+				RtlStringCchCatA(str, maxLen - 1, "push mpls; ");
+			}
+				break;
+
+			case OVS_ARGTYPE_ACTION_POP_MPLS:
+			{
+				RtlStringCchCatA(str, maxLen - 1, "pop mpls; ");
+			}
+				break;
             }
         }
 

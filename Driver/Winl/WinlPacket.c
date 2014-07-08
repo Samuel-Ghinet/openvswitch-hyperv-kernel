@@ -191,6 +191,11 @@ VOID Packet_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFile
 		pOvsNb->pSourcePort = pSourcePersPort;
     }
 
+	else
+	{
+		pOvsNb->pSourcePort = PersPort_FindInternal_Ref();
+	}
+
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
     {
@@ -216,11 +221,7 @@ Cleanup:
 		Flow_DestroyNow_Unsafe(pFlow);
 
 	OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
-	if (pOvsNb->pSourcePort)
-	{
-		OVS_REFCOUNT_DEREFERENCE(pOvsNb->pSourcePort);
-	}
+	OVS_REFCOUNT_DEREFERENCE(pOvsNb->pSourcePort);
 
     if (ok)
     {

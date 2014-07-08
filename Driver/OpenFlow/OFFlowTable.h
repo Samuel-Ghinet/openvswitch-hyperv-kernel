@@ -47,6 +47,9 @@ VOID FlowTable_DestroyNow_Unsafe(OVS_FLOW_TABLE* pFlowTable);
 OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, const OVS_OFPACKET_INFO* pPacketInfo);
 //is locked with pFlowTable's lock
 OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Ref(OVS_FLOW_TABLE* pFlowTable, const OVS_OFPACKET_INFO* pPacketInfo);
+OVS_FLOW* FlowTable_FindExactFlow_Ref(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MATCH* pFlowMatch);
+
+UINT64 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable);
 
 OVS_FLOW_MASK* FlowTable_FindFlowMask(const OVS_FLOW_TABLE* pFlowTable, const OVS_FLOW_MASK* pFlowMask);
 void FlowTable_InsertFlowMask(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MASK* pFlowMask);

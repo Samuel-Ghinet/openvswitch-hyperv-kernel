@@ -39,14 +39,13 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_ARGUMENT* pFlowActionGroupArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pPacketInfoMaskArgs = NULL;
     OVS_OFPACKET_INFO packetInfo = { 0 }, maskedPacketInfo = { 0 };
-    OVS_FLOW* pFlow = NULL;
+    OVS_FLOW* pFoundFlow = NULL, *pNewFlow = NULL;
     OVS_FLOW_MASK flowMask = { 0 };
     OVS_MESSAGE replyMsg = { 0 };
     OVS_DATAPATH* pDatapath = NULL;
     OVS_FLOW_TABLE* pFlowTable = NULL;
     OVS_FLOW_MATCH flowMatch = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    BOOLEAN flowWasCreated = TRUE;
 	OVS_ACTIONS* pActions = NULL;
 
 	/*** get flow info from message ***/
@@ -104,6 +103,12 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         return OVS_ERROR_INVAL;
     }
 
+	if (!(pMsg->flags & OVS_MESSAGE_FLAG_ECHO))
+	{
+		error = OVS_ERROR_INVAL;
+		goto Cleanup;
+	}
+
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
     {
@@ -116,27 +121,27 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 	OVS_CHECK(pFlowTable);
 
 	/*** process data ***/
-    pFlow = FlowTable_FindFlowMatchingMaskedPI_Ref(pFlowTable, &packetInfo);
-    if (!pFlow)
+    pFoundFlow = FlowTable_FindFlowMatchingMaskedPI_Ref(pFlowTable, &packetInfo);
+    if (!pFoundFlow)
     {
 		/*** create new flow ***/
         OVS_FLOW_MASK* pFlowMask = NULL;
 
-        pFlow = Flow_Create();
-        if (!pFlow)
+        pNewFlow = Flow_Create();
+        if (!pNewFlow)
         {
 			DEBUGP(LOG_ERROR, "flow create fail: Flow_Create!\n");
             error = OVS_ERROR_INVAL;
             goto Cleanup;
         }
 
-		pFlow = OVS_REFCOUNT_REFERENCE(pFlow);
-		OVS_CHECK(pFlow);
+		pNewFlow = OVS_REFCOUNT_REFERENCE(pNewFlow);
+		OVS_CHECK(pNewFlow);
 
-        Flow_ClearStats_Unsafe(pFlow);
+        Flow_ClearStats_Unsafe(pNewFlow);
 
-        pFlow->unmaskedPacketInfo = packetInfo;
-        pFlow->maskedPacketInfo = maskedPacketInfo;
+        pNewFlow->unmaskedPacketInfo = packetInfo;
+        pNewFlow->maskedPacketInfo = maskedPacketInfo;
 
         pFlowMask = FlowTable_FindFlowMask(pFlowTable, &flowMask);
         if (!pFlowMask)
@@ -156,27 +161,26 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         }
 
         ++pFlowMask->refCount;
-        pFlow->pMask = pFlowMask;
-        pFlow->pActions = pActions;
+        pNewFlow->pMask = pFlowMask;
+        pNewFlow->pActions = pActions;
 
-		DBGPRINT_FLOW(LOG_LOUD, "flow created: ", pFlow);
-        FlowTable_InsertFlow_Unsafe(pFlowTable, pFlow);
+		DBGPRINT_FLOW(LOG_LOUD, "flow created: ", pNewFlow);
+        FlowTable_InsertFlow_Unsafe(pFlowTable, pNewFlow);
     }
 
     else
     {
         OVS_ACTIONS* pOldActions = NULL;
 		LOCK_STATE_EX lockState = { 0 };
-        flowWasCreated = FALSE;
 
         //if we have cmd = new with the flag 'exclusive', it means we're not allowed to override existing flows.
         //the flag 'create' is accepted as well: 'create' may be set instead of 'exclusive'
         if (pMsg->flags & OVS_MESSAGE_FLAG_CREATE &&
             pMsg->flags & OVS_MESSAGE_FLAG_EXCLUSIVE)
         {
-			FLOW_LOCK_READ(pFlow, &lockState);
-			DBGPRINT_FLOW(LOG_LOUD, "flow create/set failed (EXISTS but Create & Exclusive): ", pFlow);
-			FLOW_UNLOCK(pFlow, &lockState);
+			FLOW_LOCK_READ(pFoundFlow, &lockState);
+			DBGPRINT_FLOW(LOG_LOUD, "flow create/set failed (EXISTS but Create & Exclusive): ", pFoundFlow);
+			FLOW_UNLOCK(pFoundFlow, &lockState);
 
             error = OVS_ERROR_EXIST;
             goto Cleanup;
@@ -184,39 +188,50 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
 		/*** set existing flow ***/
 
-		FLOW_LOCK_READ(pFlow, &lockState);
+		FLOW_LOCK_READ(pFoundFlow, &lockState);
 
-        if (!PacketInfo_Equal(&pFlow->unmaskedPacketInfo, &packetInfo, flowMatch.piRange.endRange))
+        if (!PacketInfo_Equal(&pFoundFlow->unmaskedPacketInfo, &packetInfo, flowMatch.piRange.endRange))
         {
-			DBGPRINT_FLOW(LOG_LOUD, "flow create/set failed (flow does not match the unmasked key): ", pFlow);
+			FLOW_UNLOCK(pFoundFlow, &lockState);
+			OVS_REFCOUNT_DEREFERENCE(pFoundFlow);
 
-			FLOW_UNLOCK(pFlow, &lockState);
+			pFoundFlow = FlowTable_FindExactFlow_Ref(pFlowTable, &flowMatch);
+			if (!pFoundFlow)
+			{
+				DEBUGP(LOG_LOUD, "flow create/set failed (flow does not match the unmasked key): ");
 
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
+				error = OVS_ERROR_INVAL;
+				goto Cleanup;
+			}
+
+			FLOW_LOCK_READ(pFoundFlow, &lockState);
         }
 
 		//the old actions may be in use at the moment (e.g. execute actions on packet)
 		//so we remove it from flow now, but will possibly destroy it (the actions struct) later
-		pOldActions = pFlow->pActions;
-		pFlow->pActions = pActions;
+		pOldActions = pFoundFlow->pActions;
+		pFoundFlow->pActions = pActions;
 
-		DBGPRINT_FLOW(LOG_LOUD, "flow create/set: ", pFlow);
+		DBGPRINT_FLOW(LOG_LOUD, "flow create/set: ", pFoundFlow);
 
-		FLOW_UNLOCK(pFlow, &lockState);
-		//the pFlow does not become invalidated between locks, because it's referenced
-		FLOW_LOCK_WRITE(pFlow, &lockState);
+		FLOW_UNLOCK(pFoundFlow, &lockState);
+		//the pFoundFlow does not become invalidated between locks, because it's referenced
+		FLOW_LOCK_WRITE(pFoundFlow, &lockState);
 
 		OVS_REFCOUNT_DESTROY(pOldActions);
 
+#if OVS_VERSION == OVS_VERSION_1_11
         if (FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_FLOW_CLEAR))
         {
-            Flow_ClearStats_Unsafe(pFlow);
+            Flow_ClearStats_Unsafe(pFoundFlow);
         }
+#endif
     }
 
 	/*** reply ***/
-    if (!CreateMsgFromFlow(pFlow, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
+	OVS_CHECK(pFoundFlow && !pNewFlow || !pFoundFlow && pNewFlow);
+
+    if (!CreateMsgFromFlow(pFoundFlow ? pFoundFlow : pNewFlow, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
     {
 		DEBUGP(LOG_ERROR, "flow new fail: create msg!\n");
         error = OVS_ERROR_INVAL;
@@ -247,13 +262,10 @@ Cleanup:
 
 	if (error != OVS_ERROR_NOERROR)
 	{
-		if (flowWasCreated)
+		if (pNewFlow)
 		{
-			if (pFlow)
-			{
-				Flow_DestroyNow_Unsafe(pFlow);
-				pFlow = NULL;
-			}
+			Flow_DestroyNow_Unsafe(pNewFlow);
+			pNewFlow = NULL;
 		}
 
 		if (pActions)
@@ -263,7 +275,8 @@ Cleanup:
 		}
 	}
 
-	OVS_REFCOUNT_DEREFERENCE(pFlow);
+	OVS_REFCOUNT_DEREFERENCE(pFoundFlow);
+	OVS_REFCOUNT_DEREFERENCE(pNewFlow);
 	OVS_REFCOUNT_DEREFERENCE(pFlowTable);
 	OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
@@ -330,6 +343,12 @@ OVS_ERROR Flow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
             error = OVS_ERROR_INVAL;
             goto Cleanup;
         }
+
+		if (!(pMsg->flags & OVS_MESSAGE_FLAG_ECHO))
+		{
+			error = OVS_ERROR_INVAL;
+			goto Cleanup;
+		}
     }
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
@@ -344,7 +363,7 @@ OVS_ERROR Flow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 	OVS_CHECK(pFlowTable);
 
 	/*** process data ***/
-    pFlow = FlowTable_FindFlowMatchingMaskedPI_Ref(pFlowTable, &packetInfo);
+    pFlow = FlowTable_FindExactFlow_Ref(pFlowTable, &flowMatch);
     if (!pFlow)
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " we were asked to set a flow that does not exist!\n");
@@ -360,16 +379,6 @@ OVS_ERROR Flow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 		/*** set existing flow ***/
 
 		FLOW_LOCK_READ(pFlow, &lockState);
-
-        if (!PacketInfo_Equal(&pFlow->unmaskedPacketInfo, &packetInfo, flowMatch.piRange.endRange))
-        {
-			FLOW_UNLOCK(pFlow, &lockState);
-
-			DBGPRINT_FLOW(LOG_ERROR, "flow set FAIL: unmasked): ", pFlow);
-
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
 
 		pOldActions = pFlow->pActions;
 		pFlow->pActions = pActions;
@@ -419,7 +428,6 @@ Cleanup:
 
 	OVS_REFCOUNT_DEREFERENCE(pFlow);
 	OVS_REFCOUNT_DEREFERENCE(pFlowTable);
-
 	OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     if (error != OVS_ERROR_NOERROR)
@@ -469,24 +477,7 @@ OVS_ERROR Flow_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 	pFlowTable = Datapath_ReferenceFlowTable(pDatapath);
 	OVS_CHECK(pFlowTable);
 
-    pFlow = FlowTable_FindFlowMatchingMaskedPI_Ref(pFlowTable, flowMatch.pPacketInfo);
-    if (pFlow)
-    {
-		FLOW_LOCK_READ(pFlow, &lockState);
-
-        if (!PacketInfo_Equal(&pFlow->unmaskedPacketInfo, flowMatch.pPacketInfo, flowMatch.piRange.endRange))
-        {
-			FLOW_UNLOCK(pFlow, &lockState);
-
-            pFlow = NULL;
-        }
-
-		else
-		{
-			FLOW_UNLOCK(pFlow, &lockState);
-		}
-    }
-
+    pFlow = FlowTable_FindExactFlow_Ref(pFlowTable, &flowMatch);
     if (!pFlow)
     {
 		DEBUGP(LOG_ERROR, "flow get fail: flow not found!\n");
@@ -584,30 +575,20 @@ OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 	pFlowTable = Datapath_ReferenceFlowTable(pDatapath);
 	OVS_CHECK(pFlowTable);
 
-    pFlow = FlowTable_FindFlowMatchingMaskedPI_Ref(pFlowTable, flowMatch.pPacketInfo);
-    if (pFlow)
-    {
-		FLOW_LOCK_READ(pFlow, &lockState);
-
-        if (!PacketInfo_Equal(&pFlow->unmaskedPacketInfo, flowMatch.pPacketInfo, flowMatch.piRange.endRange))
-        {
-			FLOW_UNLOCK(pFlow, &lockState);
-
-            pFlow = NULL;
-        }
-
-		else
-		{
-			FLOW_UNLOCK(pFlow, &lockState);
-		}
-    }
-
+    pFlow = FlowTable_FindExactFlow_Ref(pFlowTable, &flowMatch);
     if (!pFlow)
     {
 		DBGPRINT_FLOWMATCH(LOG_ERROR, "flow delete -- no flow: ", &flowMatch);
         error = OVS_ERROR_NOENT;
         goto Cleanup;
     }
+
+	FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
+
+	//remove the flow from the list of flows
+	FlowTable_RemoveFlow_Unsafe(pFlowTable, pFlow);
+
+	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 
     if (!CreateMsgFromFlow(pFlow, OVS_MESSAGE_COMMAND_DELETE, &replyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
     {
@@ -616,18 +597,8 @@ OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         goto Cleanup;
     }
 
-	//NOTE: we can only delete the flow AFTER we reply: we need it to... write the reply
-	FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
-
-	DBGPRINT_FLOW(LOG_LOUD, "flow delete: ", pFlow);
-
-	//remove the flow from the list of flows
-	FlowTable_RemoveFlow_Unsafe(pFlowTable, pFlow);
-
 	OVS_REFCOUNT_DEREFERENCE_ONLY(pFlow);
 	OVS_REFCOUNT_DESTROY(pFlow);
-
-	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_FLOW);
     error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
@@ -647,7 +618,6 @@ Cleanup:
 
 	OVS_REFCOUNT_DEREFERENCE(pFlow);
 	OVS_REFCOUNT_DEREFERENCE(pFlowTable);
-
 	OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     return error;

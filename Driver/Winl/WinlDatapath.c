@@ -34,7 +34,7 @@ OVS_ERROR Datapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
-    OVS_ARGUMENT* pArgName = NULL, *pArgUpcallPid = NULL;
+    OVS_ARGUMENT* pArgName = NULL, *pArgUpcallPid = NULL, *pUserFeaturesArg = NULL;
     LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
     ULONG dpNameLen = 0;
@@ -79,11 +79,18 @@ OVS_ERROR Datapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     pDatapath->name = ExAllocatePoolWithTag(NonPagedPool, dpNameLen, g_extAllocationTag);
     if (!pDatapath->name)
     {
+		DATAPATH_UNLOCK(pDatapath, &lockState);
+
         error = OVS_ERROR_INVAL;
         goto Cleanup;
     }
 
     RtlCopyMemory(pDatapath->name, pArgName->data, dpNameLen);
+
+	if (pUserFeaturesArg)
+	{
+		pDatapath->userFeatures = GET_ARG_DATA(pUserFeaturesArg, UINT32);
+	}
 
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
@@ -241,6 +248,8 @@ OVS_ERROR Datapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_DATAPATH *pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
+	OVS_ARGUMENT* pUserFeaturesArg = NULL;
+	LOCK_STATE_EX lockState = { 0 };
 
     DEBUGP(LOG_ERROR, "setting dp has no meaning!\n");
     OVS_CHECK(0);
@@ -250,6 +259,15 @@ OVS_ERROR Datapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     {
         return OVS_ERROR_NODEV;
     }
+
+	DATAPATH_LOCK_WRITE(pDatapath, &lockState);
+
+	if (pUserFeaturesArg)
+	{
+		pDatapath->userFeatures = GET_ARG_DATA(pUserFeaturesArg, UINT32);
+	}
+
+	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
     {

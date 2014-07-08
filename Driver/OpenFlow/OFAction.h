@@ -41,6 +41,12 @@ typedef struct _OVS_ACTION_PUSH_VLAN {
     BE16 vlanTci;
 } OVS_ACTION_PUSH_VLAN;
 
+typedef struct _OVS_ACTION_PUSH_MPLS {
+	BE32 labelStackEntry;
+	//OVS_ETHERTYPE_MPLS_UNICAST or OVS_ETHERTYPE_MPLS_MULTICAST
+	BE16 etherType;
+}OVS_ACTION_PUSH_MPLS, *POVS_ACTION_PUSH_MPLSs;
+
 typedef enum _OVS_HASH_ALGORITHM_TYPE {
 	//i.e. the fields used for computing the hash are the Layer 4 (Transport) fields
 	OVS_HASH_ALGORITHM_TRANSPORT,
