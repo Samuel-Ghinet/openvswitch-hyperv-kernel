@@ -449,7 +449,6 @@ OVS_ERROR Flow_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_DATAPATH *pDatapath = NULL;
     OVS_FLOW_TABLE *pFlowTable = NULL;
     OVS_FLOW_MATCH flowMatch = { 0 };
-    LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
 
     pPacketInfoArgs = FindArgumentGroup(pMsg->pArgGroup, OVS_ARGTYPE_GROUP_PI);

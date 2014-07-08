@@ -84,12 +84,12 @@ BOOLEAN CreateMsgFromOFPort(OVS_WINL_PORT* pPort, UINT32 sequence, UINT8 cmd, _I
     //arg 4: port upcall pid
 	if (multipleUpcallPids)
 	{
-		pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_NL_PORT_IDS, &pPort->upcallPortIds);
+		pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &pPort->upcallPortIds);
 	}
 
 	else
 	{
-		pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_NL_PORT_ID, &pPort->upcallPortIds.ids[0]);
+		pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &pPort->upcallPortIds.ids[0]);
 	}
 
 	if (!pArgUpcallPid)

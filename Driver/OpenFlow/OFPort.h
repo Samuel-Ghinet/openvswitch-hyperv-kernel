@@ -78,11 +78,11 @@ typedef struct _OVS_OFPORT_STATS{
     UINT64   droppedOnSend;
 }OVS_OFPORT_STATS, *POVS_OFPORT_STATS;
 
-typedef struct _OVS_WINL_PORT_IDS {
+typedef struct _OVS_UPCALL_PORT_IDS {
 	//TODO: we might need to use ref counting for this
 	UINT count;
 	UINT* ids;
-}OVS_WINL_PORT_IDS, *POVS_WINL_PORT_IDS;
+}OVS_UPCALL_PORT_IDS, *POVS_UPCALL_PORT_IDS;
 
 typedef struct _OVS_WINL_PORT {
     UINT32			number;
@@ -92,7 +92,7 @@ typedef struct _OVS_WINL_PORT {
     //Used for userpace to kernel communication
     UINT32			upcallId;
 #elif OVS_VERSION >= OVS_VERSION_2_3
-	OVS_WINL_PORT_IDS	upcallPortIds;
+	OVS_UPCALL_PORT_IDS	upcallPortIds;
 #endif
 
     OVS_OFPORT_STATS	stats;
@@ -120,3 +120,15 @@ typedef struct _OVS_TUNNELING_PORT_OPTIONS {
 
 /**********************************************************/
 BOOLEAN CreateMsgFromOFPort(OVS_WINL_PORT* pOFPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid, BOOLEAN multipleUpcallPids);
+
+static __inline VOID OFPort_AddStats(_Inout_ OVS_OFPORT_STATS* pDest, _In_ const  OVS_OFPORT_STATS* pSrc)
+{
+	pDest->bytesReceived += pSrc->bytesReceived;
+	pDest->bytesSent += pSrc->bytesSent;
+	pDest->droppedOnReceive += pSrc->droppedOnReceive;
+	pDest->droppedOnSend += pSrc->droppedOnSend;
+	pDest->errorsOnReceive += pSrc->errorsOnReceive;
+	pDest->errorsOnSend += pSrc->errorsOnSend;
+	pDest->packetsReceived += pSrc->packetsReceived;
+	pDest->packetsSent += pSrc->packetsSent;
+}

@@ -324,12 +324,10 @@ typedef enum _OVS_ARGTYPE {
 	//OVS 2.3:
 	//array of Port Ids associated with the file HANDLE that handles the upcalls coming from this ovs port.
 	//if we have only one port id, and its value is 0 => don't queue upcall
-    OVS_ARGTYPE_OFPORT_UPCALL_NL_PORT_ID,		//0x124
-
-	OVS_ARGTYPE_OFPORT_UPCALL_NL_PORT_IDS,		//0x125
+    OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID,		//0x124
 
     //data type: OVS_OFPORT_STATS
-    OVS_ARGTYPE_OFPORT_STATS,				//0x126
+    OVS_ARGTYPE_OFPORT_STATS,				//0x125
 
     OVS_ARGTYPE_LAST_OFPORT = OVS_ARGTYPE_OFPORT_STATS,
 

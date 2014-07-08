@@ -471,6 +471,13 @@ static BOOLEAN _VerifyAction_Upcall(const OVS_ARGUMENT* pArg)
 
 static BOOLEAN _ValidateTransportPort(const OVS_OFPACKET_INFO* pPacketInfo)
 {
+	if (pPacketInfo->ethInfo.type != RtlUshortByteSwap(OVS_ETHERTYPE_IPV4) &&
+		pPacketInfo->ethInfo.type != RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
+	{
+		DEBUGP(LOG_ERROR, "packet info's eth type != ipv4 & != ipv6\n");
+		return FALSE;
+	}
+
 	if (pPacketInfo->tpInfo.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16) ||
 		pPacketInfo->tpInfo.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
 	{
@@ -482,9 +489,6 @@ static BOOLEAN _ValidateTransportPort(const OVS_OFPACKET_INFO* pPacketInfo)
 		DEBUGP(LOG_ERROR, __FUNCTION__ " src port == wildcard & dest port == wildcard: invalid\n");
 		return FALSE;
 	}
-
-    DEBUGP(LOG_ERROR, "packet info's eth type != ipv4 & != ipv6\n");
-    return FALSE;
 }
 
 static BOOLEAN _CreateActionIpv4Tunnel(const OVS_ARGUMENT_GROUP* pTunnelGroup, OVS_ARGUMENT** ppIpv4TunnelArg)

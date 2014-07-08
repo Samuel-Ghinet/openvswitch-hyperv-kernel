@@ -925,7 +925,7 @@ static BOOLEAN _GetPIFromArg_Arp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     return TRUE;
 }
 
-static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, _In_ BOOLEAN isMask)
+static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
 {
 	const OVS_PI_MPLS* pMplsPI = pArg->data;
 	SIZE_T size = 0, offset = 0;
@@ -939,7 +939,7 @@ static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
 	return TRUE;
 }
 
-static BOOLEAN _GetPIFromArg_TcpFlags(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, _In_ BOOLEAN isMask)
+static BOOLEAN _GetPIFromArg_TcpFlags(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
 {
 	BE16 tcpFlags = GET_ARG_DATA(pArg, BE16);
 	SIZE_T size = 0, offset = 0;
@@ -1244,7 +1244,7 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             break;
 
 		case OVS_ARGTYPE_PI_MPLS:
-			_GetPIFromArg_Mpls(pPacketInfo, pPiRange, pArg, haveIpv4);
+			_GetPIFromArg_Mpls(pPacketInfo, pPiRange, pArg);
 			break;
 
         case OVS_ARGTYPE_PI_TCP:
@@ -1252,7 +1252,7 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             break;
 
 		case OVS_ARGTYPE_PI_TCP_FLAGS:
-			_GetPIFromArg_TcpFlags(pPacketInfo, pPiRange, pArg, haveIpv4);
+			_GetPIFromArg_TcpFlags(pPacketInfo, pPiRange, pArg);
 			break;
 
         case OVS_ARGTYPE_PI_UDP:

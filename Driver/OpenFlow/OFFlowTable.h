@@ -20,6 +20,7 @@ limitations under the License.
 
 typedef struct _OVS_FLOW OVS_FLOW;
 typedef struct _OVS_FLOW_MASK OVS_FLOW_MASK;
+typedef struct _OVS_FLOW_MATCH OVS_FLOW_MATCH;
 
 typedef struct _OVS_FLOW_TABLE
 {
@@ -49,7 +50,7 @@ OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, 
 OVS_FLOW* FlowTable_FindFlowMatchingMaskedPI_Ref(OVS_FLOW_TABLE* pFlowTable, const OVS_OFPACKET_INFO* pPacketInfo);
 OVS_FLOW* FlowTable_FindExactFlow_Ref(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MATCH* pFlowMatch);
 
-UINT64 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable);
+UINT32 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable);
 
 OVS_FLOW_MASK* FlowTable_FindFlowMask(const OVS_FLOW_TABLE* pFlowTable, const OVS_FLOW_MASK* pFlowMask);
 void FlowTable_InsertFlowMask(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MASK* pFlowMask);

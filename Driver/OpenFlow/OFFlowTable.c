@@ -159,12 +159,12 @@ OVS_FLOW* FlowTable_FindExactFlow_Ref(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MATCH
 	return pFlow;
 }
 
-UINT64 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable)
+UINT32 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable)
 {
 	LIST_ENTRY* pListEntry = NULL;
 	LIST_ENTRY* pHeadEntry = NULL;
 	LOCK_STATE_EX lockState = { 0 };
-	UINT64 count = 0;
+	UINT32 count = 0;
 
 	FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
 

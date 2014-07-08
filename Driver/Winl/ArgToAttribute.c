@@ -20,7 +20,7 @@ limitations under the License.
 #include "Message.h"
 #include "Attribute.h"
 
-static BOOLEAN _Reply_SetAttrType_Datapath(OVS_MESSAGE_COMMAND_TYPE cmd, OVS_ARGTYPE parentArgType, _Inout_ OVS_ARGUMENT* pArg)
+static BOOLEAN _Reply_SetAttrType_Datapath(OVS_ARGTYPE parentArgType, _Inout_ OVS_ARGUMENT* pArg)
 {
 	OVS_ARGTYPE argType = pArg->type;
 
@@ -48,6 +48,8 @@ static BOOLEAN _Reply_SetAttrType_Datapath(OVS_MESSAGE_COMMAND_TYPE cmd, OVS_ARG
 	default:
 		return FALSE;
 	}
+
+	return TRUE;
 }
 
 static BOOLEAN _Reply_SetAttrType_PITunnel(OVS_ARGUMENT* pArg)
@@ -541,7 +543,7 @@ BOOLEAN Reply_SetAttrType(OVS_MESSAGE_TARGET_TYPE targetType, OVS_MESSAGE_COMMAN
     switch (targetType)
     {
     case OVS_MESSAGE_TARGET_DATAPATH:
-        return _Reply_SetAttrType_Datapath(cmd, parentArgType, pArg);
+        return _Reply_SetAttrType_Datapath(parentArgType, pArg);
 
     case OVS_MESSAGE_TARGET_FLOW:
         return _Reply_SetAttrType_Flow(cmd, parentArgType, pArg);

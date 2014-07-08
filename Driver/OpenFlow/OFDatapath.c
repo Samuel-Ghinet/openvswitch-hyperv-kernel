@@ -69,17 +69,16 @@ OVS_DATAPATH* GetDefaultDatapath_Ref(const char* funcName)
 static void _GetDatapathStats_Unsafe(_In_ OVS_DATAPATH* pDatapath, _Out_ OVS_DATAPATH_STATS* pStats, _Out_ OVS_DATAPATH_MEGAFLOW_STATS* pMegaFlowStats)
 {
     OVS_FLOW_TABLE* pFlowTable = NULL;
-	LOCK_STATE_EX lockStateData = { 0 };
 #if OVS_VERSION == OVS_VERSION_1_11
-	LOCK_STATE_EX lockStateFlowTable = { 0 };
+	LOCK_STATE_EX lockState = { 0 };
 #endif
 
     pFlowTable = pDatapath->pFlowTable;
 
 #if OVS_VERSION == OVS_VERSION_1_11
-    FLOWTABLE_LOCK_READ(pFlowTable, &lockStateFlowTable);
+	FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
     pStats->countFlows = pFlowTable->countFlows;
-    FLOWTABLE_UNLOCK(pFlowTable, &lockStateFlowTable);
+	FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 #endif
 
     pStats->flowTableMatches = pDatapath->statistics.flowTableMatches;
@@ -87,7 +86,7 @@ static void _GetDatapathStats_Unsafe(_In_ OVS_DATAPATH* pDatapath, _Out_ OVS_DAT
     pStats->countLost = pDatapath->statistics.countLost;
 
 	pMegaFlowStats->masksMatched = pDatapath->statistics.masksMatched;
-	pMegaFlowStats->countMasks = FlowTable_CountMask(pDatapath->pFlowTable);
+	pMegaFlowStats->countMasks = FlowTable_CountMasks(pDatapath->pFlowTable);
 }
 
 BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)

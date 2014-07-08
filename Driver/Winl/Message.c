@@ -1203,9 +1203,9 @@ static BOOLEAN _VerifyDatapathMessageReply(OVS_MESSAGE_COMMAND_TYPE cmd, _In_ OV
 		case OVS_ARGTYPE_DATAPATH_USER_FEATURES:
 		{
 			UINT32 features = GET_ARG_DATA(pMainGroupArg, UINT32);
-			UINT32 allFeatures = (OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED | OVS_DATAPATH_MULITPLE_PIDS_PER_VPORT);
+			UINT32 allFeatures = (OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED | OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
 
-			OVS_CHECK_RET(features == features & allFeatures, FALSE);
+			OVS_CHECK_RET(features == (features & allFeatures), FALSE);
 		}
 			break;
 

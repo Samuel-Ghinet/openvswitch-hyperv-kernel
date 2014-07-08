@@ -48,7 +48,7 @@ typedef struct _OVS_PERSISTENT_PORT
 #if OVS_VERSION == OVS_VERSION_1_11
     UINT32				upcallPortId;
 #elif OVS_VERSION >= OVS_VERSION_2_3
-	OVS_WINL_PORT_IDS	upcallPortIds;
+	OVS_UPCALL_PORT_IDS	upcallPortIds;
 #endif
 
     OVS_TUNNELING_PORT_OPTIONS*	pOptions;

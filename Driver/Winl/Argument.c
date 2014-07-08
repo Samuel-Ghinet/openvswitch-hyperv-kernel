@@ -1421,11 +1421,6 @@ static __inline VOID _DbgPrintArgType_PacketInfo(OVS_ARGTYPE argType)
         DEBUGP_ARG(LOG_INFO, "FLOW/KEY: IPV4 TUNNEL\n");
         break;
 
-    case OVS_ARGTYPE_PI_MPLS:
-
-        DEBUGP_ARG(LOG_INFO, "FLOW/KEY: MPLS\n");
-        break;
-
     default:
         OVS_CHECK(0);
     }

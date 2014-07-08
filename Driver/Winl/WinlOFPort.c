@@ -169,6 +169,8 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState = { 0 };
 	BOOLEAN locked = FALSE;
+	OVS_UPCALL_PORT_IDS upcallPids = { 0 };
+	BOOLEAN multiplePidsPerOFPort = FALSE;
 
     //NAME: required
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
@@ -188,24 +190,44 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         goto Cleanup;
     }
 
+	pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+	if (!pDatapath)
+	{
+		error = OVS_ERROR_NODEV;
+		goto Cleanup;
+	}
+
+	DATAPATH_LOCK_READ(pDatapath, &lockState);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	DATAPATH_UNLOCK(pDatapath, &lockState);
+
     portType = GET_ARG_DATA(pArg, UINT32);
 
-    //UPCALL PID: required
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
-    if (!pArg)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    //UPCALL PID(S): required
+	pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
+	if (!pArg)
+	{
+		error = OVS_ERROR_INVAL;
+		goto Cleanup;
+	}
 
-    upcallPortId = GET_ARG_DATA(pArg, UINT32);
+	if (multiplePidsPerOFPort)
+	{
+		UINT32 countPids = pArg->length / sizeof(UINT32);
+		
+		upcallPids.count = countPids;
+		upcallPids.ids = KZAlloc(pArg->length);
 
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        error = OVS_ERROR_NODEV;
-        goto Cleanup;
-    }
+		RtlCopyMemory(upcallPids.ids, pArg->data, pArg->length);
+	}
+
+	else
+	{
+		upcallPortId = GET_ARG_DATA(pArg, UINT32);
+		upcallPids.count = 1;
+		upcallPids.ids = KZAlloc(sizeof(UINT));
+		upcallPids.ids[0] = upcallPortId;
+	}
 
     //NOTE: name is required; number is optional
     //NUMBER: optional
@@ -245,17 +267,25 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         }
     }
 
+	pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_STATS);
+	if (pArg)
+	{
+		OVS_OFPORT_STATS* pStats = pArg->data;
+
+		pPersPort->stats = *pStats;
+	}
+
     context.sequence = pMsg->sequence;
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
-	context.multipleUpcallPids = ;
+	context.multipleUpcallPids = multiplePidsPerOFPort;
 
 	PORT_LOCK_READ(pPersPort, &lockState);
 	locked = TRUE;
 
     pPersPort->ofPortType = portType;
-    pPersPort->upcallPortId = upcallPortId;
+	pPersPort->upcallPortIds = upcallPids;
 
     //OPTIONS: optional
     pOptionsGroup = FindArgumentGroup(pMsg->pArgGroup, OVS_ARGTYPE_GROUP_OFPORT_OPTIONS);
@@ -325,13 +355,21 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     const char* ofPortName = NULL;
     UINT32 portNumber = (UINT)-1;
     PORT_FETCH_CTXT context = { 0 };
-    OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+    OVS_DATAPATH* pDatapath = NULL;
 	BOOLEAN locked = FALSE;
+	OVS_UPCALL_PORT_IDS upcallPids = { 0 };
+	UINT32 upcallPortId = 0;
+	BOOLEAN multiplePidsPerOFPort = FALSE;
 
+	pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
     {
         return OVS_ERROR_NODEV;
     }
+
+	DATAPATH_LOCK_READ(pDatapath, &lockState);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
@@ -371,6 +409,29 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         goto Cleanup;
     }
 
+	//UPCALL PID(S): required
+	pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
+	if (pArg)
+	{
+		if (multiplePidsPerOFPort)
+		{
+			UINT32 countPids = pArg->length / sizeof(UINT32);
+
+			upcallPids.count = countPids;
+			upcallPids.ids = KZAlloc(pArg->length);
+
+			RtlCopyMemory(upcallPids.ids, pArg->data, pArg->length);
+		}
+
+		else
+		{
+			upcallPortId = GET_ARG_DATA(pArg, UINT32);
+			upcallPids.count = 1;
+			upcallPids.ids = KZAlloc(sizeof(UINT));
+			upcallPids.ids[0] = upcallPortId;
+		}
+	}
+
     //TYPE: if set, must be the same as original
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_TYPE);
     if (pArg)
@@ -409,17 +470,24 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
     //UPCALL PORT ID: optional
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
-    if (pArg)
-    {
-        pPersPort->upcallPortId = GET_ARG_DATA(pArg, UINT32);
-    }
+	if (upcallPids.count > 0)
+	{
+		pPersPort->upcallPortIds = upcallPids;
+	}
+
+	pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_STATS);
+	if (pArg)
+	{
+		OVS_OFPORT_STATS* pStats = pArg->data;
+
+		OFPort_AddStats(&(pPersPort->stats), pStats);
+	}
 
     context.sequence = pMsg->sequence;
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
-	context.multipleUpcallPids = ;
+	context.multipleUpcallPids = multiplePidsPerOFPort;
 
     if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
     {
@@ -461,13 +529,19 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState = { 0 };
     PORT_FETCH_CTXT context = { 0 };
-    OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+	OVS_DATAPATH* pDatapath = NULL;
 	BOOLEAN locked = FALSE;
+	BOOLEAN multiplePidsPerOFPort = FALSE;
 
+	pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
     {
         return OVS_ERROR_NODEV;
     }
+
+	DATAPATH_LOCK_READ(pDatapath, &lockState);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
@@ -511,7 +585,7 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
-	context.multipleUpcallPids = ;
+	context.multipleUpcallPids = multiplePidsPerOFPort;
 
 	PORT_LOCK_READ(pPersPort, &lockState);
 	locked = TRUE;
@@ -560,11 +634,16 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState = { 0 };
 	BOOLEAN locked = FALSE;
+	BOOLEAN multiplePidsPerOFPort = FALSE;
 
     if (!pDatapath)
     {
         return OVS_ERROR_NODEV;
     }
+
+	DATAPATH_LOCK_READ(pDatapath, &lockState);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
@@ -613,7 +692,7 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
-	context.multipleUpcallPids = ;
+	context.multipleUpcallPids = multiplePidsPerOFPort;
 
 
 	PORT_LOCK_WRITE(pPersPort, &lockState);
@@ -658,14 +737,20 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     LOCK_STATE_EX lockState = { 0 };
     PORT_FETCH_CTXT context = { 0 };
     OVS_GLOBAL_FORWARD_INFO* pForwardInfo = NULL;
-    OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+    OVS_DATAPATH* pDatapath;
     OVS_ERROR error = OVS_ERROR_NOERROR;
 	OVS_SWITCH_INFO* pSwitchInfo = NULL;
+	BOOLEAN multiplePidsPerOFPort = FALSE;
 
+	pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
     {
         return OVS_ERROR_NODEV;
     }
+
+	DATAPATH_LOCK_READ(pDatapath, &lockState);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	DATAPATH_UNLOCK(pDatapath, &lockState);
 
 	pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
 	if (!pSwitchInfo)
@@ -675,7 +760,7 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.sequence = pMsg->sequence;
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pid = pMsg->pid;
-	context.multipleUpcallPids = ;
+	context.multipleUpcallPids = multiplePidsPerOFPort;
 
     pForwardInfo = pSwitchInfo->pForwardInfo;
 
