@@ -104,6 +104,13 @@ OVS_FLOW* Flow_Create()
         return NULL;
     }
 
+	pFlow->statsArray = KZAlloc(1 * sizeof(OVS_FLOW_STATS));
+	if (!pFlow->statsArray)
+	{
+		KFree(pFlow);
+		return NULL;
+	}
+
     pFlow->pRwLock = NdisAllocateRWLock(NULL);
 	pFlow->refCount.Destroy = Flow_DestroyNow_Unsafe;
 
@@ -153,6 +160,7 @@ void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
 	USHORT maxNodeNumber = 0;
 
 	maxNodeNumber = KeQueryHighestNodeNumber();
+	OVS_CHECK(maxNodeNumber == 0);
 
 	for (USHORT i = 0; i <= maxNodeNumber; ++i)
 	{
@@ -561,9 +569,9 @@ static void _DbgPrintFlow_Ipv4(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ c
         len += strlen(tempDest);
     }
 
-    if (!pMask || pMask->netProto.ipv4Info.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
+    if (!pMask || pMask->tpInfo.destinationPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
     {
-        ULONG dstPort = pPacketInfo->netProto.ipv4Info.destinationPort;
+		ULONG dstPort = pPacketInfo->tpInfo.destinationPort;
 
         RtlStringCchPrintfA(tempDest, maxTempLen, "ipv4_dst_port: %u; ", dstPort);
         RtlStringCchCopyA(str + len, maxLen - len, tempDest);
@@ -571,9 +579,9 @@ static void _DbgPrintFlow_Ipv4(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ c
         len += strlen(tempDest);
     }
 
-    if (!pMask || pMask->netProto.ipv4Info.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
+	if (!pMask || pMask->tpInfo.sourcePort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
     {
-        ULONG srcPort = pPacketInfo->netProto.ipv4Info.sourcePort;
+		ULONG srcPort = pPacketInfo->tpInfo.sourcePort;
 
         RtlStringCchPrintfA(tempDest, maxTempLen, "ipv4_src_port: %u; ", srcPort);
         RtlStringCchCopyA(str + len, maxLen - len, tempDest);
@@ -582,6 +590,46 @@ static void _DbgPrintFlow_Ipv4(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ c
     }
 
     *pLen = len;
+}
+
+static void _DbgPrintFlow_Encap(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ const OVS_OFPACKET_INFO* pMask, _In_ ULONG maxLen, _Inout_ CHAR* str, _Inout_ size_t* pLen)
+{
+	size_t len = *pLen;
+
+	enum { maxTempLen = 100 };
+	CHAR tempDest[maxTempLen + 1];
+
+	RtlStringCchCopyA(tempDest, maxTempLen, "encap: {");
+	RtlStringCchCopyA(str + len, maxLen - len, tempDest);
+
+	len += strlen(tempDest);
+
+	if (!pMask || pMask->ethInfo.type != OVS_PI_MASK_MATCH_WILDCARD(UINT32))
+	{
+		BE16 ethType = pPacketInfo->ethInfo.type;
+
+		RtlStringCchPrintfA(tempDest, maxTempLen, "ethType=%u; ", RtlUshortByteSwap(ethType));
+		RtlStringCchCopyA(str + len, maxLen - len, tempDest);
+
+		len += strlen(tempDest);
+	}
+
+	if (!pMask || pMask->ethInfo.tci != OVS_PI_MASK_MATCH_WILDCARD(UINT32))
+	{
+		BE16 tci = pPacketInfo->ethInfo.tci;
+
+		RtlStringCchPrintfA(tempDest, maxTempLen, "tci=%u; ", RtlUshortByteSwap(tci));
+		RtlStringCchCopyA(str + len, maxLen - len, tempDest);
+
+		len += strlen(tempDest);
+	}
+
+	RtlStringCchCopyA(tempDest, maxTempLen, "}");
+	RtlStringCchCopyA(str + len, maxLen - len, tempDest);
+
+	len += strlen(tempDest);
+
+	*pLen = len;
 }
 
 static void _DbgPrintFlow_Ipv6(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ const OVS_OFPACKET_INFO* pMask, _In_ ULONG maxLen, _Inout_ CHAR* str, _Inout_ size_t* pLen)
@@ -757,6 +805,10 @@ void FlowWithActions_ToString(const char* msg, _In_ const OVS_OFPACKET_INFO* pPa
         _DbgPrintFlow_Ipv6(pPacketInfo, pMask, maxLen, str, &len);
     }
         break;
+
+	case OVS_ETHERTYPE_802_2:
+		_DbgPrintFlow_Encap(pPacketInfo, pMask, maxLen, str, &len);
+		break;
 
     default:
         OVS_CHECK(0);

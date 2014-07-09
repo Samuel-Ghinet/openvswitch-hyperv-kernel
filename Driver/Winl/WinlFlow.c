@@ -103,11 +103,13 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         return OVS_ERROR_INVAL;
     }
 
+#if 0
 	if (!(pMsg->flags & OVS_MESSAGE_FLAG_ECHO))
 	{
 		error = OVS_ERROR_INVAL;
 		goto Cleanup;
 	}
+#endif
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
     if (!pDatapath)
@@ -344,11 +346,13 @@ OVS_ERROR Flow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
             goto Cleanup;
         }
 
+#if 0
 		if (!(pMsg->flags & OVS_MESSAGE_FLAG_ECHO))
 		{
 			error = OVS_ERROR_INVAL;
 			goto Cleanup;
 		}
+#endif
     }
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
@@ -510,7 +514,6 @@ Cleanup:
 
 	OVS_REFCOUNT_DEREFERENCE(pFlow);
 	OVS_REFCOUNT_DEREFERENCE(pFlowTable);
-
 	OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     return error;
@@ -583,6 +586,8 @@ OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
 	FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
+
+	DBGPRINT_FLOW(LOG_LOUD, "deleting flow: ", pFlow);
 
 	//remove the flow from the list of flows
 	FlowTable_RemoveFlow_Unsafe(pFlowTable, pFlow);

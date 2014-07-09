@@ -88,7 +88,7 @@ static __inline VOID FreeArgumentData(VOID* pData)
 //allocates an OVS_ARGUMENT and initializes it
 static __inline OVS_ARGUMENT* AllocArgument()
 {
-    OVS_ARGUMENT* pArg = ExAllocatePoolWithTag(NonPagedPool, sizeof(OVS_ARGUMENT), g_extAllocationTag);
+    OVS_ARGUMENT* pArg = KZAlloc(sizeof(OVS_ARGUMENT));
     if (!pArg)
     {
         return NULL;
@@ -98,13 +98,15 @@ static __inline OVS_ARGUMENT* AllocArgument()
     pArg->length = 0;
     pArg->type = OVS_ARGTYPE_INVALID;
 
+	pArg->freeData = TRUE;
+
     return pArg;
 }
 
 static __inline VOID FreeArgument(OVS_ARGUMENT* pArg)
 {
 	if (pArg) {
-		ExFreePoolWithTag(pArg, g_extAllocationTag);
+		KFree(pArg);
 	}
 }
 
@@ -125,7 +127,7 @@ static __inline VOID FreeArguments(_Inout_ OVS_ARGUMENT_GROUP* pGroup)
 	}
 }
 
-#define AllocArgumentGroup() ExAllocatePoolWithTag(NonPagedPool, sizeof(OVS_ARGUMENT_GROUP), g_extAllocationTag)
+#define AllocArgumentGroup() KZAlloc(sizeof(OVS_ARGUMENT_GROUP))
 
 //frees an OVS_ARGUMENT_GROUP: it does not free pGroup->args
 static __inline VOID FreeArgGroup(_Inout_ OVS_ARGUMENT_GROUP* pGroup)

@@ -2085,6 +2085,12 @@ static __inline BOOLEAN _VerifyArg_PacketInfo_EthType(OVS_ARGUMENT* pArg, BOOLEA
     {
         if (ethType < OVS_ETHERTYPE_802_3_MIN)
         {
+			if (ethType == OVS_ETHERTYPE_802_2)
+			{
+				//TODO
+				return TRUE;
+			}
+
             return FALSE;
         }
 
