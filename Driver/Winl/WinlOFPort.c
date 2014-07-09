@@ -198,7 +198,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 	}
 
 	DATAPATH_LOCK_READ(pDatapath, &lockState);
-	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     portType = GET_ARG_DATA(pArg, UINT32);
@@ -368,7 +368,7 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
 	DATAPATH_LOCK_READ(pDatapath, &lockState);
-	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
@@ -540,7 +540,7 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
 	DATAPATH_LOCK_READ(pDatapath, &lockState);
-	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
@@ -642,7 +642,7 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
 	DATAPATH_LOCK_READ(pDatapath, &lockState);
-	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
     //required: NAME or NUMBER
@@ -749,7 +749,7 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
 	DATAPATH_LOCK_READ(pDatapath, &lockState);
-	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+	multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
 	DATAPATH_UNLOCK(pDatapath, &lockState);
 
 	pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);

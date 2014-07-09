@@ -87,6 +87,7 @@ OVS_ERROR Datapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
     RtlCopyMemory(pDatapath->name, pArgName->data, dpNameLen);
 
+	pUserFeaturesArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
 	if (pUserFeaturesArg)
 	{
 		pDatapath->userFeatures = GET_ARG_DATA(pUserFeaturesArg, UINT32);
