@@ -6,6 +6,7 @@
 #include "Ipv6.h"
 #include "OFFlow.h"
 #include "OFAction.h"
+#include "OFDatapath.h"
 
 #include "Message.h"
 #include "Nbls.h"
@@ -528,6 +529,19 @@ static __inline BOOLEAN _VerifyArg_Action_PopVlan(OVS_ARGUMENT* pArg, OVS_ARGUME
 
 /***********************************************************************/
 
+static BOOLEAN _VerifyArg_Datapath_Features(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
+{
+    UINT32 features = GET_ARG_DATA(pArg, UINT32);
+    UINT32 allFeatures = (OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED | OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT);
+
+    UNREFERENCED_PARAMETER(pParentArg);
+    UNREFERENCED_PARAMETER(options);
+
+    OVS_CHECK_RET(features == (features & allFeatures), FALSE);
+
+    return TRUE;
+}
+
 static BOOLEAN _VerifyArg_Packet_Buffer(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
 {
     UNREFERENCED_PARAMETER(pParentArg);
@@ -545,6 +559,7 @@ static BOOLEAN _VerifyArg_Packet_Buffer(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParen
 /***********************************************************************/
 
 static BOOLEAN _VerifyGroup_Default(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options);
+static BOOLEAN _VerifyGroup_Flow_PI(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options);
 static BOOLEAN _VerifyArg_NotImplemented(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options);
 
 static const Func s_verifyArgTunnel[] =
@@ -556,6 +571,8 @@ static const Func s_verifyArgTunnel[] =
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TUNNEL_TTL, PI_TUNNEL)] = _VerifyArg_NotImplemented,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TUNNEL_DONT_FRAGMENT, PI_TUNNEL)] = _VerifyArg_NotImplemented,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TUNNEL_CHECKSUM, PI_TUNNEL)] = _VerifyArg_NotImplemented,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TUNNEL_OAM, PI_TUNNEL)] = _VerifyArg_NotImplemented,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS, PI_TUNNEL)] = _VerifyArg_NotImplemented,
 };
 
 static const Func s_verifyArgPI[] =
@@ -569,6 +586,7 @@ static const Func s_verifyArgPI[] =
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_IPV6, PI)] = _VerifyArg_PI_Ipv6,
 
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TCP, PI)] = _VerifyArg_PI_Tcp,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_TCP_FLAGS, PI)] = _VerifyArg_NotImplemented,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_UDP, PI)] = _VerifyArg_PI_Udp,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_SCTP, PI)] = _VerifyArg_PI_Sctp,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_PI_ICMP, PI)] = _VerifyArg_PI_Icmp,
@@ -590,7 +608,7 @@ static const Func s_verifyArgFlow[] =
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_TCP_FLAGS, FLOW)] = VerifyArg_Flow_TcpFlags,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_TIME_USED, FLOW)] = NULL,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_CLEAR, FLOW)] = NULL,
-    [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_PI_GROUP, FLOW)] = _VerifyGroup_Default,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_PI_GROUP, FLOW)] = _VerifyGroup_Flow_PI,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_ACTIONS_GROUP, FLOW)] = _VerifyGroup_Default,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_FLOW_MASK_GROUP, FLOW)] = _VerifyGroup_Default
 };
@@ -600,6 +618,8 @@ static const Func s_verifyArgDatapath[] =
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_DATAPATH_NAME, DATAPATH)] = _VerifyArg_NotImplemented,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_DATAPATH_STATS, DATAPATH)] = _VerifyArg_NotImplemented,
     [OVS_ARG_TOINDEX(OVS_ARGTYPE_DATAPATH_UPCALL_PORT_ID, DATAPATH)] = _VerifyArg_NotImplemented,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_DATAPATH_USER_FEATURES, DATAPATH)] = _VerifyArg_Datapath_Features,
+    [OVS_ARG_TOINDEX(OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS, DATAPATH)] = _VerifyArg_NotImplemented,
 };
 
 static const Func s_verifyToAttribsUpcall[] =
@@ -675,7 +695,7 @@ const OVS_ARG_VERIFY_INFO* FindArgVerificationGroup(OVS_ARGTYPE parentArgType)
     return NULL;
 }
 
-static __inline BOOLEAN _VerifyArg_NotImplemented(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
+static BOOLEAN _VerifyArg_NotImplemented(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
 {
     UNREFERENCED_PARAMETER(pArg);
     UNREFERENCED_PARAMETER(pParentArg);
@@ -684,10 +704,41 @@ static __inline BOOLEAN _VerifyArg_NotImplemented(OVS_ARGUMENT* pArg, OVS_ARGUME
     OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
 }
 
-static __inline BOOLEAN _VerifyGroup_Default(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
+static BOOLEAN _VerifyGroup_Default(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
 {
     OVS_ARGUMENT_GROUP* pGroup = pArg->data;
     const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(pArg->type);
+
+    UNREFERENCED_PARAMETER(pParentArg);
+
+    OVS_CHECK(pVerify);
+
+    OVS_FOR_EACH_ARG(pGroup,
+    {
+        OVS_ARGTYPE first = pVerify->firstChildArgType;
+        Func f = pVerify->f[argType - first + 1];
+
+        if (f && !f(pArg, pArg, options))
+        {
+            OVS_CHECK_RET(__UNEXPECTED__, FALSE);
+        }
+    });
+
+    return TRUE;
+}
+
+static __inline BOOLEAN _VerifyGroup_Flow_PI(OVS_ARGUMENT* pArg, OVS_ARGUMENT* pParentArg, OVS_VERIFY_OPTIONS options)
+{
+    OVS_ARGUMENT_GROUP* pGroup = pArg->data;
+    const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(pArg->type);
+
+    if (options & OVS_VERIFY_OPTION_NEW_OR_SET)
+    {
+#if OVS_VERSION == OVS_VERSION_1_11
+        EXPECT(FindArgument(pGroup, OVS_ARGTYPE_PI_ETH_TYPE));
+#endif
+        EXPECT(FindArgument(pGroup, OVS_ARGTYPE_PI_ETH_ADDRESS));
+    }
 
     UNREFERENCED_PARAMETER(pParentArg);
 

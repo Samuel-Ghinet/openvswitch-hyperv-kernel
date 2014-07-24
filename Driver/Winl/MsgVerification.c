@@ -50,7 +50,12 @@ OVS_ARGTYPE_FLOW_TIME_USED, OVS_ARGTYPE_FLOW_TCP_FLAGS }
     OVS_ARGTYPE_OFPORT_OPTIONS_GROUP, OVS_ARGTYPE_OFPORT_STATS }
 
 #define OVS_ARGS_ALLOWED_PACKET_REPLY 3, { OVS_ARGTYPE_PACKET_PI_GROUP, OVS_ARGTYPE_PACKET_USERDATA, OVS_ARGTYPE_PACKET_BUFFER }
+
+#if OVS_VERSION == OVS_VERSION_1_11
 #define OVS_ARGS_ALLOWED_DATAPATH_REPLY 2, { OVS_ARGTYPE_DATAPATH_NAME, OVS_ARGTYPE_DATAPATH_STATS }
+#elif OVS_VERSION >= OVS_VERSION_2_3
+#define OVS_ARGS_ALLOWED_DATAPATH_REPLY 4, { OVS_ARGTYPE_DATAPATH_NAME, OVS_ARGTYPE_DATAPATH_STATS, OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS, OVS_ARGTYPE_DATAPATH_USER_FEATURES }
+#endif
 
 static const OVS_ARG_ALLOWED s_argsAllowed[2][OVS_GENL_TARGET_COUNT][OVS_ARG_ALLOWED_ENTRIES] =
 {
@@ -327,7 +332,7 @@ static __inline BOOLEAN _CommandAllowed(OVS_MSG_KIND reqOrReply, OVS_MESSAGE_TAR
 
 /*************************************************************/
 
-static __inline OVS_VERIFY_OPTIONS _GetOptionsForArgGroup(OVS_ARGTYPE argType, OVS_MSG_KIND reqOrReply)
+static __inline OVS_VERIFY_OPTIONS _GetOptionsForArgGroup(OVS_MESSAGE_COMMAND_TYPE cmd, OVS_ARGTYPE argType, OVS_MSG_KIND reqOrReply)
 {
     OVS_VERIFY_OPTIONS options = 0;
 
@@ -351,6 +356,11 @@ static __inline OVS_VERIFY_OPTIONS _GetOptionsForArgGroup(OVS_ARGTYPE argType, O
     if (reqOrReply == OVS_MSG_REQUEST)
     {
         options |= OVS_VERIFY_OPTION_ISREQUEST;
+    }
+
+    if (cmd == OVS_MESSAGE_COMMAND_NEW || cmd == OVS_MESSAGE_COMMAND_SET)
+    {
+        options |= OVS_VERIFY_OPTION_NEW_OR_SET;
     }
 
     return options;
@@ -461,7 +471,7 @@ static BOOLEAN _GenlVerifier(OVS_MESSAGE* pMsg, OVS_MSG_KIND reqOrReply)
     OVS_FOR_EACH_ARG(pMsg->pArgGroup,
     {
         const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(MessageTargetTypeToArgType(pMsg->type));
-        OVS_VERIFY_OPTIONS options = _GetOptionsForArgGroup(argType, reqOrReply);
+        OVS_VERIFY_OPTIONS options = _GetOptionsForArgGroup(pMsg->command, argType, reqOrReply);
 
         if (!_ArgAllowed(reqOrReply, pMsg->type, pMsg->command, argType))
         {

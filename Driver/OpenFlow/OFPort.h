@@ -37,6 +37,16 @@ typedef enum
     //PORT type VXLAN
     OVS_OFPORT_TYPE_VXLAN = 4,
 
+    /***/
+    //NOTE: not supported yet
+    OVS_OFPORT_TYPE_GENEVE = 6,
+    //same as GRE, except keys are 64-bit
+    //NOTE: not supported yet
+    OVS_OFPORT_TYPE_GRE64 = 104,
+    //NOTE: not supported yet
+    OVS_OFPORT_TYPE_LISP = 105,
+    /***/
+
     /********* NOTE: **********
     **        The of port types below are defined by the kernel only.
     **        Care must be taken for future versions, these port type codes not to collide with the userspace port type codes.
@@ -58,8 +68,7 @@ typedef enum
 C_ASSERT(sizeof(OVS_OFPORT_TYPE) == sizeof(UINT));
 
 //NOTE: here it's OVS virtual port (OpenFlow port), not Hyper-V virtual port!
-typedef struct _OVS_OFPORT_STATS
-{
+typedef struct _OVS_OFPORT_STATS{
     UINT64   packetsReceived;
     UINT64   packetsSent;
     UINT64   bytesReceived;
@@ -70,25 +79,33 @@ typedef struct _OVS_OFPORT_STATS
     UINT64   droppedOnSend;
 }OVS_OFPORT_STATS, *POVS_OFPORT_STATS;
 
-typedef struct _OVS_WINL_PORT
-{
+typedef struct _OVS_UPCALL_PORT_IDS {
+    //TODO: we might need to use ref counting for this
+    UINT count;
+    UINT* ids;
+}OVS_UPCALL_PORT_IDS, *POVS_UPCALL_PORT_IDS;
+
+typedef struct _OVS_WINL_PORT {
     UINT32            number;
-    OVS_OFPORT_TYPE   type;
-    const char*       name;
+    OVS_OFPORT_TYPE    type;
+    const char*        name;
+#if OVS_VERSION == OVS_VERSION_1_11
     //Used for userpace to kernel communication
     UINT32            upcallId;
+#elif OVS_VERSION >= OVS_VERSION_2_3
+    OVS_UPCALL_PORT_IDS    upcallPortIds;
+#endif
 
-    OVS_OFPORT_STATS  stats;
+    OVS_OFPORT_STATS    stats;
 
     //group type: OVS_ARGTYPE_OFPORT_GROUP
     //only available option is  OVS_ARGTYPE_PORT_OPTION_DST_PORT
     OVS_ARGUMENT_GROUP* pOptions;
 }OVS_WINL_PORT, *POVS_WINL_PORT;
 
-typedef struct _OVS_TUNNELING_PORT_OPTIONS
-{
+typedef struct _OVS_TUNNELING_PORT_OPTIONS {
     //OVS_TUNNEL_OPTIONS_HAVE_*
-    DWORD   optionsFlags;
+    DWORD    optionsFlags;
 
     //OVS_TUNNEL_PORT_FLAG_*
     BE32    tunnelFlags;
@@ -96,11 +113,23 @@ typedef struct _OVS_TUNNELING_PORT_OPTIONS
     BE32    sourceIpv4;
     BE64    outKey;
     BE64    inKey;
-    UINT8   tos;
-    UINT8   ttl;
+    UINT8    tos;
+    UINT8    ttl;
 
-    UINT16  udpDestPort;
+    UINT16        udpDestPort;
 }OVS_TUNNELING_PORT_OPTIONS;
 
 /**********************************************************/
-BOOLEAN CreateMsgFromOFPort(OVS_WINL_PORT* pOFPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid);
+BOOLEAN CreateMsgFromOFPort(OVS_WINL_PORT* pOFPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid, BOOLEAN multipleUpcallPids);
+
+static __inline VOID OFPort_AddStats(_Inout_ OVS_OFPORT_STATS* pDest, _In_ const  OVS_OFPORT_STATS* pSrc)
+{
+    pDest->bytesReceived += pSrc->bytesReceived;
+    pDest->bytesSent += pSrc->bytesSent;
+    pDest->droppedOnReceive += pSrc->droppedOnReceive;
+    pDest->droppedOnSend += pSrc->droppedOnSend;
+    pDest->errorsOnReceive += pSrc->errorsOnReceive;
+    pDest->errorsOnSend += pSrc->errorsOnSend;
+    pDest->packetsReceived += pSrc->packetsReceived;
+    pDest->packetsSent += pSrc->packetsSent;
+}

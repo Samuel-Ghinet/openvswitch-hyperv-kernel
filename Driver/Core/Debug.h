@@ -41,9 +41,9 @@ extern ULONG g_debugLevel;
 #endif
 
 #define OVS_DBGPRINT_OID         0
-#define OVS_DBGPRINT_ARG         0
+#define OVS_DBGPRINT_ARG         1
 #define OVS_DBGPRINT_FRAMES      0
-#define OVS_DBGPRINT_FLOW        0
+#define OVS_DBGPRINT_FLOW        1
 #define OVS_DBGPRINT_FILE        0
 #define OVS_DBGPRINT_LOCK        0
 

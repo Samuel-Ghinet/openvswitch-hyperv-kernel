@@ -143,12 +143,15 @@ typedef enum _OVS_ARGTYPE
     //received from userspace
     OVS_ARGTYPE_PI_TUNNEL_GROUP,            //0x53
 
+    //type: BE16
+    OVS_ARGTYPE_PI_TCP_FLAGS,                //0x054
+
     //hash value: 0 = not computed
     //type: UINT32
-    OVS_ARGTYPE_PI_DATAPATH_HASH,			//0x054
+    OVS_ARGTYPE_PI_DATAPATH_HASH,            //0x055
 
     //type: UINT32
-    OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,		//0x055
+    OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,        //0x056
 
     OVS_ARGTYPE_LAST_PI = OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,
 
@@ -179,7 +182,13 @@ typedef enum _OVS_ARGTYPE
     //data type: no data (it's a flag)
     OVS_ARGTYPE_PI_TUNNEL_CHECKSUM,        //0x067
 
-    OVS_ARGTYPE_LAST_PI_TUNNEL = OVS_ARGTYPE_PI_TUNNEL_CHECKSUM,
+    //data type: no data (it's a flag)
+    OVS_ARGTYPE_PI_TUNNEL_OAM,                //0x068
+
+    //data: an array of "geneve options" structs (not yet defined!)
+    OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS,    //0x069
+
+    OVS_ARGTYPE_LAST_PI_TUNNEL = OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS,
 
     /************************************* TARGET: PACKET; GROUP: MAIN *****************************************************/
 
@@ -231,10 +240,10 @@ typedef enum _OVS_ARGTYPE
     OVS_ARGTYPE_ACTION_POP_MPLS,            //0x0A8
 
     //data type: OVS_ACTION_FLOW_HASH
-    OVS_ARGTYPE_ACTION_HASH,				//0x0A9
+    OVS_ARGTYPE_ACTION_HASH,                //0x0A9
 
     //data type: UINT32
-    OVS_ARGTYPE_ACTION_RECIRCULATION,		//0x0AA
+    OVS_ARGTYPE_ACTION_RECIRCULATION,        //0x0AA
 
     OVS_ARGTYPE_LAST_ACTION = OVS_ARGTYPE_ACTION_RECIRCULATION,
 
@@ -290,7 +299,17 @@ typedef enum _OVS_ARGTYPE
     //data type: OVS_DATAPATH_STATS
     OVS_ARGTYPE_DATAPATH_STATS,                //0x103
 
-    OVS_ARGTYPE_LAST_DATAPATH = OVS_ARGTYPE_DATAPATH_STATS,
+    //Datapath request: never
+    //Datapath reply: always
+    //data type: OVS_DATAPATH_MEGAFLOW_STATS
+    OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS,    //0x104
+
+    //Datapath request: new or set
+    //Datapath reply: always
+    //data type: UINT32. values: constants of enum OVS_DATAPATH_FEATURE
+    OVS_ARGTYPE_DATAPATH_USER_FEATURES,        //0x105
+
+    OVS_ARGTYPE_LAST_DATAPATH = OVS_ARGTYPE_DATAPATH_USER_FEATURES,
 
     /****************************************** TARGET: OFPORT; group: MAIN ************************************************/
 
@@ -307,9 +326,13 @@ typedef enum _OVS_ARGTYPE
 
     OVS_ARGTYPE_OFPORT_OPTIONS_GROUP,       //0x124
 
+    //OVS 1.11:
     //The Port Id associated with the file HANDLE that handles the upcalls coming from this ovs port.
     //if (portId == 0) => do not queue upcall
     //data type: UINT32
+    //OVS 2.3:
+    //array of Port Ids associated with the file HANDLE that handles the upcalls coming from this ovs port.
+    //if we have only one port id, and its value is 0 => don't queue upcall
     OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID,        //0x125
 
     //data type: OVS_OFPORT_STATS
