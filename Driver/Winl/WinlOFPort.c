@@ -425,6 +425,13 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
 		else
 		{
+            if (!pArg->data)
+            {
+                OVS_CHECK(__UNEXPECTED__);
+                error = OVS_ERROR_INVAL;
+                goto Cleanup;
+            }
+
 			upcallPortId = GET_ARG_DATA(pArg, UINT32);
 			upcallPids.count = 1;
 			upcallPids.ids = KZAlloc(sizeof(UINT));

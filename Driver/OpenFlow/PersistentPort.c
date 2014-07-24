@@ -1023,6 +1023,8 @@ BOOLEAN PersPort_Delete(OVS_PERSISTENT_PORT* pPort)
 
 	OVS_CHECK(pSwitchInfo->pForwardInfo);
 
+    pPorts = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+
 	PERSPORTS_LOCK_WRITE(pPorts, &lockState);
 	portsLocked = TRUE;
 
@@ -1035,8 +1037,6 @@ BOOLEAN PersPort_Delete(OVS_PERSISTENT_PORT* pPort)
     {
         _RemovePersPort_Vxlan(pPort);
     }
-
-    pPorts = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
     if (pPorts->portsArray[pPort->ovsPortNumber] != pPort)
     {
