@@ -29,6 +29,7 @@ typedef struct _OVS_ACTIONS OVS_ACTIONS;
 
 typedef struct _OVS_PI_RANGE
 {
+    //TODO: consider using UINT16 instead
     SIZE_T startRange;
     SIZE_T endRange;
 }OVS_PI_RANGE, *POVS_PI_RANGE;
