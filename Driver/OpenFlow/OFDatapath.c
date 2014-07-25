@@ -178,6 +178,8 @@ Cleanup:
     {
         DestroyArgument(pNameArg);
         DestroyArgument(pStatsArg);
+        DestroyArgument(pMFStatsArg);
+        DestroyArgument(pUserFeaturesArg);
 
         FreeGroupWithArgs(pArgGroup);
 
