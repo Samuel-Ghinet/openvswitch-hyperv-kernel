@@ -83,6 +83,7 @@ OVS_ERROR WriteMsgsToDevice(OVS_NLMSGHDR* pMsgs, int countMsgs, const FILE_OBJEC
     BufferCtl_LockWrite(&lockState);
 
     error = BufferCtl_Write_Unsafe(pFileObject, &buffer, pMsgs[0].pid, groupId);
+    OVS_CHECK(error == OVS_ERROR_NOERROR);
 
     BufferCtl_Unlock(&lockState);
 
@@ -278,65 +279,61 @@ NTSTATUS _WinlIrpRead(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
 
     return status;
 }
-BOOLEAN WriteMsgControlToBuffer(_In_ OVS_MESSAGE* pMsg, OVS_BUFFER* pBuffer, int family)
+
+static BYTE* _WriteNlAttributeToBuffer(VOID* pOutBuf, UINT16 type, VOID* payload, ULONG payloadSize)
+{
+    OVS_NL_ATTRIBUTE nlAttribute = { 0 };
+    BYTE* p = pOutBuf;
+
+    nlAttribute.type = type;
+    nlAttribute.length = (UINT16)(sizeof(OVS_NL_ATTRIBUTE) + payloadSize);
+
+    RtlCopyMemory(p, &nlAttribute, sizeof(OVS_NL_ATTRIBUTE));
+    p = (BYTE*)p + sizeof(OVS_NL_ATTRIBUTE);
+
+    if (payloadSize)
+    {
+        RtlZeroMemory(p, OVS_SIZE_ALIGNED_4(payloadSize));
+        RtlCopyMemory(p, payload, payloadSize);
+        p = (BYTE*)p + OVS_SIZE_ALIGNED_4(payloadSize);
+    }
+
+    return p;
+}
+
+static BYTE* _WriteCtrlMsgToBuffer(VOID* pOutBuf, OVS_MESSAGE_CONTROL* pCtrlMsg)
+{
+    BYTE* p = (BYTE*)pOutBuf;
+    RtlCopyMemory(p, pCtrlMsg, OVS_CTRL_MESSAGE_HEADER_SIZE);
+    p = (BYTE*)p + OVS_CTRL_MESSAGE_HEADER_SIZE;
+
+    return p;
+}
+
+BOOLEAN _WriteMsgControlToBuffer(_In_ OVS_MESSAGE_CONTROL* pCtrlMsg, OVS_BUFFER* pBuffer, int family)
 {
     UINT bufSize = 0;
     VOID* pos = NULL;
-    OVS_NL_ATTRIBUTE response = { 0 };
 
-    bufSize = OVS_MESSAGE_HEADER_SIZE - 4 + 8 * sizeof(OVS_NL_ATTRIBUTE) + sizeof(UINT16);
+    bufSize = OVS_CTRL_MESSAGE_HEADER_SIZE + 7 * sizeof(OVS_NL_ATTRIBUTE) + OVS_SIZE_ALIGNED_4(sizeof(OVS_NL_ATTRIBUTE) + sizeof(UINT16));
 
     if (!AllocateBuffer(pBuffer, bufSize))
     {
         return FALSE;
     }
-    pMsg->length = bufSize;
 
-    //Write the header + gen header
-    pos = (BYTE*)pBuffer->p;
-    RtlCopyMemory(pos, pMsg, (OVS_MESSAGE_HEADER_SIZE - 4));
-    pos = (BYTE*)pos + OVS_MESSAGE_HEADER_SIZE - 4;
+    pCtrlMsg->length = bufSize;
 
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
+    pos = _WriteCtrlMsgToBuffer(pBuffer->p, pCtrlMsg);
 
-    response.type = (UINT16)1;
-    response.length = sizeof(OVS_NL_ATTRIBUTE) + sizeof(UINT16);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &family, sizeof(UINT16));
-    pos = (BYTE*)pos + sizeof(UINT16);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
-    pos = (BYTE*)pos + sizeof(OVS_NL_ATTRIBUTE);
-
-    response.type = (UINT16)0;
-    response.length = sizeof(OVS_NL_ATTRIBUTE);
-    RtlCopyMemory(pos, &response, sizeof(OVS_NL_ATTRIBUTE));
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 1, &family, sizeof(UINT16));
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
+    pos = _WriteNlAttributeToBuffer(pos, 0, NULL, 0);
 
     pBuffer->size = bufSize;
 
@@ -344,99 +341,70 @@ BOOLEAN WriteMsgControlToBuffer(_In_ OVS_MESSAGE* pMsg, OVS_BUFFER* pBuffer, int
 }
 
 //Write Policy Values to the device
-BOOLEAN Parse_Control(VOID* buffer, _Inout_ OVS_MESSAGE* pMessage, const FILE_OBJECT* pFileObject, UINT groupId)
+BOOLEAN _Parse_Control(VOID* buffer, _Inout_ OVS_MESSAGE_CONTROL* pCtrlMessage, const FILE_OBJECT* pFileObject, UINT groupId)
 {
-    OVS_MESSAGE* pBufferedMsg = buffer;
-    OVS_NL_ATTRIBUTE* nla = NULL;
+    OVS_MESSAGE_CONTROL* pBufferedMsg = buffer;
     OVS_BUFFER ovs_buffer = { 0 };
     LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
 
-    pMessage->length = pBufferedMsg->length;
-    pMessage->type = pBufferedMsg->type;
-    pMessage->command = pBufferedMsg->command;
-    pMessage->sequence = pBufferedMsg->sequence;
-    pMessage->flags = pBufferedMsg->flags;
-    pMessage->pid = pBufferedMsg->pid;
-    pMessage->version = pBufferedMsg->version;
-    pMessage->reserved = pBufferedMsg->reserved;
-    buffer = (BYTE*)buffer + 20;
+    pCtrlMessage->command = pBufferedMsg->command;
+    pCtrlMessage->version = pBufferedMsg->version;
+    pCtrlMessage->reserved = pBufferedMsg->reserved;
 
-    switch (pMessage->flags)
+    if (pCtrlMessage->flags == OVS_MESSAGE_FLAG_REQUEST && pCtrlMessage->command == 3)
     {
-    case OVS_MESSAGE_FLAG_REQUEST:
-        switch (pMessage->command)
+        OVS_NL_ATTRIBUTE* pNlAttribute = (OVS_NL_ATTRIBUTE*)((BYTE*)buffer + OVS_CTRL_MESSAGE_HEADER_SIZE);
+        OVS_MESSAGE_TARGET_TYPE target = OVS_MESSAGE_TARGET_INVALID;
+
+        VOID* nlAttrData = OVS_NLA_DATA(pNlAttribute);
+
+        if (pNlAttribute->type == 2)
         {
-        case 3:
-            nla = buffer;
-            switch (nla->type)
+            if (!strncmp(nlAttrData, "ovs_datapath", 12))
             {
-            case 2:
-                buffer = (BYTE*)buffer + sizeof(OVS_NL_ATTRIBUTE);
-                if (!strncmp(buffer, "ovs_datapath", 12))
-                {
-                    pMessage->flags = 0;
-                    pMessage->command = 1;
-                    pMessage->version = 2;
-                    WriteMsgControlToBuffer(pMessage, &ovs_buffer, OVS_MESSAGE_TARGET_DATAPATH);
-                    BufferCtl_LockWrite(&lockState);
-                    error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pMessage->pid, groupId);
-                    BufferCtl_Unlock(&lockState);
-                    return TRUE;
-                }
-                else if (!strncmp(buffer, "ovs_packet", 10))
-                {
-                    pMessage->flags = 0;
-                    pMessage->command = 1;
-                    pMessage->version = 2;
-                    WriteMsgControlToBuffer(pMessage, &ovs_buffer, OVS_MESSAGE_TARGET_PACKET);
-                    BufferCtl_LockWrite(&lockState);
-                    error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pMessage->pid, groupId);
-                    BufferCtl_Unlock(&lockState);
-                    return TRUE;
-                }
-                else if (!strncmp(buffer, "ovs_vport", 9))
-                {
-                    pMessage->flags = 0;
-                    pMessage->command = 1;
-                    pMessage->version = 2;
-                    WriteMsgControlToBuffer(pMessage, &ovs_buffer, OVS_MESSAGE_TARGET_PORT);
-                    BufferCtl_LockWrite(&lockState);
-                    error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pMessage->pid, groupId);
-                    BufferCtl_Unlock(&lockState);
-                    return TRUE;
-                }
-                else if (!strncmp(buffer, "ovs_flow", 8))
-                {
-                    pMessage->flags = 0;
-                    pMessage->command = 1;
-                    pMessage->version = 2;
-                    WriteMsgControlToBuffer(pMessage, &ovs_buffer, OVS_MESSAGE_TARGET_FLOW);
-                    BufferCtl_LockWrite(&lockState);
-                    error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pMessage->pid, groupId);
-                    BufferCtl_Unlock(&lockState);
-                    return TRUE;
-                }
-                else
-                {
-                    pMessage->flags = 3;
-                    pMessage->command = 1;
-                    pMessage->version = 2;
-                    WriteMsgControlToBuffer(pMessage, &ovs_buffer, OVS_MESSAGE_TARGET_DATAPATH);
-                    BufferCtl_LockWrite(&lockState);
-                    error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pMessage->pid, groupId);
-                    BufferCtl_Unlock(&lockState);
-                    return TRUE;
-                }
-            default:
-                return FALSE;
+                target = OVS_MESSAGE_TARGET_DATAPATH;
             }
-        default:
-            return FALSE;
+            else if (!strncmp(nlAttrData, "ovs_packet", 10))
+            {
+                target = OVS_MESSAGE_TARGET_PACKET;
+            }
+            else if (!strncmp(nlAttrData, "ovs_vport", 9))
+            {
+                target = OVS_MESSAGE_TARGET_PORT;
+            }
+            else if (!strncmp(nlAttrData, "ovs_flow", 8))
+            {
+                target = OVS_MESSAGE_TARGET_FLOW;
+            }
+
+            if (target != OVS_MESSAGE_TARGET_INVALID)
+            {
+                pCtrlMessage->flags = 0;
+                pCtrlMessage->command = 1;
+                pCtrlMessage->version = 2;
+            }
+            else
+            {
+                target = OVS_MESSAGE_TARGET_DATAPATH;
+
+                pCtrlMessage->flags = 3;
+                pCtrlMessage->command = 1;
+                pCtrlMessage->version = 2;
+            }
+
+            _WriteMsgControlToBuffer(pCtrlMessage, &ovs_buffer, target);
+
+            BufferCtl_LockWrite(&lockState);
+            error = BufferCtl_Write_Unsafe(pFileObject, &ovs_buffer, pCtrlMessage->pid, groupId);
+            OVS_CHECK(error == OVS_ERROR_NOERROR);
+            BufferCtl_Unlock(&lockState);
+
+            return TRUE;
         }
-    default:
-        return FALSE;
     }
+
+    return FALSE;
 }
 
 _Function_class_(DRIVER_DISPATCH)
@@ -532,15 +500,19 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
     switch (pNlMsg->type)
     {
     case OVS_MESSAGE_TARGET_CONTROL:
-        OVS_CHECK(pMsg);
-        if (!pMsg)
+    {
+        OVS_MESSAGE_CONTROL* pCtrlMsg = (OVS_MESSAGE_CONTROL*)pNlMsg;
+
+        OVS_CHECK(pCtrlMsg);
+        if (!pCtrlMsg)
         {
             error = OVS_ERROR_INVAL;
             goto Cleanup;
         }
 
-        Parse_Control(pWriteBuffer, pMsg, pFileObject, groupId);
+        _Parse_Control(pWriteBuffer, pCtrlMsg, pFileObject, groupId);
         DEBUGP_FILE(LOG_INFO, __FUNCTION__ " target = OVS_NETLINK_GENERIC\n");
+    }
         break;
 
     case OVS_MESSAGE_TARGET_RTM_GETROUTE:

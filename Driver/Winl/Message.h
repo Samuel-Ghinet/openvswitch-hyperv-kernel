@@ -116,6 +116,19 @@ typedef struct _OVS_MESSAGE
 
 C_ASSERT(OVS_MESSAGE_HEADER_SIZE == 24);
 
+typedef struct _OVS_MESSAGE_CONTROL
+{
+    OVS_NLMSGHDR;
+
+    UINT8 command;
+    UINT8 version;
+    UINT16 reserved;
+}OVS_MESSAGE_CONTROL, *POVS_MESSAGE_CONTROL;
+
+#define OVS_CTRL_MESSAGE_HEADER_SIZE    (sizeof(OVS_MESSAGE_CONTROL))
+
+C_ASSERT(OVS_CTRL_MESSAGE_HEADER_SIZE == 20);
+
 //message to the userspace
 typedef struct _OVS_MESSAGE_ERROR
 {
