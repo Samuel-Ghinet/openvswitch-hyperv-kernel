@@ -25,8 +25,10 @@ limitations under the License.
 
 typedef enum _OVS_ARGTYPE
 {
+    OVS_ARGTYPE_PSEUDOGROUP_INVALID = 0x00D,
+    OVS_ARGTYPE_FIRST_PSEUDOGROUP = OVS_ARGTYPE_PSEUDOGROUP_INVALID,
+
     OVS_ARGTYPE_PSEUDOGROUP_FLOW = 0x00E,
-    OVS_ARGTYPE_FIRST_PSEUDOGROUP = OVS_ARGTYPE_PSEUDOGROUP_FLOW,
     OVS_ARGTYPE_PSEUDOGROUP_DATAPATH = 0x00F,
     OVS_ARGTYPE_PSEUDOGROUP_OFPORT = 0x010,
     OVS_ARGTYPE_PSEUDOGROUP_PACKET = 0x011,
@@ -38,11 +40,13 @@ typedef enum _OVS_ARGTYPE
 
     /********************************************** TARGET: FLOW; GROUP: MAIN *******************************************/
 
-    OVS_ARGTYPE_FLOW_PI_GROUP = 0x21,
-    OVS_ARGTYPE_FIRST_FLOW = OVS_ARGTYPE_FLOW_PI_GROUP,
+    OVS_ARGTYPE_FLOW_INVALID = 0x20,
+    OVS_ARGTYPE_FIRST_FLOW = OVS_ARGTYPE_FLOW_INVALID,
+
+    OVS_ARGTYPE_FLOW_PI_GROUP,                  //0x021
 
     //actions to apply to packets matching the flow
-    OVS_ARGTYPE_FLOW_ACTIONS_GROUP,             //0x22
+    OVS_ARGTYPE_FLOW_ACTIONS_GROUP,             //0x022
 
     //Flow request: ignored
     //Flow reply: only if there have been packets matched by the flow
@@ -77,11 +81,13 @@ typedef enum _OVS_ARGTYPE
     //                                                OVS_USPACE_FLOW_ATTRIBUTE_MASK
     //NOTE: The PI Masks belongs here as well
 
+    OVS_ARGTYPE_PI_INVALID = 0x040,
+    OVS_ARGTYPE_FIRST_PI = OVS_ARGTYPE_PI_INVALID,
+
     //-- Packet priority.
     //NOTE: might be QoS priority; might have no meaning for windows.
     //data type: UINT32
-    OVS_ARGTYPE_PI_PACKET_PRIORITY = 0x041,
-    OVS_ARGTYPE_FIRST_PI = OVS_ARGTYPE_PI_PACKET_PRIORITY,
+    OVS_ARGTYPE_PI_PACKET_PRIORITY,         //0x041
 
     //source port / input port, given as the ovs port number (not hyper-v switch port id)
     //data type: UINT32
@@ -138,10 +144,10 @@ typedef enum _OVS_ARGTYPE
 
     //Encapsulation Group = another set of packet info-s, for the encapsulation. contains: eth type, ip layer PI, transport layer PI
     //might have been an older version of "tunnel info". The encapsulation group does not appear to be used in latest versions of ovs
-    OVS_ARGTYPE_PI_ENCAP_GROUP,             //0x52
+    OVS_ARGTYPE_PI_ENCAP_GROUP,             //0x052
 
     //received from userspace
-    OVS_ARGTYPE_PI_TUNNEL_GROUP,            //0x53
+    OVS_ARGTYPE_PI_TUNNEL_GROUP,            //0x053
 
     //type: BE16
     OVS_ARGTYPE_PI_TCP_FLAGS,                //0x054
@@ -159,10 +165,11 @@ typedef enum _OVS_ARGTYPE
 
     //GROUP NOTE: this group represents the OVS_USPACE_TUNNEL_KEY_ATTRIBUTE
 
-    //data type: BE64
-    OVS_ARGTYPE_PI_TUNNEL_ID = 0x061,
+    OVS_ARGTYPE_PI_TUNNEL_INVALID = 0x060,
+    OVS_ARGTYPE_FIRST_PI_TUNNEL = OVS_ARGTYPE_PI_TUNNEL_INVALID,
 
-    OVS_ARGTYPE_FIRST_PI_TUNNEL = OVS_ARGTYPE_PI_TUNNEL_ID,
+    //data type: BE64
+    OVS_ARGTYPE_PI_TUNNEL_ID,               //0x061
 
     //data type: BE32
     OVS_ARGTYPE_PI_TUNNEL_IPV4_SRC,        //0x062
@@ -192,10 +199,11 @@ typedef enum _OVS_ARGTYPE
 
     /************************************* TARGET: PACKET; GROUP: MAIN *****************************************************/
 
-    //GROUP NOTE: This group represents OVS_USPACE_PACKET_ATTRIBUTE
-    OVS_ARGTYPE_PACKET_PI_GROUP = 0x81,
+    OVS_ARGTYPE_PACKET_INVALID = 0x80,
+    OVS_ARGTYPE_FIRST_PACKET = OVS_ARGTYPE_PACKET_INVALID,
 
-    OVS_ARGTYPE_FIRST_PACKET = OVS_ARGTYPE_PACKET_PI_GROUP,
+    //GROUP NOTE: This group represents OVS_USPACE_PACKET_ATTRIBUTE
+    OVS_ARGTYPE_PACKET_PI_GROUP,                    //0x81
 
     //Packet notifications (queue to userspace). It is the NET_BUFFER data.
     //data type: "void*", i.e. data opaque to the user
@@ -212,11 +220,12 @@ typedef enum _OVS_ARGTYPE
     /************************************ TARGET: FLOW / PACKET; group = ACTIONS **********************************************/
 
     //GROUP NOTE: this group represents OVS_USPACE_PACKET_ATTRIBUTE_ACTIONS and OVS_USPACE_FLOW_ATTRIBUTE_ACTIONS
+    OVS_ARGTYPE_ACTION_INVALID = 0x0A0,
+    OVS_ARGTYPE_FIRST_ACTION = OVS_ARGTYPE_ACTION_INVALID,
 
     //ovs port number to which to send the packet to (no hyper-v switch port id)
     //data type: UINT32 (however, it is used as UINT16)
-    OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT = 0x0A1,
-    OVS_ARGTYPE_FIRST_ACTION = OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT,
+    OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT,      //0x0A1
 
     OVS_ARGTYPE_ACTION_UPCALL_GROUP,         //0x0A2
 
@@ -250,11 +259,12 @@ typedef enum _OVS_ARGTYPE
     /************************************ TARGET: FLOW / PACKET; group = ACTIONS / UPCALL **********************************************/
 
     //GROUP NOTE: this group represents OVS_USPACE_UPCALL_ATTRIBUTE
+    OVS_ARGTYPE_ACTION_UPCALL_INVALID = 0x0C0,
+    OVS_ARGTYPE_FIRST_ACTION_UPCALL = OVS_ARGTYPE_ACTION_UPCALL_INVALID,
 
     //Port Id associated with the file HANDLE
     //data type: UINT32
-    OVS_ARGTYPE_ACTION_UPCALL_PORT_ID = 0x0C1,
-    OVS_ARGTYPE_FIRST_ACTION_UPCALL = OVS_ARGTYPE_ACTION_UPCALL_PORT_ID,
+    OVS_ARGTYPE_ACTION_UPCALL_PORT_ID,          //0x0C1
 
     //Sent from userspace (optionally). It comes as Action / Output to Userspace
     //data type: OVS_ARGUMENT
@@ -265,6 +275,8 @@ typedef enum _OVS_ARGTYPE
     /************************************ TARGET: FLOW / PACKET; group: ACTIONS / SAMPLE **********************************************/
 
     //GROUP NOTE: this group represents OVS_USPACE_SAMPLE_ATTRIBUTE
+    OVS_ARGTYPE_ACTION_SAMPLE_INVALID = 0x0E0,
+    OVS_ARGTYPE_FIRST_ACTION_SAMPLE = OVS_ARGTYPE_ACTION_SAMPLE_INVALID,
 
     //The fraction of packets to sample (i.e. execute actions upon). Values:
     //    a) 0            = do not sample
@@ -272,8 +284,7 @@ typedef enum _OVS_ARGTYPE
     //    c) other value
 
     //data type: UINT32
-    OVS_ARGTYPE_ACTION_SAMPLE_PROBABILITY = 0x0E1,
-    OVS_ARGTYPE_FIRST_ACTION_SAMPLE = OVS_ARGTYPE_ACTION_SAMPLE_PROBABILITY,
+    OVS_ARGTYPE_ACTION_SAMPLE_PROBABILITY,          //0x0E1
 
     //actions to apply to packets (being executed / matched by flow) in a sample action
     OVS_ARGTYPE_ACTION_SAMPLE_ACTIONS_GROUP,        //0x0E2
@@ -282,11 +293,13 @@ typedef enum _OVS_ARGTYPE
 
     /******************************************** TARGET: DATAPATH; group: MAIN *********************************************/
 
+    OVS_ARGTYPE_DATAPATH_INVALID = 0x100,
+    OVS_ARGTYPE_FIRST_DATAPATH = OVS_ARGTYPE_DATAPATH_INVALID,
+
     //Datapath request: required in Datapath_New
     //Datapath reply: always present
     //data type: null-terminated ASCII string
-    OVS_ARGTYPE_DATAPATH_NAME = 0x101,
-    OVS_ARGTYPE_FIRST_DATAPATH = OVS_ARGTYPE_DATAPATH_NAME,
+    OVS_ARGTYPE_DATAPATH_NAME,              //0x101
 
     //The userspace port id associated with the file HANDLE, by which upcalls should be read from userspace
     //Datapath request: required in Datapath_New
@@ -313,10 +326,12 @@ typedef enum _OVS_ARGTYPE
 
     /****************************************** TARGET: OFPORT; group: MAIN ************************************************/
 
+    OVS_ARGTYPE_OFPORT_INVALID = 0x120,
+    OVS_ARGTYPE_FIRST_OFPORT = OVS_ARGTYPE_OFPORT_INVALID,
+
     //ovs port number (not hyper-v switch port id)
     //data type: UINT32. It is used in code as UINT16
-    OVS_ARGTYPE_OFPORT_NUMBER = 0x121,
-    OVS_ARGTYPE_FIRST_OFPORT = OVS_ARGTYPE_OFPORT_NUMBER,
+    OVS_ARGTYPE_OFPORT_NUMBER,              //0x121
 
     //data type: UINT32; values: constants of enum OVS_OFPORT_TYPE
     OVS_ARGTYPE_OFPORT_TYPE,                //0x122
@@ -342,9 +357,11 @@ typedef enum _OVS_ARGTYPE
 
     /************************************ TARGET: FLOW / PACKET; GROUP: PORT / OPTIONS **********************************************/
 
+    OVS_ARGTYPE_OFPORT_OPTION_INVALID = 0x140,
+    OVS_ARGTYPE_FIRST_OFPORT_OPTION = OVS_ARGTYPE_OFPORT_OPTION_INVALID,
+
     //UINT16
-    OVS_ARGTYPE_OFPORT_OPTION_DESTINATION_PORT = 0x141,
-    OVS_ARGTYPE_FIRST_OFPORT_OPTION = OVS_ARGTYPE_OFPORT_OPTION_DESTINATION_PORT,
+    OVS_ARGTYPE_OFPORT_OPTION_DESTINATION_PORT,     //0x141
 
     OVS_ARGTYPE_LAST_OFPORT_OPTION = OVS_ARGTYPE_OFPORT_OPTION_DESTINATION_PORT,
 } OVS_ARGTYPE;
@@ -380,8 +397,8 @@ static __inline BOOLEAN IsArgTypeGroup(OVS_ARGTYPE argType)
 }
 
 //given an arg type, returns the index of the arg within its group, starting from 1
-#define OVS_ARG_TOINDEX(argType, group) (argType - OVS_ARGTYPE_FIRST_##group + 1)
-#define OVS_ARG_TOINDEX_FIRST(argType, firstArgType) (argType - firstArgType + 1)
+#define OVS_ARG_TOINDEX(argType, group) (argType - OVS_ARGTYPE_FIRST_##group)
+#define OVS_ARG_TOINDEX_FIRST(argType, firstArgType) (argType - firstArgType)
 
 #define _OVS_ARGTYPE_FIRST(argType, first, last)            \
     if (argType >= first && argType <= last)    \
@@ -459,7 +476,8 @@ static __inline int CountArgTypesInGroup(OVS_ARGTYPE argType)
     OVS_CHECK(first != OVS_ARGTYPE_INVALID);
     OVS_CHECK(last != OVS_ARGTYPE_INVALID);
 
-    return last - first + 1;
+    //the 'invalid' arg excluded
+    return last - first;
 }
 
 //somewhat equivalent to OVS_ARG_TOINDEX
@@ -468,5 +486,5 @@ static __inline int ArgTypeToIndex(OVS_ARGTYPE argType)
     OVS_ARGTYPE first = GetFirstArgTypeInGroup(argType);
     OVS_CHECK(first != OVS_ARGTYPE_INVALID);
 
-    return argType - first + 1;
+    return argType - first;
 }

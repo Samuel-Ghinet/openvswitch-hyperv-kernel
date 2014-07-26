@@ -440,10 +440,6 @@ VOID DestroyArguments(_In_ OVS_ARGUMENT* argArray, UINT count)
 
         KFree(argArray);
     }
-    else
-    {
-        OVS_CHECK(argArray && count > 0);
-    }
 }
 
 VOID DestroyArgument(_In_ OVS_ARGUMENT* pArg)

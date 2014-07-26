@@ -136,7 +136,9 @@ void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
         pFlowStats = pFlow->statsArray[i];
 
         if (pFlowStats)
+        {
             RtlZeroMemory(pFlowStats, sizeof(OVS_FLOW_STATS));
+        }
     }
 
 #endif

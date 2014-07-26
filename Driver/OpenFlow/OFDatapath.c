@@ -182,11 +182,15 @@ Cleanup:
     {
         KFree(pNameArg);
         KFree(pStatsArg);
+        KFree(pMFStatsArg);
+        KFree(pUserFeaturesArg);
     }
     else
     {
         DestroyArgument(pNameArg);
         DestroyArgument(pStatsArg);
+        DestroyArgument(pMFStatsArg);
+        DestroyArgument(pUserFeaturesArg);
 
         FreeGroupWithArgs(pArgGroup);
 
