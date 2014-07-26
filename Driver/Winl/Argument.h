@@ -19,6 +19,10 @@ limitations under the License.
 #include "precomp.h"
 #include "ArgumentType.h"
 
+#define OVS_SIZE_ALIGNED_N(dataSize, N)        (((dataSize) / (N)) * (N) + ((dataSize) % (N) ? (N) : 0))
+#define OVS_SIZE_ALIGNED_4(dataSize)            OVS_SIZE_ALIGNED_N(dataSize, 4)
+#define OVS_NLA_DATA(nlAttr)                ((BYTE*)nlAttr + sizeof(OVS_NL_ATTRIBUTE))
+
 #define STRUCT_FIELD_SIZE(structType, fieldName) sizeof(((structType*)0)->fieldName)
 
 typedef struct _OVS_ARGUMENT
