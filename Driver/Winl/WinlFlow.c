@@ -555,6 +555,15 @@ OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         goto Cleanup;
     }
 
+    FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
+
+    DBGPRINT_FLOW(LOG_LOUD, "deleting flow: ", pFlow);
+
+    //remove the flow from the list of flows
+    FlowTable_RemoveFlow_Unsafe(pFlowTable, pFlow);
+
+    FLOWTABLE_UNLOCK(pFlowTable, &lockState);
+
     if (!CreateMsgFromFlow(pFlow, OVS_MESSAGE_COMMAND_DELETE, &replyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
     {
         DEBUGP(LOG_ERROR, "flow delete: create msg fail!\n");
@@ -562,17 +571,7 @@ OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         goto Cleanup;
     }
 
-    //NOTE: we can only delete the flow AFTER we reply: we need it to... write the reply
-    FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
-
-    DBGPRINT_FLOW(LOG_LOUD, "flow delete: ", pFlow);
-
-    //remove the flow from the list of flows
-    FlowTable_RemoveFlow_Unsafe(pFlowTable, pFlow);
-
     OVS_REFCOUNT_DEREF_AND_DESTROY(pFlow);
-
-    FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_FLOW);
     error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
