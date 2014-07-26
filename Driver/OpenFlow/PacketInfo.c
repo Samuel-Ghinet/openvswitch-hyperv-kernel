@@ -1259,7 +1259,8 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             _UpdateRange(pPiRange, offset, size);
 
             //TODO: we should normally set vlan tci to 0xFFFF in this case.
-            pPacketInfo->ethInfo.tci = 0xFFFF;//0;
+            //but it used to work with 0 only
+            pPacketInfo->ethInfo.tci = 0;
         }
     }
 
