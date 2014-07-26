@@ -515,22 +515,10 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
     }
 
     pEthTypeArg = FindArgument(pPIGroup, OVS_ARGTYPE_PI_ETH_TYPE);
-
-    if (!pEthTypeArg)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " expected key: %u\n", OVS_ARGTYPE_PI_ETH_TYPE);
-
-        return FALSE;
-    }
+    EXPECT(pEthAddrArg);
 
     pEthAddrArg = FindArgument(pPIGroup, OVS_ARGTYPE_PI_ETH_ADDRESS);
-
-    if (!pEthAddrArg)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " expected key: %u\n", OVS_ARGTYPE_PI_ETH_ADDRESS);
-
-        return FALSE;
-    }
+    EXPECT(pEthAddrArg);
 
     if (RtlUshortByteSwap(OVS_ETHERTYPE_QTAG) == GET_ARG_DATA(pEthTypeArg, BE16))
     {
