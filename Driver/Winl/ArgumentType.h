@@ -143,12 +143,15 @@ typedef enum _OVS_ARGTYPE
     //received from userspace
     OVS_ARGTYPE_PI_TUNNEL_GROUP,            //0x53
 
+    //type: BE16
+    OVS_ARGTYPE_PI_TCP_FLAGS,                //0x054
+
     //hash value: 0 = not computed
     //type: UINT32
-    OVS_ARGTYPE_PI_DATAPATH_HASH,            //0x054
+    OVS_ARGTYPE_PI_DATAPATH_HASH,            //0x055
 
     //type: UINT32
-    OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,        //0x055
+    OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,        //0x056
 
     OVS_ARGTYPE_LAST_PI = OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID,
 

@@ -1158,6 +1158,10 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             _GetPIFromArg_Tcp(pPacketInfo, pPiRange, pArg, haveIpv4);
             break;
 
+        case OVS_ARGTYPE_PI_TCP_FLAGS:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
         case OVS_ARGTYPE_PI_UDP:
             _GetPIFromArg_Udp(pPacketInfo, pPiRange, pArg, haveIpv4);
             break;
