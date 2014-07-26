@@ -95,7 +95,7 @@ VOID Spooky_Short(const VOID* pMessage, SIZE_T length, UINT64* pHash1, UINT64* p
     }
 
     // Handle the last 0..15 bytes, and its length
-    d = ((UINT64)length) << 56;
+    d += ((UINT64)length) << 56;
     switch (remainder)
     {
     case 15:
@@ -206,10 +206,8 @@ VOID Spooky_Hash128(const VOID* pMessage, SIZE_T length, UINT64* pHash1, UINT64*
 
     ((BYTE*)buf)[OVS_SPOOKY_BLOCK_SIZE - 1] = (BYTE)remainder;
 
-    Spooky_Mix(buf, &h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
-
     // do some final mixing 
-    Spooky_End(&h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
+    Spooky_End(buf, &h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
     *pHash1 = h0;
     *pHash2 = h1;
 }
@@ -383,10 +381,9 @@ VOID Spooky_Final(UINT64* pHash1, UINT64* pHash2, OVS_SPOOKY_DATA* pData)
     RtlZeroMemory(&((BYTE*)data)[remainder], (OVS_SPOOKY_BLOCK_SIZE - remainder));
 
     ((BYTE*)data)[OVS_SPOOKY_BLOCK_SIZE - 1] = remainder;
-    Spooky_Mix(data, &h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
 
     // do some final mixing
-    Spooky_End(&h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
+    Spooky_End(data, &h0, &h1, &h2, &h3, &h4, &h5, &h6, &h7, &h8, &h9, &h10, &h11);
 
     *pHash1 = h0;
     *pHash2 = h1;
