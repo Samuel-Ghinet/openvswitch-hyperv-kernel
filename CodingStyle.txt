@@ -1,0 +1,199 @@
+o) Braces
+
+Use Windows-style braces:
+- the open brace must be on a separate line, i.e.
+if (condition)
+{
+//code
+}
+
+- all code executed for an if, else, while, do while, or for, must be enclosed in braces, even if it's only one instruction to be executed
+- the else part of an if must be on the very next line after the if's closed brace:
+if (condition)
+{
+//code
+}
+else  //there must be no empty line between } and else
+{
+//code
+}
+
+For all other cases than "else": after "{", a blank line must follow
+
+o) switch cases: before each "case", if it is preceeded by a "break" on a previous case, there must be a blank line in between:
+switch (c)
+{
+    case v1:
+        //code
+        break;
+        
+    case v2:
+        //code
+        break;
+}
+
+o) custom data types
+- All custom data types (enums, structs) must be declared with typedef, like this:
+typedef struct _OVS_MY_STRUCT
+{
+//fields here
+}OVS_MY_STRUCT, *POVS_MY_STRUCT;
+
+and used as "OVS_MY_STRUCT", and not struct _OVS_MY_STRUCT"
+
+- all custom data types must be uppercase, words must be connected with underscores, and must be prefixed by OVS_
+
+o) code annotations are preferred
+
+o) UINT, INT, UINT16, VOID etc. are preferred over unsigned int, int, unsigned short, void, etc.
+o) where data is known to be big endian (e.g. eth type), BE-named types are preferred, e.g. "BE16 ethType;"
+
+o) documentation comments should begin with //, like this:
+//ipv4 / ipv6 protocol type
+BYTE protocol;
+
+Do NOT use like this:
+//
+//ipv4 / ipv6 protocol type
+//
+BYTE protocol;
+
+Nor like this:
+/* ipv4 / ipv6 protocol type */
+BYTE protocol;
+
+o) all private functions (i.e. functions that are to be used only in one .c file) should be defined like this:
+static <RetType> _FunctionName(params)
+{
+//code
+}
+
+- the function name must be prefixed by one "_", after which the first letter is uppercase.
+
+o) public functions that operate on a specific component (e.g. Flow) should have a "ComponentName_" prefix, e.g.:
+OVS_FLOW* Flow_Create(params)
+{
+//code
+}
+
+o) private functions that operate on a specific component (e.g. Flow) should be prefixed by "_ComponentName_" instead:
+OVS_FLOW_STATS* _Flow_GetStats(params)
+
+o) function suffixes:
+- Functions that operate on global data (such as, FlowTable functions), and expect the caller to synchronize (e.g. call the function while having a lock held)
+should be suffixed with "_Unsafe". If the component function (e.g. FlowTable) does not lock FlowTable lock, but locks any other component's lock
+(e.g. flow, ForwardInfo lock, etc.) it should still be suffixed by "_Unsafe".
+
+- Functions that reference an object before returning it must be suffixed by "_Ref". "_Ref" functions are implicitly "safe" (i.e. they lock their component)
+
+o) all identifier names: longer and clearer names are preferred over short obscure ones.
+
+o) function names must be clear for what the function does. the same for variable names.
+Avoid function names that are too vague for what the function does, or if the function does much more than that specific thing.
+
+o) variables declared in a .c file that are used only within that .c file must be static and prefixed by "s_" (i.e. static)
+o) global variables, i.e. variables that are declared in a .h file and used in multiple .c files must be prefixed by "g_" (i.e. global)
+
+o) all variable names must begin with lowercase, and each word that follows must begin with uppercase, e.g.
+BOOLEAN flowIsCreated;
+
+o) all function names begin with uppercase, and each word that follows must begin with uppercase
+
+o) all local variables must be initialized to default values, before used.
+
+o) all macros and symbols #define-d must be prefixed by OVS_
+
+o) enum constants must be prefixed by OVS_ and must follow the name convention of the enum type, e.g.
+typedef enum _OVS_MESSAGE_TARGET_TYPE
+{
+    OVS_MESSAGE_TARGET_FLOW;// notice the OVS_MESSAGE_TARGET_ prefix.
+}OVS_MESSAGE_TARGET_TYPE;
+
+This makes easier lookup of enum constants, knowing the enum type.
+
+o) number of lines per file: max 1000 are preferred, max 1500 should be allowed.
+If you have more than 1500 lines of code, try extracting functions based on their common topic (e.g. dbg prints, argument creation & destruction, verification functions, etc.) / into separate files
+
+o) max 180 chars per line should be 
+
+o) If you have many groups of functions in a .c file, e.g. dbg print functions, verification functions, lookup functions, etc. group them so that all functions that do verification are in a single portion of the file.
+Also, lines like this
+
+/******************************************* VERIFICATION FUNCTIONS **********************************************************************/
+
+Are allowed to make clearer the separation of groups
+
+o) avoid documenting obvious lines of code, e.g. avoid this:
+//counts the number of flows in a flow table
+ULONG CountFlows(OVS_FLOW_TABLE* pFlowTable);
+
+o) pointer data types should be prefixed by "p" or "pp" like this:
+OVS_FLOW* pFlow;
+OVS_FLOW** ppFlow;
+
+Arrays should be named like this:
+OVS_ARGUMENT* args;
+OVS_ARGUMENT** pArgs;
+
+o) In a variable declaration put the "*" after the type, like this:
+OVS_FLOW* pFlow;
+And not like this:
+OVS_FLOW *pFlow;
+
+If there are multiple pointers, do like this:
+OVS_ARGUMENT* pFlowArg, *pDatapathArg;
+
+o) Variable declarations are preferred like this:
+OVS_FLOW* pFlow;
+over
+POVS_FLOW pFlow;
+
+In rest, prefixes for types are discouraged, i.e. don't use things like this:
+ULONG nCount;
+
+o) All header files:
+Wherever possible,
+- symbol definition and macros (all that are #define-d) must be first in a .h file
+- typedef-s must follow symbol definitions and macros.
+- structs and other custom data types must follow next
+- All functions must be at the end: do not mangle structs with data types or symbol definitions.
+- You may use lines like this:
+
+/*********************************************/
+
+to separate function declarations from the things defined / declared above them.
+
+o) function definitions:
+local variable declarations must be separated by a blank line from the code that follows.
+
+o) All obscure-named acronyms must be documented in the header files.
+e.g. //ONB stands for OVS_NET_BUFFER
+
+Do not document obvious acronyms like this:
+//msg stands for message.
+
+o) use spaces between operands and operators, e.g
+x + y * z
+instead of:
+x+y*z
+
+do not use space after ( or before ), i.e. do this:
+(x * y * z) + a
+
+and not:
+( x * y * z ) + a
+
+o) Within a function, only one goto label should be used. It must be called Cleanup.
+
+o) if an integer variable can only have positive values, use unsigned types (ULONG, UINT16, etc.) instead of signed types.
+o) ULONG is preferred over UINT. On Visual C++, they are both 32bit.
+
+o) before an if, for, while, etc. (except else), there must be a blan k line.
+exception: if the condition checks a variable previously initialized, like this:
+pFlow = FlowTable_FindFlow(params);
+if (pFlow)
+{
+    //code
+}
+
+o) preferrably, code that uses operators on data should be separated by blank line from those that call functions.
