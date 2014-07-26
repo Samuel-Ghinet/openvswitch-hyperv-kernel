@@ -99,9 +99,9 @@ static __inline VOID* ConstCast(const VOID* value)
     return (VOID*)value;
 }
 
-#define CONST_CAST_TYPE(Type)                                    \
+#define CONST_CAST_TYPE(Type)                                   \
 static __inline Type* ConstCast##Type(const Type* value)        \
-{                                                                \
+{                                                               \
     return (Type*)value;                                        \
 }
 

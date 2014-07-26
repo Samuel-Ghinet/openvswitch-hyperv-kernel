@@ -382,18 +382,12 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
 
         case OVS_ARGTYPE_ACTION_HASH:
             ok = _ExecuteAction_Hash(pOvsNb, pArg->data);
-#if !OVS_ACTION_HASH_IMPLEMENTED
-            ok = TRUE;
-#endif
             break;
 
         case OVS_ARGTYPE_ACTION_RECIRCULATION:
             //TODO: use copy-on-write for OVS_NET_BUFFER, OR
             //copy the ONB only if there are more arguments in pArg->data
             ok = _ExecuteAction_Recirculation(pOvsNb, pArg->data);
-#if !OVS_ACTION_RECIRCULATION_IMPLEMENTED
-            ok = TRUE;
-#endif
             break;
         }
 
