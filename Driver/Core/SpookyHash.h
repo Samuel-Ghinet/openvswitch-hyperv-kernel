@@ -160,9 +160,13 @@ static __inline VOID Spooky_EndPartial(UINT64* pH0, UINT64* pH1, UINT64* pH2, UI
     *pH10 += *pH0;  *pH1 ^= *pH10;  *pH0 = Spooky_Rot64(*pH0, 54);
 }
 
-static __inline void Spooky_End(UINT64* pH0, UINT64* pH1, UINT64* pH2, UINT64* pH3, UINT64* pH4, UINT64* pH5, UINT64* pH6, UINT64* pH7,
-    UINT64* pH8, UINT64* pH9, UINT64* pH10, UINT64* pH11)
+static __inline void Spooky_End(const UINT64 *data, UINT64* pH0, UINT64* pH1, UINT64* pH2, UINT64* pH3, UINT64* pH4, UINT64* pH5, UINT64* pH6,
+    UINT64* pH7, UINT64* pH8, UINT64* pH9, UINT64* pH10, UINT64* pH11)
 {
+    pH0 += data[0];   pH1 += data[1];   pH2 += data[2];   pH3 += data[3];
+    pH4 += data[4];   pH5 += data[5];   pH6 += data[6];   pH7 += data[7];
+    pH8 += data[8];   pH9 += data[9];   pH10 += data[10]; pH11 += data[11];
+
     Spooky_EndPartial(pH0, pH1, pH2, pH3, pH4, pH5, pH6, pH7, pH8, pH9, pH10, pH11);
     Spooky_EndPartial(pH0, pH1, pH2, pH3, pH4, pH5, pH6, pH7, pH8, pH9, pH10, pH11);
     Spooky_EndPartial(pH0, pH1, pH2, pH3, pH4, pH5, pH6, pH7, pH8, pH9, pH10, pH11);
