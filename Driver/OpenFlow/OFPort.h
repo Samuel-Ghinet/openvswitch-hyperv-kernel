@@ -78,6 +78,13 @@ typedef struct _OVS_OFPORT_STATS
     UINT64   droppedOnSend;
 }OVS_OFPORT_STATS, *POVS_OFPORT_STATS;
 
+typedef struct _OVS_UPCALL_PORT_IDS
+{
+    //TODO: we might need to use ref counting for this
+    UINT count;
+    UINT* ids;
+}OVS_UPCALL_PORT_IDS, *POVS_UPCALL_PORT_IDS;
+
 typedef struct _OVS_WINL_PORT
 {
     UINT32            number;
