@@ -73,7 +73,7 @@ C_ASSERT(sizeof(OVS_ARGUMENT_GROUP) == 16);
 #define OVS_FOR_EACH_ARG(pGroup, code)            \
     for (UINT i = 0; i < (pGroup)->count; ++i)    \
 {                                            \
-    OVS_ARGUMENT* pArg = (pGroup)->args;        \
+    OVS_ARGUMENT* pArg = (pGroup)->args + i;        \
     OVS_ARGTYPE argType = pArg->type;            \
     code;                                        \
 }

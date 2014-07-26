@@ -341,6 +341,7 @@ BOOLEAN _McGroup_Join_Unsafe(_In_ const FILE_OBJECT* pFileObject, UINT32 groupId
 
     //we currently do not allow one fd / HANDLE to belong to multiple multicast groups
     OVS_CHECK(pFileEntry->info.groupId == 0);
+    OVS_CHECK(groupId != 0);
 
     pFileEntry->info.groupId = groupId;
 
@@ -726,6 +727,7 @@ OVS_ERROR BufferCtl_Read_Unsafe(const FILE_OBJECT* pFileObject, VOID* pOutBuf, U
 
     if (!pFileEntry)
     {
+        OVS_CHECK(__UNEXPECTED__);
         return OVS_ERROR_NOENT;
     }
 
@@ -777,8 +779,10 @@ OVS_ERROR BufferCtl_Read_Unsafe(const FILE_OBJECT* pFileObject, VOID* pOutBuf, U
                 error = _PopBufferFromQueue_Unsafe(pQBufferEntry, &buffer);
                 if (error != OVS_ERROR_NOERROR)
                 {
+                    OVS_CHECK(__UNEXPECTED__);
                     return error;
                 }
+
             } while (IsBufferEmpty(&buffer));
 
             //mcast read reads without concern for offset in buffer.

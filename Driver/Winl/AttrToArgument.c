@@ -128,14 +128,14 @@ static const int s_attrsToArgsPort[] =
     [OVS_USPACE_VPORT_ATTRIBUTE_OPTIONS] = OVS_ARGTYPE_OFPORT_OPTIONS_GROUP,
 };
 
-typedef struct _OVS_ARG_GROUP_INFO
+typedef struct _OVS_ATTR_GROUP_INFO
 {
     OVS_ARGTYPE parent;
     const int* group;
     int max;
-}OVS_ARG_GROUP_INFO, *POVS_ARG_GROUP_INFO;
+}OVS_ATTR_GROUP_INFO, *POVS_ATTR_GROUP_INFO;
 
-static const OVS_ARG_GROUP_INFO s_argsToAttribs[OVS_ARG_GROUP_COUNT] =
+static const OVS_ATTR_GROUP_INFO s_argsToAttribs[OVS_ARG_GROUP_COUNT] =
 {
     { OVS_ARGTYPE_PSEUDOGROUP_DATAPATH, s_attrsToArgsDatapath, OVS_USPACE_DP_ATTRIBUTE_MAX},
     { OVS_ARGTYPE_PSEUDOGROUP_FLOW, s_attrsToArgsFlow, OVS_USPACE_FLOW_ATTRIBUTE_MAX },
@@ -160,11 +160,11 @@ static const OVS_ARG_GROUP_INFO s_argsToAttribs[OVS_ARG_GROUP_COUNT] =
     { OVS_ARGTYPE_OFPORT_OPTIONS_GROUP, s_attrsToArgsPortOptions, OVS_USPACE_TUNNEL_ATTRIBUTE_MAX },
 };
 
-static const OVS_ARG_GROUP_INFO* _FindGroup(OVS_ARGTYPE parentArgType, _Out_ int* pMax)
+static const OVS_ATTR_GROUP_INFO* _FindGroup(OVS_ARGTYPE parentArgType, _Out_ int* pMax)
 {
     for (int i = 0; i < OVS_ARG_GROUP_COUNT; ++i)
     {
-        const OVS_ARG_GROUP_INFO* pGroup = s_argsToAttribs + i;
+        const OVS_ATTR_GROUP_INFO* pGroup = s_argsToAttribs + i;
 
         if (parentArgType == pGroup->parent)
         {
@@ -180,7 +180,7 @@ static const OVS_ARG_GROUP_INFO* _FindGroup(OVS_ARGTYPE parentArgType, _Out_ int
 
 BOOLEAN AttrType_To_ArgType(UINT16 attrType, OVS_ARGTYPE parentArgType, OVS_ARGTYPE* pTypeAsArg)
 {
-    const OVS_ARG_GROUP_INFO* pGroup = NULL;
+    const OVS_ATTR_GROUP_INFO* pGroup = NULL;
     int maxAttr = 0;
     ULONG argType = 0;
 

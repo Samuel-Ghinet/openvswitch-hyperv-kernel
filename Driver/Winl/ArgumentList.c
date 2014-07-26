@@ -68,7 +68,7 @@ OVS_ARGUMENT* ArgumentListToArray(_In_ OVS_ARGUMENT_SLIST_ENTRY* pHeadArg, _Inou
         pArgListEntry = pArgListEntry->pNext;
     }
 
-    args = KZAlloc(countArgs);
+    args = KZAlloc(countArgs * sizeof(OVS_ARGUMENT));
     if (!args)
     {
         return NULL;
