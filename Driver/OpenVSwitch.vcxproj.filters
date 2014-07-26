@@ -173,6 +173,9 @@
     <ClCompile Include="Winl\MsgVerification.c">
       <Filter>Winl</Filter>
     </ClCompile>
+    <ClCompile Include="Core\SpookyHash.c">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="precomp.h" />
@@ -374,6 +377,9 @@
     </ClInclude>
     <ClInclude Include="Winl\MsgVerification.h">
       <Filter>Winl</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\SpookyHash.h">
+      <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
