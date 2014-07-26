@@ -27,16 +27,31 @@ typedef struct _OVS_DATAPATH_STATS
 {
     UINT64 flowTableMatches;
     UINT64 flowTableMissed;
-    //i.e. lost = not sent to usr space
+    //i.e. packets lost = not sent to user space (had no flow)
     UINT64 countLost;
     //# of flows present
     UINT64 countFlows;
 }OVS_DATAPATH_STATS, *POVS_DATAPATH_STATS;
 
+typedef struct _OVS_DATAPATH_MEGAFLOW_STATS
+{
+    UINT64 masksMatched;
+    UINT32 countMasks;
+    //may be used in the future. ATM these values are unused
+    BYTE padding[20];
+}OVS_DATAPATH_MEGAFLOW_STATS, *POVS_DATAPATH_MEGAFLOW_STATS;
+
+//NOTE: this enum is used as FLAGS: multiple values can be used, OR-ed together
+typedef enum _OVS_DATAPATH_FEATURE
+{
+    OVS_DATAPATH_FEATURE_LAST_NLA_UNALIGNED = 1,
+    OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT = 2
+}OVS_DATAPATH_FEATURE;
+
 typedef struct _OVS_DATAPATH
 {
     //must be the first field in the struct
-    OVS_REF_COUNT     refCount;
+    OVS_REF_COUNT refCount;
 
     //entry in OVS_DRIVER
     LIST_ENTRY        listEntry;
@@ -80,4 +95,3 @@ BOOLEAN Datapath_FlushFlows(OVS_DATAPATH* pDatapath);
 OVS_FLOW_TABLE* Datapath_ReferenceFlowTable(OVS_DATAPATH* pDatapath);
 
 VOID Datapath_DestroyNow_Unsafe(OVS_DATAPATH* pDatapath);
-

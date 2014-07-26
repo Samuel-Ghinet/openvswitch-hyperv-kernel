@@ -76,6 +76,8 @@ OVS_ERROR Datapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     pDatapath->name = KAlloc(dpNameLen);
     if (!pDatapath->name)
     {
+        DATAPATH_UNLOCK(pDatapath, &lockState);
+
         error = OVS_ERROR_INVAL;
         goto Cleanup;
     }
