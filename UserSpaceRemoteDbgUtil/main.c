@@ -22,8 +22,8 @@ limitations under the License.
 
 SOCKET g_serverSock = INVALID_SOCKET;
 
-#define _IP_192_168_9_2		0x0209a8c0
-#define _IP_192_168_81_1	0x0151a8c0
+#define _IP_192_168_9_2        0x0209a8c0
+#define _IP_192_168_81_1       0x0151a8c0
 
 static UINT32 g_targetIp = _IP_192_168_81_1;
 static UINT16 g_targetPort = 9000;
@@ -64,7 +64,7 @@ static HANDLE _HandleCreateFile(SOCKET s, FH_MESSAGE_CREATE_IN* pMsg)
 
     out.cmd = FH_MESSAGE_COMMAND_CREATE;
 
-    //	pMsg->fileName = (BYTE*)pMsg + OFFSET_OF(FH_MESSAGE_CREATE_IN, fileName);
+    //    pMsg->fileName = (BYTE*)pMsg + OFFSET_OF(FH_MESSAGE_CREATE_IN, fileName);
 
     printf("CREATING FILE\n");
     if (pMsg->isAscii)
@@ -152,12 +152,12 @@ static BOOL _HandleReadFile(SOCKET s, FH_MESSAGE_READ_IN* pIn)
 
     /*
     FH_MESSAGE;
-    BOOL	result;
-    ULONG	bytesRead;
-    BOOL	haveOverlapped;
+    BOOL    result;
+    ULONG   bytesRead;
+    BOOL    haveOverlapped;
     OVERLAPPED overlapped;
-    DWORD	dwLastError;
-    VOID*	data;
+    DWORD   dwLastError;
+    VOID*   data;
     */
     printf("READING FILE\n");
 

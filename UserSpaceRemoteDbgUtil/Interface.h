@@ -30,7 +30,7 @@ typedef struct _FH_MESSAGE {
     UINT cmd;
 }FH_MESSAGE, *PFH_MESSAGE;
 
-/*	CreateFile:
+/*    CreateFile:
 -----------------
 in:
 isAscii: BOOL
@@ -45,16 +45,16 @@ DWORD lastError
 typedef struct _FH_MESSAGE_CREATE_IN {
     FH_MESSAGE;
     BOOL isAscii;
-    ULONG	strLen;
-    const VOID*	fileName;
+    ULONG          strLen;
+    const VOID*    fileName;
 }FH_MESSAGE_CREATE_IN, *PFH_MESSAGE_CREATE_IN;
 
 #define FH_MESSAGE_CREATE_IN_SIZE_BARE (sizeof(FH_MESSAGE_CREATE_IN) - sizeof(PVOID))
 
 typedef struct _FH_MESSAGE_CREATE_OUT {
     FH_MESSAGE;
-    HANDLE	hFile;
-    DWORD	dwLastError;
+    HANDLE    hFile;
+    DWORD     dwLastError;
 }FH_MESSAGE_CREATE_OUT, *PFH_MESSAGE_CREATE_OUT;
 
 /* WriteFile:
@@ -75,21 +75,21 @@ DWORD lastError
 
 typedef struct _FH_MESSAGE_WRITE_IN {
     FH_MESSAGE;
-    HANDLE	hFile;
-    ULONG	bufferSize;
-    BOOL	haveOverlapped;
+    HANDLE    hFile;
+    ULONG     bufferSize;
+    BOOL      haveOverlapped;
     OVERLAPPED overlapped;
-    VOID*	buffer;
+    VOID*     buffer;
 }FH_MESSAGE_WRITE_IN, *PFH_MESSAGE_WRITE_IN;
 
 #define FH_MESSAGE_WRITE_IN_SIZE_BARE (sizeof(FH_MESSAGE_WRITE_IN) - sizeof(PVOID))
 
 typedef struct _FH_MESSAGE_WRITE_OUT {
     FH_MESSAGE;
-    BOOL	ok;
-    BOOL	haveOverlapped;
+    BOOL       ok;
+    BOOL       haveOverlapped;
     OVERLAPPED overlapped;
-    DWORD	dwLastError;
+    DWORD      dwLastError;
 }FH_MESSAGE_WRITE_OUT, *PFH_MESSAGE_WRITE_OUT;
 
 /* ReadFile:
@@ -110,20 +110,20 @@ data
 
 typedef struct _FH_MESSAGE_READ_IN {
     FH_MESSAGE;
-    HANDLE	hFile;
-    ULONG	bufferSize;
-    BOOL	haveOverlapped;
+    HANDLE    hFile;
+    ULONG     bufferSize;
+    BOOL      haveOverlapped;
     OVERLAPPED overlapped;
 }FH_MESSAGE_READ_IN, *PFH_MESSAGE_READ_IN;
 
 typedef struct _FH_MESSAGE_READ_OUT {
     FH_MESSAGE;
-    BOOL	ok;
-    ULONG	bytesRead;
-    BOOL	haveOverlapped;
+    BOOL    ok;
+    ULONG   bytesRead;
+    BOOL    haveOverlapped;
     OVERLAPPED overlapped;
-    DWORD	dwLastError;
-    VOID*	data;
+    DWORD   dwLastError;
+    VOID*   data;
 }FH_MESSAGE_READ_OUT, *PFH_MESSAGE_READ_OUT;
 
 #define FH_MESSAGE_READ_OUT_SIZE_BARE (sizeof(FH_MESSAGE_READ_OUT) - sizeof(PVOID))
@@ -140,13 +140,13 @@ typedef struct _FH_MESSAGE_READ_OUT {
 
 typedef struct _FH_MESSAGE_CLOSE_IN {
     FH_MESSAGE;
-    HANDLE	hFile;
+    HANDLE    hFile;
 }FH_MESSAGE_CLOSE_IN, *PFH_MESSAGE_CLOSE_IN;
 
 typedef struct _FH_MESSAGE_CLOSE_OUT{
     FH_MESSAGE;
-    BOOL	ok;
-    DWORD	dwLastError;
+    BOOL     ok;
+    DWORD    dwLastError;
 }FH_MESSAGE_CLOSE_OUT, *PFH_MESSAGE_CLOSE_OUT;
 
 #define OFFSET_OF(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)

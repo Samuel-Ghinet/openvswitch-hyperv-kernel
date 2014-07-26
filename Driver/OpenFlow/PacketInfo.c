@@ -1068,6 +1068,14 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
         switch (argType)
         {
+        case OVS_ARGTYPE_PI_DATAPATH_HASH:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
+        case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
         case OVS_ARGTYPE_PI_PACKET_PRIORITY:
             PIFromArg_PacketPriority(pPacketInfo, pPiRange, pArg);
             break;
