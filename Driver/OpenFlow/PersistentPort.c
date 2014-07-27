@@ -57,7 +57,7 @@ static BOOLEAN _RemovePersPort_Logical(LIST_ENTRY* pList, _In_ const OVS_PERSIST
 
     NdisAcquireRWLockWrite(g_pLogicalPortsLock, &lockState, 0);
 
-    LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, pList)
+    OVS_LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, pList)
     {
         if (pPortEntry->pPort == pPort)
         {
@@ -107,7 +107,7 @@ static OVS_PERSISTENT_PORT* _PersPort_FindTunnel_Ref(_In_ const LIST_ENTRY* pLis
 
     NdisAcquireRWLockRead(g_pLogicalPortsLock, &lockState, 0);
 
-    LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, pList)
+    OVS_LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, pList)
     {
         if (pList == &g_grePorts)
         {
@@ -671,7 +671,7 @@ OVS_PERSISTENT_PORT* PersPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
 
-    LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, &g_vxlanPorts)
+    OVS_LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, &g_vxlanPorts)
     {
         OVS_TUNNELING_PORT_OPTIONS* pOptions = NULL;
 
