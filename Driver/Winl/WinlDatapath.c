@@ -28,6 +28,30 @@ limitations under the License.
 
 #include <Netioapi.h>
 
+static OVS_ERROR _Datapath_SetName(OVS_DATAPATH* pDatapath, const char* newName)
+{
+    ULONG dpNameLen = 0;
+
+    if (!pDatapath->deleted)
+    {
+        KFree(pDatapath->name);
+    }
+
+    pDatapath->deleted = FALSE;
+
+    dpNameLen = (ULONG)strlen(newName) + 1;
+
+    pDatapath->name = KAlloc(dpNameLen);
+    if (!pDatapath->name)
+    {
+        return OVS_ERROR_NOMEM;
+    }
+
+    RtlCopyMemory(pDatapath->name, newName, dpNameLen);
+
+    return OVS_ERROR_NOERROR;
+}
+
 _Use_decl_annotations_
 OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
@@ -36,7 +60,6 @@ OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
     OVS_ARGUMENT* pArgName = NULL, *pArgUpcallPid = NULL, *pUserFeaturesArg = NULL;
     LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    ULONG dpNameLen = 0;
     UINT32 upcallPid = 0;
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
@@ -62,33 +85,20 @@ OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
     upcallPid = GET_ARG_DATA(pArgUpcallPid, UINT32);
 
     DATAPATH_LOCK_WRITE(pDatapath, &lockState);
-
-    if (!pDatapath->deleted)
-    {
-        KFree(pDatapath->name);
-    }
-
-    pDatapath->deleted = FALSE;
-
-    dpNameLen = (ULONG)strlen(pArgName->data) + 1;
-
-    pDatapath->name = KAlloc(dpNameLen);
-    if (!pDatapath->name)
+    
+    error = _Datapath_SetName(pDatapath, pArgName->data);
+    if (error != OVS_ERROR_NOERROR)
     {
         DATAPATH_UNLOCK(pDatapath, &lockState);
-
-        error = OVS_ERROR_INVAL;
         goto Cleanup;
     }
-
-    RtlCopyMemory(pDatapath->name, pArgName->data, dpNameLen);
 
     pUserFeaturesArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
     if (pUserFeaturesArg)
     {
         pDatapath->userFeatures = GET_ARG_DATA(pUserFeaturesArg, UINT32);
     }
-
+    
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
     if (0 == pDatapath->switchIfIndex)
