@@ -106,7 +106,7 @@ VOID DbgPrintDeviceFiles()
     OVS_DEVICE_FILE_INFO_ENTRY* pEntry = NULL;
     int i = 0;
 
-    LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
+    OVS_LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
     {
         DEBUGP_FILE(LOG_INFO, "file %d:\n", i);
         DEBUGP_FILE(LOG_INFO, "file object: %p\n", pEntry->info.pFileObject);
@@ -123,7 +123,7 @@ VOID DbgPrintUCastBuffers()
     OVS_UNICAST_BUFFER_ENTRY* pEntry = NULL;
     int i = 0;
 
-    LIST_FOR_EACH(OVS_UNICAST_BUFFER_ENTRY, pEntry, &g_unicastBufferList)
+    OVS_LIST_FOR_EACH(OVS_UNICAST_BUFFER_ENTRY, pEntry, &g_unicastBufferList)
     {
         DEBUGP_FILE(LOG_INFO, "ucast buffer %d:\n", i);
         DEBUGP_FILE(LOG_INFO, "file object: %p\n", pEntry->pFileObject);
@@ -141,7 +141,7 @@ VOID DbgPrintMCastBuffers()
     OVS_MULTICAST_BUFFER_ENTRY* pEntry = NULL;
     int i = 0;
 
-    LIST_FOR_EACH(OVS_MULTICAST_BUFFER_ENTRY, pEntry, &g_multicastFileObjects)
+    OVS_LIST_FOR_EACH(OVS_MULTICAST_BUFFER_ENTRY, pEntry, &g_multicastFileObjects)
     {
         DEBUGP_FILE(LOG_INFO, "mcast buffer %d:\n", i);
         DEBUGP_FILE(LOG_INFO, "file object: %p\n", pEntry->pFileObject);
@@ -160,7 +160,7 @@ VOID DbgPrintQueuedBuffers()
     OVS_QUEUED_BUFFER_ENTRY* pEntry = NULL;
     int i = 0;
 
-    LIST_FOR_EACH(OVS_QUEUED_BUFFER_ENTRY, pEntry, &g_queuedBufferList)
+    OVS_LIST_FOR_EACH(OVS_QUEUED_BUFFER_ENTRY, pEntry, &g_queuedBufferList)
     {
         OVS_BUFFER_ENTRY* pBufferEntry = NULL;
         UINT j = 0;
@@ -169,7 +169,7 @@ VOID DbgPrintQueuedBuffers()
         DEBUGP_FILE(LOG_INFO, "port id: %u\n", pEntry->portId);
         DEBUGP_FILE(LOG_INFO, "count: %u\n", pEntry->count);
 
-        LIST_FOR_EACH(OVS_BUFFER_ENTRY, pBufferEntry, &pEntry->bufferQueue)
+        OVS_LIST_FOR_EACH(OVS_BUFFER_ENTRY, pBufferEntry, &pEntry->bufferQueue)
         {
             DEBUGP_FILE(LOG_INFO, "buffer %u ptr: %p\n", j, pBufferEntry->buffer.p);
             DEBUGP_FILE(LOG_INFO, "buffer %u size: %u\n", j, pBufferEntry->buffer.size);
@@ -200,7 +200,7 @@ static OVS_DEVICE_FILE_INFO_ENTRY* _FindDeviceFileInfo_Unsafe(_In_ const FILE_OB
 {
     OVS_DEVICE_FILE_INFO_ENTRY* pEntry = NULL;
 
-    LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
+    OVS_LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
     {
         if (pEntry->info.pFileObject == pFileObject)
         {
@@ -218,7 +218,7 @@ static OVS_DEVICE_FILE_INFO_ENTRY* _FindDeviceFileInfoByPortId_Unsafe(UINT portI
 
     OVS_CHECK(portId);
 
-    LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
+    OVS_LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
     {
         if (pEntry->info.portId == portId)
         {
@@ -234,7 +234,7 @@ OVS_UNICAST_BUFFER_ENTRY* _FindBufferUnicast_Unsafe(_In_ const OVS_DEVICE_FILE_I
 {
     OVS_UNICAST_BUFFER_ENTRY* pEntry = NULL;
 
-    LIST_FOR_EACH(OVS_UNICAST_BUFFER_ENTRY, pEntry, &g_unicastBufferList)
+    OVS_LIST_FOR_EACH(OVS_UNICAST_BUFFER_ENTRY, pEntry, &g_unicastBufferList)
     {
         if (pEntry->pFileObject == pFileInfo->pFileObject)
         {
@@ -251,7 +251,7 @@ OVS_MULTICAST_BUFFER_ENTRY* _FindBufferMulticast_Unsafe(_In_ const OVS_DEVICE_FI
 {
     OVS_MULTICAST_BUFFER_ENTRY* pEntry = NULL;
 
-    LIST_FOR_EACH(OVS_MULTICAST_BUFFER_ENTRY, pEntry, &g_multicastFileObjects)
+    OVS_LIST_FOR_EACH(OVS_MULTICAST_BUFFER_ENTRY, pEntry, &g_multicastFileObjects)
     {
         if (pEntry->pFileObject == pFileInfo->pFileObject)
         {
@@ -268,7 +268,7 @@ OVS_QUEUED_BUFFER_ENTRY* _FindQueuedBuffer_Unsafe(_In_ const OVS_DEVICE_FILE_INF
 {
     OVS_QUEUED_BUFFER_ENTRY* pEntry = NULL;
 
-    LIST_FOR_EACH(OVS_QUEUED_BUFFER_ENTRY, pEntry, &g_queuedBufferList)
+    OVS_LIST_FOR_EACH(OVS_QUEUED_BUFFER_ENTRY, pEntry, &g_queuedBufferList)
     {
         if (pEntry->portId == pFileInfo->portId)
         {
@@ -577,7 +577,7 @@ VOID BufferCtl_Uninit()
 
     NdisAcquireRWLockWrite(g_pOvsDeviceRWLock, &lockState, 0);
 
-    LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
+    OVS_LIST_FOR_EACH(OVS_DEVICE_FILE_INFO_ENTRY, pEntry, &g_deviceFileInfoList)
     {
         if (pEntry->info.groupId)
         {
