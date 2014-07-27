@@ -71,11 +71,13 @@ extern ULONG g_debugLevel;
 #define OVS_CHECK_OR(x, expr) { ASSERT(x); if (!(x)) expr; }
 #define OVS_CHECK_BREAK(x) { ASSERT(x); if (!(x)) break; }
 #define OVS_CHECK_RET(x, value) { ASSERT(x); if (!(x)) return value; }
+#define OVS_CHECK_GC(x) { ASSERT(x); if (!(x)) goto Cleanup; }
 #else
 #define OVS_CHECK(x)
 #define OVS_CHECK_OR(x, expr) { if (!(x)) expr; }
 #define OVS_CHECK_BREAK(x) { if (!(x)) break; }
 #define OVS_CHECK_RET(x, value) { if (!(x)) return value; }
+#define OVS_CHECK_GC(x) { if (!(x)) goto Cleanup; }
 #endif //OVS_USE_ASSERTS
 
 #define EXPECT(expr)                        \
@@ -91,6 +93,12 @@ if (!(expr))                                \
     {                                           \
     goto Cleanup;                               \
     }                                           \
+}
+
+#define CHECK_GC(expr)                      \
+if (!(expr))                                \
+{                                           \
+    OVS_CHECK_GC(__UNEXPECTED__);           \
 }
 
 #pragma warning( disable: 4127)
