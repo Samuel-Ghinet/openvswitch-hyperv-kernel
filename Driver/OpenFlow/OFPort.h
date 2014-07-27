@@ -113,6 +113,7 @@ typedef struct _OVS_OFPORT
 
     //NDIS_SWITCH_DEFAULT_PORT_ID (i.e. 0), if not connected
     NDIS_SWITCH_PORT_ID            portId;
+    NDIS_SWITCH_NIC_INDEX          nicIndex;
 
     //if it's the external port of the switch or not
     BOOLEAN                        isExternal;
