@@ -29,7 +29,7 @@ NDIS_RW_LOCK_EX* g_pLogicalPortsLock = NULL;
 
 /******************************** LOGICAL PORTS & TUNNELS /********************************/
 
-static BOOLEAN _AddPersPort_Logical(LIST_ENTRY* pList, _In_ const OVS_OFPORT* pPort)
+static BOOLEAN _AddOFPort_Logical(LIST_ENTRY* pList, _In_ const OVS_OFPORT* pPort)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
     LOCK_STATE_EX lockState = { 0 };
@@ -49,7 +49,7 @@ static BOOLEAN _AddPersPort_Logical(LIST_ENTRY* pList, _In_ const OVS_OFPORT* pP
     return TRUE;
 }
 
-static BOOLEAN _RemovePersPort_Logical(LIST_ENTRY* pList, _In_ const OVS_OFPORT* pPort)
+static BOOLEAN _RemoveOFPort_Logical(LIST_ENTRY* pList, _In_ const OVS_OFPORT* pPort)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
     BOOLEAN ok = FALSE;
@@ -74,27 +74,27 @@ Cleanup:
     return ok;
 }
 
-static BOOLEAN _AddPersPort_Gre(_In_ const OVS_OFPORT* pPort)
+static BOOLEAN _AddOFPort_Gre(_In_ const OVS_OFPORT* pPort)
 {
-    return _AddPersPort_Logical(&g_grePorts, pPort);
+    return _AddOFPort_Logical(&g_grePorts, pPort);
 }
 
-static BOOLEAN _AddPersPort_Vxlan(_In_ const OVS_OFPORT* pPort)
+static BOOLEAN _AddOFPort_Vxlan(_In_ const OVS_OFPORT* pPort)
 {
-    return _AddPersPort_Logical(&g_vxlanPorts, pPort);
+    return _AddOFPort_Logical(&g_vxlanPorts, pPort);
 }
 
-static BOOLEAN _RemovePersPort_Gre(_In_ const OVS_OFPORT* pPort)
+static BOOLEAN _RemoveOFPort_Gre(_In_ const OVS_OFPORT* pPort)
 {
-    return _RemovePersPort_Logical(&g_grePorts, pPort);
+    return _RemoveOFPort_Logical(&g_grePorts, pPort);
 }
 
-static BOOLEAN _RemovePersPort_Vxlan(_In_ const OVS_OFPORT* pPort)
+static BOOLEAN _RemoveOFPort_Vxlan(_In_ const OVS_OFPORT* pPort)
 {
-    return _RemovePersPort_Logical(&g_vxlanPorts, pPort);
+    return _RemoveOFPort_Logical(&g_vxlanPorts, pPort);
 }
 
-static OVS_OFPORT* _PersPort_FindTunnel_Ref(_In_ const LIST_ENTRY* pList, _In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelOptions)
+static OVS_OFPORT* _OFPort_FindTunnel_Ref(_In_ const LIST_ENTRY* pList, _In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelOptions)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
     OVS_OFPORT* pOutPort = NULL;
@@ -165,13 +165,13 @@ OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
 _Use_decl_annotations_
 OVS_OFPORT* OFPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
 {
-    return _PersPort_FindTunnel_Ref(&g_grePorts, pTunnelInfo);
+    return _OFPort_FindTunnel_Ref(&g_grePorts, pTunnelInfo);
 }
 
 _Use_decl_annotations_
 OVS_OFPORT* OFPort_FindVxlan_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
 {
-    return _PersPort_FindTunnel_Ref(&g_vxlanPorts, pTunnelInfo);
+    return _OFPort_FindTunnel_Ref(&g_vxlanPorts, pTunnelInfo);
 }
 
 /******************************** INIT AND UNINIT ********************************/
@@ -216,7 +216,7 @@ static BOOLEAN _PortFriendlyNameIs(int i, const char* portName, _In_ const OVS_P
 }
 
 //Unsafe = does not lock PersPort
-static VOID _PersPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, OVS_OFPORT* pPort)
+static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, OVS_OFPORT* pPort)
 {
     LOCK_STATE_EX lockState = { 0 };
     const char* externalPortName = "external";
@@ -368,7 +368,7 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
         RtlStringCchCopyA((char*)pPort->ovsPortName, portNameLen, portName);
     }
 
-    //if port number was not given, we set it now to 0 an call below _PersPort_AddByName_Unsafe
+    //if port number was not given, we set it now to 0 an call below _OFPort_AddByName_Unsafe
     pPort->ovsPortNumber = (pPortNumber ? *pPortNumber : 0);
     pPort->ofPortType = portType;
 
@@ -378,7 +378,7 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
     {
         if (IsListEmpty(&g_grePorts))
         {
-            _AddPersPort_Gre(pPort);
+            _AddOFPort_Gre(pPort);
         }
         else
         {
@@ -389,13 +389,13 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
     }
     else if (portType == OVS_OFPORT_TYPE_VXLAN)
     {
-        _AddPersPort_Vxlan(pPort);
+        _AddOFPort_Vxlan(pPort);
     }
 
     //NOTE: we may have more persistent ports than NICS: logical ports don't have nics associated
     //the same goes with hyper-v switch ports
 
-    _PersPort_SetNicAndPort_Unsafe(pForwardInfo, pPort);
+    _OFPort_SetNicAndPort_Unsafe(pForwardInfo, pPort);
 
     if (pPortNumber)
     {
@@ -445,7 +445,7 @@ Cleanup:
 
 /******************************** FIND FUNCTIONS ********************************/
 
-static __inline BOOLEAN _PersPort_IsExternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
+static __inline BOOLEAN _OFPort_IsExternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
 {
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
 
@@ -471,7 +471,7 @@ OVS_OFPORT* OFPort_FindExternal_Ref()
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _PersPort_IsExternal, NULL);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_IsExternal, NULL);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -479,7 +479,7 @@ Cleanup:
     return pOutPort;
 }
 
-static __inline BOOLEAN _PersPort_IsInternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
+static __inline BOOLEAN _OFPort_IsInternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
 {
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
 
@@ -504,7 +504,7 @@ OVS_OFPORT* OFPort_FindInternal_Ref()
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _PersPort_IsInternal, NULL);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_IsInternal, NULL);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -512,7 +512,7 @@ Cleanup:
     return pOutPort;
 }
 
-static __inline BOOLEAN _PersPort_NameEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
+static __inline BOOLEAN _OFPort_NameEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
 {
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
     const char* ofPortName = (const char*)data;
@@ -536,7 +536,7 @@ OVS_OFPORT* OFPort_FindByName_Ref(const char* ofPortName)
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _PersPort_NameEquals, ofPortName);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_NameEquals, ofPortName);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -544,7 +544,7 @@ Cleanup:
     return pOutPort;
 }
 
-static __inline BOOLEAN _PersPort_PortIdEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
+static __inline BOOLEAN _OFPort_PortIdEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
 {
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
     NDIS_SWITCH_PORT_ID portId = (NDIS_SWITCH_PORT_ID)data;
@@ -568,7 +568,7 @@ OVS_OFPORT* OFPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId)
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _PersPort_PortIdEquals, &portId);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_PortIdEquals, &portId);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -592,7 +592,7 @@ OVS_OFPORT* OFPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId)
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Unsafe(pPortsArray, _PersPort_PortIdEquals, &portId);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Unsafe(pPortsArray, _OFPort_PortIdEquals, &portId);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -600,7 +600,7 @@ Cleanup:
     return pOutPort;
 }
 
-static __inline BOOLEAN _PersPort_PortNumberEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
+static __inline BOOLEAN _OFPort_PortNumberEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR data)
 {
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
     UINT16 portNumber = (UINT16)data;
@@ -624,7 +624,7 @@ OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber)
 
     pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
 
-    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _PersPort_PortNumberEquals, &portNumber);
+    pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_PortNumberEquals, &portNumber);
 
 Cleanup:
     OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
@@ -659,11 +659,11 @@ BOOLEAN OFPort_Delete(OVS_OFPORT* pPort)
 
     if (pPort->ofPortType == OVS_OFPORT_TYPE_GRE)
     {
-        _RemovePersPort_Gre(pPort);
+        _RemoveOFPort_Gre(pPort);
     }
     else if (pPort->ofPortType == OVS_OFPORT_TYPE_VXLAN)
     {
-        _RemovePersPort_Vxlan(pPort);
+        _RemoveOFPort_Vxlan(pPort);
     }
 
     ok = FXArray_Remove_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, pPort->ovsPortNumber);
