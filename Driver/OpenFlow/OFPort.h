@@ -98,10 +98,10 @@ typedef struct _OVS_OFPORT
     OVS_FXARRAY_ITEM;
 
     //port number assigned by OVS (userspace, or computed in driver)
-    UINT16           ovsPortNumber;
+    UINT16           ofPortNumber;
 
     //port name assigned by OVS (userspace, or computed in driver)
-    char*            ovsPortName;
+    char*            ofPortName;
 
     //OpenFlow / ovs port type
     OVS_OFPORT_TYPE  ofPortType;

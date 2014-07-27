@@ -53,7 +53,7 @@ typedef struct _OVS_NIC_LIST_ENTRY
     //OVS_OFPORT_STATS                  portStats;
 
     //OVS_INVALID_PORT_NUMBER (0xFFFF) if we don't have one
-    UINT16                              ovsPortNumber;
+    UINT16                              ofPortNumber;
 #ifdef DBG
     CHAR                                vmName[OVS_NIC_ENTRY_NAME_SIZE + 1];
     CHAR                                adapName[OVS_NIC_ENTRY_NAME_SIZE + 1];

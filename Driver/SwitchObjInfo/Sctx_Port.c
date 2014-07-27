@@ -71,7 +71,7 @@ NDIS_STATUS Sctx_AddPort_Unsafe(_Inout_ OVS_GLOBAL_FORWARD_INFO* pForwardInfo, c
     pPortEntry->portType = pCurPort->PortType;
     pPortEntry->on = (pCurPort->PortState == NdisSwitchPortStateCreated);
     pPortEntry->portFriendlyName = pCurPort->PortFriendlyName;
-    pPortEntry->ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+    pPortEntry->ofPortNumber = OVS_INVALID_PORT_NUMBER;
 
     DEBUGP(LOG_INFO, "PORT: id=%d; type=%d; on=%d; friendly name=\"%s\"\n",
         pPortEntry->portId, pPortEntry->portType, pPortEntry->on, ofPortName);
@@ -110,7 +110,7 @@ NDIS_STATUS Sctx_DeletePort_Unsafe(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardI
         goto Cleanup;
     }
 
-    OVS_CHECK(pPortEntry->ovsPortNumber == OVS_INVALID_PORT_NUMBER);
+    OVS_CHECK(pPortEntry->ofPortNumber == OVS_INVALID_PORT_NUMBER);
 
     OVS_REFCOUNT_DESTROY(pPortEntry);
 
@@ -151,12 +151,12 @@ Cleanup:
     return NULL;
 }
 
-UINT16 Sctx_Port_SetOFPort(const char* ovsPortName, NDIS_SWITCH_PORT_ID portId)
+UINT16 Sctx_Port_SetOFPort(const char* ofPortName, NDIS_SWITCH_PORT_ID portId)
 {
     OVS_OFPORT* pPort = NULL;
-    UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+    UINT16 ofPortNumber = OVS_INVALID_PORT_NUMBER;
 
-    pPort = OFPort_FindByName_Ref(ovsPortName);
+    pPort = OFPort_FindByName_Ref(ofPortName);
     if (pPort)
     {
         LOCK_STATE_EX lockState = { 0 };
@@ -164,12 +164,12 @@ UINT16 Sctx_Port_SetOFPort(const char* ovsPortName, NDIS_SWITCH_PORT_ID portId)
         PORT_LOCK_WRITE(pPort, &lockState);
 
         pPort->portId = portId;
-        ovsPortNumber = pPort->ovsPortNumber;
+        ofPortNumber = pPort->ofPortNumber;
 
         PORT_UNLOCK(pPort, &lockState);
 
         OVS_REFCOUNT_DEREFERENCE(pPort);
     }
 
-    return ovsPortNumber;
+    return ofPortNumber;
 }

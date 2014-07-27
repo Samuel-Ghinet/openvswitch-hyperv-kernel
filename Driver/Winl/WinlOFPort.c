@@ -306,10 +306,10 @@ static BOOLEAN _CreateMsgFromOFPort(_In_ const OVS_OFPORT* pPort, PORT_FETCH_CTX
     OVS_MESSAGE replyMsg = { 0 };
 
     RtlZeroMemory(&port, sizeof(OVS_WINL_PORT));
-    port.number = pPort->ovsPortNumber;
+    port.number = pPort->ofPortNumber;
     port.pOptions = _OFPort_OptionsToGroup(pPort->pOptions);
     port.type = pPort->ofPortType;
-    port.name = pPort->ovsPortName;
+    port.name = pPort->ofPortName;
     port.stats = pPort->stats;
     port.upcallPortIds = pPort->upcallPortIds;
 
@@ -856,7 +856,7 @@ OVS_ERROR WinlOFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObj
         goto Cleanup;
     }
 
-    if (pOFPort->ovsPortNumber == OVS_LOCAL_PORT_NUMBER)
+    if (pOFPort->ofPortNumber == OVS_LOCAL_PORT_NUMBER)
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;

@@ -222,19 +222,19 @@ static BOOLEAN _ExecuteAction_Recirculation(_Inout_ OVS_NET_BUFFER *pOvsNb, _In_
     return FALSE;
 }
 
-static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 ovsPortNumber)
+static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 ofPortNumber)
 {
     UINT16 validPortNumber = OVS_INVALID_PORT_NUMBER;
     OVS_OFPORT* pDestOFPort = NULL;
 
     //NOTE: we don't need to lock neither pSourcePort, nor pDestPort, because these fields (id, type, isExternal) never change
-    if (ovsPortNumber >= OVS_MAX_PORTS)
+    if (ofPortNumber >= OVS_MAX_PORTS)
     {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number from userspace: %u\n", ovsPortNumber);
+        DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number from userspace: %u\n", ofPortNumber);
         return NULL;
     }
 
-    validPortNumber = (UINT16)ovsPortNumber;
+    validPortNumber = (UINT16)ofPortNumber;
 
     pDestOFPort = OFPort_FindByNumber_Ref(validPortNumber);
     if (!pDestOFPort)
@@ -291,7 +291,7 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
     BOOLEAN ok = TRUE;
     const OVS_ARGUMENT_GROUP* pActionArgs = pOvsNb->pActions->pActionGroup;
     OVS_OFPORT* pDestOFPort = NULL;
-    UINT32 ovsPortNumber = (UINT32)-1;
+    UINT32 ofPortNumber = (UINT32)-1;
 
     for (UINT i = 0; i < pActionArgs->count; ++i)
     {
@@ -332,15 +332,15 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
         switch (argType)
         {
         case OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT:
-            ovsPortNumber = GET_ARG_DATA(pArg, UINT32);
+            ofPortNumber = GET_ARG_DATA(pArg, UINT32);
 
-            if (ovsPortNumber < OVS_MAX_PORTS)
+            if (ofPortNumber < OVS_MAX_PORTS)
             {
-                pDestOFPort = _FindDestPort_Ref(pOvsNb->pSourcePort, ovsPortNumber);
+                pDestOFPort = _FindDestPort_Ref(pOvsNb->pSourcePort, ofPortNumber);
             }
             else
             {
-                DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number from userspace: %u\n", ovsPortNumber);
+                DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number from userspace: %u\n", ofPortNumber);
                 ok = FALSE;
             }
 
