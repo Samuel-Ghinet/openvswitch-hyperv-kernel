@@ -103,7 +103,7 @@ typedef struct _OVS_OFPORT
     //port name assigned by OVS (userspace, or computed in driver)
     char*            ofPortName;
 
-    //OpenFlow / ovs port type
+    //OpenFlow / datapath port type
     OVS_OFPORT_TYPE  ofPortType;
     OVS_OFPORT_STATS stats;
     UINT32           upcallPortId;

@@ -626,7 +626,7 @@ static BOOLEAN _OutputPacketToPort_Physical(OVS_NET_BUFFER* pOvsNb)
     }
     else
     {
-        DEBUGP(LOG_LOUD, "ovs port %s does not have a nic associated!\n", pOvsNb->pDestinationPort->ofPortName);
+        DEBUGP(LOG_LOUD, "of port %s does not have a nic associated!\n", pOvsNb->pDestinationPort->ofPortName);
         ok = FALSE;
     }
 
@@ -742,7 +742,7 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
     ULONG nbLen = 0;
     LOCK_STATE_EX lockState = { 0 };
     VOID* pNbBuffer = NULL;
-    UINT16 ovsInPortNumber = OVS_INVALID_PORT_NUMBER;
+    UINT16 ofInPortNumber = OVS_INVALID_PORT_NUMBER;
     OVS_FLOW_TABLE* pFlowTable = NULL;
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
@@ -762,10 +762,10 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
 
     if (pSourcePort)
     {
-        ovsInPortNumber = pSourcePort->ofPortNumber;
+        ofInPortNumber = pSourcePort->ofPortNumber;
     }
 
-    if (!PacketInfo_Extract(pNbBuffer, nbLen, ovsInPortNumber, &packetInfo))
+    if (!PacketInfo_Extract(pNbBuffer, nbLen, ofInPortNumber, &packetInfo))
     {
         sent = FALSE;
         goto Cleanup;

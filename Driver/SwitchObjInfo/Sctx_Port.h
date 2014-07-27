@@ -46,5 +46,5 @@ NDIS_STATUS Sctx_DeletePort_Unsafe(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardI
 
 OVS_PORT_LIST_ENTRY* Sctx_FindPortBy_Unsafe(_In_ OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const VOID* pContext, BOOLEAN(*Predicate)(int, const VOID*, _In_ const OVS_PORT_LIST_ENTRY*));
 
-//returns ovs port number
+//returns of port number
 UINT16 Sctx_Port_SetOFPort(const char* ofPortName, NDIS_SWITCH_PORT_ID portId);
