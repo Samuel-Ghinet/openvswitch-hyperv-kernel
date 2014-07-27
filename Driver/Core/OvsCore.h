@@ -29,6 +29,8 @@ limitations under the License.
 #define OVS_ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 #define OVS_CONST_CAST(p) ((VOID*)p)
 
+/*************************************/
+
 typedef struct _OVS_FLOW                     OVS_FLOW;
 typedef struct _OVS_OFPACKET_INFO            OVS_OFPACKET_INFO;
 typedef struct _OF_PI_IPV4_TUNNEL            OF_PI_IPV4_TUNNEL;

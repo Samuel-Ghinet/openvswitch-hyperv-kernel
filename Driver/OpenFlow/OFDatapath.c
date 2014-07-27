@@ -83,7 +83,7 @@ static void _GetDatapathStats(OVS_DATAPATH* pDatapath, OVS_DATAPATH_STATS* pStat
     DATAPATH_UNLOCK(pDatapath, &lockStateData);
 }
 
-OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
+OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, _In_ const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT8 command)
 {
     OVS_ARGUMENT* pNameArg = NULL, *pStatsArg = NULL;
     char* datapathName = NULL;
@@ -93,7 +93,8 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 
     LOCK_STATE_EX lockState;
     ULONG i = 0;
 
-    OVS_CHECK(pMsg);
+    OVS_CHECK(pOutMsg);
+    OVS_CHECK(pInMsg);
 
     DATAPATH_LOCK_READ(pDatapath, &lockState);
 
@@ -105,16 +106,15 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
-    CHECK_E(CreateMsg(pMsg, pid, sequence, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_DATAPATH, 
-        cmd, dpIfIndex, 2));
+    CHECK_E(CreateReplyMsg(pInMsg, pOutMsg, sizeof(OVS_MESSAGE), command, 2));
 
     pNameArg = CreateArgumentStringA_Alloc(OVS_ARGTYPE_DATAPATH_NAME, datapathName);
     CHECK_B_E(pNameArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pNameArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pNameArg, &i);
 
     pStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_STATS, &dpStats);
     CHECK_B_E(pStatsArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pStatsArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pStatsArg, &i);
 
 Cleanup:
     KFree(datapathName);
@@ -129,7 +129,7 @@ Cleanup:
         DestroyArgument(pNameArg);
         DestroyArgument(pStatsArg);
 
-        FreeGroupWithArgs(pMsg->pArgGroup);
+        FreeGroupWithArgs(pOutMsg->pArgGroup);
     }
 
     return error;

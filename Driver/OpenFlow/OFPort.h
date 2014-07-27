@@ -118,9 +118,10 @@ typedef struct _OVS_OFPORT
     BOOLEAN                        isExternal;
 }OVS_OFPORT;
 
-#define PORT_LOCK_READ(pPort, pLockState) NdisAcquireRWLockRead(pPort->pRwLock, pLockState, 0)
-#define PORT_LOCK_WRITE(pPort, pLockState) NdisAcquireRWLockWrite(pPort->pRwLock, pLockState, 0)
-#define PORT_UNLOCK(pPort, pLockState) NdisReleaseRWLock(pPort->pRwLock, pLockState)
+#define PORT_LOCK_READ(pPort, pLockState) NdisAcquireRWLockRead(((OVS_FXARRAY_ITEM*)pPort)->pRwLock, pLockState, 0)
+#define PORT_LOCK_WRITE(pPort, pLockState) NdisAcquireRWLockWrite(((OVS_FXARRAY_ITEM*)pPort)->pRwLock, pLockState, 0)
+#define PORT_UNLOCK(pPort, pLockState) NdisReleaseRWLock(((OVS_FXARRAY_ITEM*)pPort)->pRwLock, pLockState)
+#define PORT_UNLOCK_IF(pPort, pLockState, locked) { if ((locked) && (pPort)) PORT_UNLOCK((pPort), pLockState); }
 
 typedef struct _OVS_TUNNELING_PORT_OPTIONS
 {
