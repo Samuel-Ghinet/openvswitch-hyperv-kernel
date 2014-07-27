@@ -215,7 +215,7 @@ static BOOLEAN _PortFriendlyNameIs(int i, const char* portName, _In_ const OVS_P
     return (0 == strcmp(portName, asciiPortName));
 }
 
-//Unsafe = does not lock PersPort
+//Unsafe = does not lock ofPort
 static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, OVS_OFPORT* pPort)
 {
     LOCK_STATE_EX lockState = { 0 };
@@ -223,8 +223,8 @@ static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, 
 
     OVS_CHECK(pPort);
 
-    //care must be taken: we lock here pForwardInfo for read, while having locked pers ports for write.
-    //we must not lock in any other part pForwardInfo before or after pers ports, or we will get into a deadlock.
+    //care must be taken: we lock here pForwardInfo for read, while having locked of ports for write.
+    //we must not lock in any other part pForwardInfo before or after of ports, or we will get into a deadlock.
     FWDINFO_LOCK_READ(pForwardInfo, &lockState);
 
     if (pPort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS)

@@ -192,7 +192,7 @@ VOID Nic_Disconnect(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_NIC
         pNicEntry->connected = FALSE;
         --(pForwardInfo->countNics);
 
-        //we no longer need to 'unset' the pers port: it will try (eventually) to send to this port id, but it will not find nic, so it will fail.
+        //we no longer need to 'unset' the of port: it will try (eventually) to send to this port id, but it will not find nic, so it will fail.
     }
 
     FWDINFO_UNLOCK(pForwardInfo, &lockState);
