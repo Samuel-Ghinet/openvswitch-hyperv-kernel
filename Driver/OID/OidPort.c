@@ -46,7 +46,7 @@ NDIS_STATUS Port_Create(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH
             ++(pForwardInfo->countPorts);
 
             OVS_CHECK(pPortEntry);
-            //Sctx_Port_SetPersistentPort_Unsafe(pPortEntry);
+            //Sctx_Port_SetOFPort_Unsafe(pPortEntry);
             pPortEntry = OVS_REFCOUNT_REFERENCE(pPortEntry);
             //nothing could have been able to mark for deletion the pPortEntry right now -- or, could it?
             OVS_CHECK(pPortEntry);
@@ -64,7 +64,7 @@ NDIS_STATUS Port_Create(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH
 
         if (ovsPortName)
         {
-            ovsPortNumber = Sctx_Port_SetPersistentPort(ovsPortName, portId);
+            ovsPortNumber = Sctx_Port_SetOFPort(ovsPortName, portId);
         }
 
         OVS_CHECK(pPortEntry);
@@ -124,7 +124,7 @@ VOID Port_Update(const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_
 
         if (ovsPortName)
         {
-            ovsPortNumber = Sctx_Port_SetPersistentPort(ovsPortName, portId);
+            ovsPortNumber = Sctx_Port_SetOFPort(ovsPortName, portId);
         }
 
         FWDINFO_LOCK_WRITE(pForwardInfo, &lockState);

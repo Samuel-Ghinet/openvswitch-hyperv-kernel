@@ -114,7 +114,7 @@ VOID Nic_Connect(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_NIC_PA
 
     if (portId != NDIS_SWITCH_DEFAULT_PORT_ID)
     {
-        ovsPortNumber = Sctx_Nic_SetPersistentPort(pForwardInfo, portId);
+        ovsPortNumber = Sctx_Nic_SetOFPort(pForwardInfo, portId);
     }
 
     FWDINFO_LOCK_WRITE(pForwardInfo, &lockState);
