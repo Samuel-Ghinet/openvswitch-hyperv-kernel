@@ -139,7 +139,8 @@ __inline NDIS_STATUS NblFailReasonToNdisStatus(OVS_NBL_FAIL_REASON reason)
 BOOLEAN GetDestinationInfo(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, _In_reads_bytes_(6) const BYTE* pDestMac, _In_ NDIS_SWITCH_PORT_ID sourcePort,
     _Out_ OVS_NIC_INFO* pCurDestination, _Inout_ OVS_NBL_FAIL_REASON* pFailReason);
 
-BOOLEAN SetOneDestination(_In_ const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* pNbl, _Out_ OVS_NBL_FAIL_REASON* pFailReason, _In_ const OVS_NIC_INFO* pCurDestination);
+BOOLEAN SetOneDestination(_In_ const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* pNbl, _Out_ OVS_NBL_FAIL_REASON* pFailReason, NDIS_SWITCH_PORT_ID portId,
+    NDIS_SWITCH_NIC_INDEX nicIndex);
 
 __inline BOOLEAN DestinationEqual(_In_ const OVS_NIC_INFO* pLhs, _In_ const OVS_NIC_INFO* pRhs)
 {
@@ -147,7 +148,7 @@ __inline BOOLEAN DestinationEqual(_In_ const OVS_NIC_INFO* pLhs, _In_ const OVS_
 }
 
 NDIS_SWITCH_FORWARDING_DESTINATION_ARRAY* FindMultipleDestinations(_In_ const OVS_SWITCH_INFO* pSwitchInfo, UINT32 availableDestinations,
-    _In_ const OVS_NIC_INFO* pSourceInfo, _Inout_ NET_BUFFER_LIST* pNbl, _Inout_ OVS_NBL_FAIL_REASON* pFailReason, _Inout_ ULONG* pMtu, _Inout_ UINT* pCountAdded);
+    _In_ const OVS_OFPORT* pSourcePort, _Inout_ NET_BUFFER_LIST* pNbl, _Inout_ OVS_NBL_FAIL_REASON* pFailReason, _Inout_ ULONG* pMtu, _Inout_ UINT* pCountAdded);
 
 BOOLEAN GetExternalDestinationInfo(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, _In_ NDIS_SWITCH_PORT_ID sourcePort,
     _Inout_ OVS_NIC_INFO* pCurDestination, _Inout_ OVS_NBL_FAIL_REASON* pFailReason);

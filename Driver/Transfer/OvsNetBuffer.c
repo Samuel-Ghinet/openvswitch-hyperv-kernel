@@ -273,8 +273,6 @@ OVS_NET_BUFFER* ONB_Duplicate(const OVS_NET_BUFFER* pOriginalOnb)
     pDuplicateOnb->pActions = pOriginalOnb->pActions;
     pDuplicateOnb->pOriginalPacketInfo = pOriginalOnb->pOriginalPacketInfo;
     pDuplicateOnb->pTunnelInfo = pOriginalOnb->pTunnelInfo;
-    //pSource can be shared: it is used as a ptr to a local variable
-    pDuplicateOnb->pSourceNic = pOriginalOnb->pSourceNic;
     pDuplicateOnb->pSourcePort = pOriginalOnb->pSourcePort;
 
     return pDuplicateOnb;
@@ -565,7 +563,7 @@ NET_BUFFER_LIST* ONB_CreateNblFromNb(_In_ NET_BUFFER* pNb, USHORT contextSize)
 }
 
 _Use_decl_annotations_
-BOOLEAN ONB_OriginateIcmpPacket_Ipv4_Type3Code4(OVS_NET_BUFFER* pOvsNb, ULONG mtu, OVS_NIC_INFO* pDestinationNic)
+BOOLEAN ONB_OriginateIcmpPacket_Ipv4_Type3Code4(OVS_NET_BUFFER* pOvsNb, ULONG mtu, OVS_OFPORT* pDestPort)
 {
     OVS_NET_BUFFER* pIcmpPacket = NULL;
     OVS_NBL_FAIL_REASON failReason = { 0 };
@@ -581,8 +579,6 @@ BOOLEAN ONB_OriginateIcmpPacket_Ipv4_Type3Code4(OVS_NET_BUFFER* pOvsNb, ULONG mt
     ULONG icmpHeaderSize = 0;
 
     ULONG bufSize = sizeof(OVS_ETHERNET_HEADER) + sizeof(OVS_IPV4_HEADER) + OVS_ICMP_MESSAGE_DEST_UNREACH_SIZE_BARE + 8;
-
-    OVS_CHECK(pDestinationNic);
 
     originalBuffer = ONB_GetData(pOvsNb);
     pOriginalEthHeader = GetEthernetHeader(originalBuffer, &ethSize);
@@ -654,7 +650,7 @@ BOOLEAN ONB_OriginateIcmpPacket_Ipv4_Type3Code4(OVS_NET_BUFFER* pOvsNb, ULONG mt
     pIcmpHeader->header.checksum = RtlUshortByteSwap(pIcmpHeader->header.checksum);
 
     //6. set destination
-    mustTransfer = SetOneDestination(pOvsNb->pSwitchInfo, pIcmpPacket->pNbl, &failReason, pDestinationNic);
+    mustTransfer = SetOneDestination(pOvsNb->pSwitchInfo, pIcmpPacket->pNbl, &failReason, pDestPort->portId, pDestPort->nicIndex);
     if (!mustTransfer)
     {
         DEBUGP(LOG_ERROR, "set one destination failed. returning FALSE. Fail Reason:%s\n", FailReasonMessageA(failReason));
@@ -676,7 +672,7 @@ BOOLEAN ONB_OriginateIcmpPacket_Ipv4_Type3Code4(OVS_NET_BUFFER* pOvsNb, ULONG mt
 }
 
 _Use_decl_annotations_
-BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(OVS_NET_BUFFER* pOvsNb, ULONG mtu, _In_ const OVS_NIC_INFO* pDestinationNic)
+BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(OVS_NET_BUFFER* pOvsNb, ULONG mtu, _In_ const OVS_OFPORT* pDestPort)
 {
     OVS_NET_BUFFER* pIcmp6Packet = NULL;
     OVS_NBL_FAIL_REASON failReason = { 0 };
@@ -695,7 +691,7 @@ BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(OVS_NET_BUFFER* pOvsNb, ULONG mtu, _
     //payload to attached ipv6 frame
     ULONG payloadSize = 0;
 
-    OVS_CHECK(pDestinationNic);
+    OVS_CHECK(pDestPort);
 
     originalBuffer = ONB_GetData(pOvsNb);
     pOriginalEthHeader = GetEthernetHeader(originalBuffer, &ethSize);
@@ -758,10 +754,8 @@ BOOLEAN ONB_OriginateIcmp6Packet_Type2Code0(OVS_NET_BUFFER* pOvsNb, ULONG mtu, _
     pIcmp6Header->checksum = ComputeTransportChecksum(pIcmp6Header, pNewIpv6Header, OVS_ETHERTYPE_IPV6);
     pIcmp6Header->checksum = RtlUshortByteSwap(pIcmp6Header->checksum);
 
-    OVS_CHECK(pDestinationNic);
-
     //6. set destination
-    mustTransfer = SetOneDestination(pSwitchInfo, pIcmp6Packet->pNbl, &failReason, pDestinationNic);
+    mustTransfer = SetOneDestination(pSwitchInfo, pIcmp6Packet->pNbl, &failReason, pDestPort->portId, pDestPort->nicIndex);
     if (!mustTransfer)
     {
         DEBUGP(LOG_ERROR, "set one destination failed. returning FALSE. Fail Reason:%s\n", FailReasonMessageA(failReason));
@@ -1117,7 +1111,7 @@ BOOLEAN ONB_OriginateArpRequest(const BYTE targetIp[4])
     RtlCopyMemory(pArpHeader->targetProtocolAddress, targetIp, OVS_IPV4_ADDRESS_LENGTH);
 
     //6. set destination
-    mustTransfer = SetOneDestination(pSwitchInfo, pArpPacket->pNbl, &failReason, /*in*/ &externalNicAndPort);
+    mustTransfer = SetOneDestination(pSwitchInfo, pArpPacket->pNbl, &failReason, /*in*/ externalNicAndPort.portId, externalNicAndPort.nicIndex);
     if (!mustTransfer)
     {
         DEBUGP(LOG_ERROR, "set one destination failed. returning FALSE. Fail Reason:%s\n", FailReasonMessageA(failReason));
