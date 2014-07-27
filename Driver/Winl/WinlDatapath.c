@@ -16,7 +16,6 @@ limitations under the License.
 
 #include "WinlDatapath.h"
 #include "OFDatapath.h"
-#include "OFPort.h"
 #include "List.h"
 #include "Message.h"
 #include "ArgumentType.h"

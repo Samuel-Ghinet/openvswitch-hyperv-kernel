@@ -16,7 +16,6 @@ limitations under the License.
 
 #include "WinlOFPort.h"
 #include "OvsCore.h"
-#include "OFPort.h"
 #include "OFDatapath.h"
 #include "List.h"
 #include "Argument.h"
@@ -30,6 +29,21 @@ limitations under the License.
 #include "Sctx_Nic.h"
 #include "PersistentPort.h"
 #include "Error.h"
+
+typedef struct _OVS_WINL_PORT
+{
+    UINT32            number;
+    OVS_OFPORT_TYPE   type;
+    const char*       name;
+    //Used for userpace to kernel communication
+    UINT32            upcallId;
+
+    OVS_OFPORT_STATS  stats;
+
+    //group type: OVS_ARGTYPE_OFPORT_GROUP
+    //only available option is  OVS_ARGTYPE_PORT_OPTION_DST_PORT
+    OVS_ARGUMENT_GROUP* pOptions;
+}OVS_WINL_PORT, *POVS_WINL_PORT;
 
 typedef struct _PORT_FETCH_CTXT
 {
@@ -125,6 +139,144 @@ Cleanup:
 }
 /************************/
 
+static BOOLEAN _CreateMsgFromOFPort(OVS_WINL_PORT* pPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
+{
+    OVS_ARGUMENT* pArgPortName = NULL, *pArgPortType = NULL, *pArgPortNumber = NULL;
+    OVS_ARGUMENT* pArgUpcallPid = NULL, *pArgPortSats = NULL, *pArgPortOpts = NULL;
+    BOOLEAN ok = TRUE;
+    UINT16 argsCount = 5;
+    UINT16 argsSize = 0;
+
+    OVS_CHECK(pMsg);
+
+    RtlZeroMemory(pMsg, sizeof(OVS_MESSAGE));
+
+    pMsg->length = sizeof(OVS_MESSAGE);
+    pMsg->type = OVS_MESSAGE_TARGET_PORT;
+    pMsg->flags = 0;
+    pMsg->sequence = sequence;
+    pMsg->pid = pid;
+
+    pMsg->command = cmd;
+    pMsg->version = 1;
+    pMsg->reserved = 0;
+
+    pMsg->dpIfIndex = dpIfIndex;
+
+    //arg 1: port number
+    pArgPortNumber = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_NUMBER, &pPort->number);
+    if (!pArgPortNumber)
+    {
+        ok = FALSE;
+        goto Cleanup;
+    }
+
+    argsSize += pArgPortNumber->length;
+
+    //arg 2: port type
+    pArgPortType = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_TYPE, &pPort->type);
+    if (!pArgPortType)
+    {
+        ok = FALSE;
+        goto Cleanup;
+    }
+
+    argsSize += pArgPortType->length;
+
+    //arg 3: port name
+    pArgPortName = CreateArgumentStringA_Alloc(OVS_ARGTYPE_OFPORT_NAME, pPort->name);
+    if (!pArgPortName)
+    {
+        ok = FALSE;
+        goto Cleanup;
+    }
+
+    argsSize += pArgPortName->length;
+
+    //arg 4: port upcall pid
+    pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &pPort->upcallId);
+    if (!pArgUpcallPid)
+    {
+        ok = FALSE;
+        goto Cleanup;
+    }
+
+    argsSize += pArgUpcallPid->length;
+    //arg 5: port stats
+    pArgPortSats = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_STATS, &pPort->stats);
+    if (!pArgPortSats)
+    {
+        ok = FALSE;
+        goto Cleanup;
+    }
+
+    argsSize += pArgPortSats->length;
+
+    if (pPort->pOptions)
+    {
+        pArgPortOpts = CreateArgumentFromGroup(OVS_ARGTYPE_OFPORT_OPTIONS_GROUP, pPort->pOptions);
+        if (!pArgPortOpts)
+        {
+            pArgPortOpts = NULL;
+            return FALSE;
+        }
+
+        argsSize += pArgPortOpts->length;
+
+        if (pArgPortOpts)
+        {
+            ++argsCount;
+        }
+    }
+
+    pMsg->pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
+    if (!pMsg->pArgGroup)
+    {
+        goto Cleanup;
+    }
+
+    AllocateArgumentsToGroup(argsCount, pMsg->pArgGroup);
+    pMsg->pArgGroup->groupSize += argsSize;
+
+    pMsg->pArgGroup->args[0] = *pArgPortNumber;
+    pMsg->pArgGroup->args[1] = *pArgPortType;
+    pMsg->pArgGroup->args[2] = *pArgPortName;
+    pMsg->pArgGroup->args[3] = *pArgUpcallPid;
+    pMsg->pArgGroup->args[4] = *pArgPortSats;
+
+    if (argsCount == 6)
+    {
+        OVS_CHECK(pArgPortOpts);
+        pMsg->pArgGroup->args[5] = *pArgPortOpts;
+    }
+
+Cleanup:
+    if (ok)
+    {
+        KFree(pArgPortNumber);
+        KFree(pArgPortType);
+        KFree(pArgPortName);
+        KFree(pArgUpcallPid);
+        KFree(pArgPortSats);
+        KFree(pArgPortOpts);
+
+        return TRUE;
+    }
+    else
+    {
+        DestroyArgument(pArgPortNumber);
+        DestroyArgument(pArgPortType);
+        DestroyArgument(pArgPortName);
+        DestroyArgument(pArgUpcallPid);
+        DestroyArgument(pArgPortSats);
+        DestroyArgument(pArgPortOpts);
+
+        FreeGroupWithArgs(pMsg->pArgGroup);
+
+        return FALSE;
+    }
+}
+
 static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_PERSISTENT_PORT* pPort, PORT_FETCH_CTXT* pContext)
 {
     OVS_WINL_PORT port;
@@ -139,7 +291,7 @@ static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_PERSISTENT_PORT* pPor
     port.stats = pPort->stats;
     port.upcallId = pPort->upcallPortId;
 
-    ok = CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid);
+    ok = _CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid);
     if (!ok)
     {
         goto Cleanup;

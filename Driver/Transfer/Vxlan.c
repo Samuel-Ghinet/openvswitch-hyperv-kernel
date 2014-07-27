@@ -22,6 +22,7 @@ limitations under the License.
 #include "Nbls.h"
 #include "OvsNetBuffer.h"
 #include "Argument.h"
+#include "PersistentPort.h"
 
 ULONG Vxlan_BytesNeeded(UINT16 tunnelFlags)
 {

@@ -19,7 +19,6 @@ limitations under the License.
 #include "precomp.h"
 #include "Ethernet.h"
 #include "OFFlow.h"
-#include "OFPort.h"
 
 typedef struct _OVS_FLOW_TABLE OVS_FLOW_TABLE;
 

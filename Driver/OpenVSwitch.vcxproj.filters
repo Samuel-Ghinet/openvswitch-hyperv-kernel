@@ -152,9 +152,6 @@
     <ClCompile Include="OID\OIDRequest.c">
       <Filter>OID</Filter>
     </ClCompile>
-    <ClCompile Include="OpenFlow\OFPort.c">
-      <Filter>OpenFlow</Filter>
-    </ClCompile>
     <ClCompile Include="OpenFlow\PersistentPort.c">
       <Filter>OpenFlow</Filter>
     </ClCompile>
@@ -342,9 +339,6 @@
       <Filter>OpenFlow</Filter>
     </ClInclude>
     <ClInclude Include="OpenFlow\OFDatapath.h">
-      <Filter>OpenFlow</Filter>
-    </ClInclude>
-    <ClInclude Include="OpenFlow\OFPort.h">
       <Filter>OpenFlow</Filter>
     </ClInclude>
     <ClInclude Include="OpenFlow\PersistentPort.h">
