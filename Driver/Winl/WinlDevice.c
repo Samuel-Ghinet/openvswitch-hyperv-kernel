@@ -668,7 +668,7 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         case OVS_MESSAGE_COMMAND_PACKET_UPCALL_EXECUTE:
             if (pMsg->pArgGroup)
             {
-                WinlPacket_Execute(pMsg->pArgGroup, NULL);
+                WinlPacket_Execute(pSwitchInfo, pMsg->pArgGroup, NULL);
             }
             else
             {

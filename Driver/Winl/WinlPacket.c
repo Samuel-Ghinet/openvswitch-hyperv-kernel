@@ -48,7 +48,7 @@ static LONG _NextUpcallSequence()
     return result;
 }
 
-VOID WinlPacket_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
+VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
@@ -62,7 +62,6 @@ VOID WinlPacket_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* p
     OVS_ARGUMENT* pArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pActionsArgs = NULL;
     OVS_ACTIONS* pTargetActions = NULL;
-    OVS_SWITCH_INFO* pSwitchInfo = NULL;
 
     UNREFERENCED_PARAMETER(pFileObject);
 
@@ -158,12 +157,6 @@ VOID WinlPacket_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* p
     pOvsNb->sendToPortNormal = FALSE;
     pOvsNb->pSourceNic = &sourcePort;
 
-    pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
-    if (!pSwitchInfo)
-    {
-        goto Cleanup;
-    }
-
     pOvsNb->pSwitchInfo = pSwitchInfo;
     pOvsNb->sendFlags = 0;
 
@@ -210,14 +203,7 @@ VOID WinlPacket_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* p
 
     pOvsNb->pTunnelInfo = NULL;
 
-    if (pOvsNb->pSwitchInfo)
-    {
-        ok = ExecuteActions(pOvsNb, OutputPacketToPort);
-    }
-    else
-    {
-        ok = FALSE;
-    }
+    ok = ExecuteActions(pOvsNb, OutputPacketToPort);
 
 Cleanup:
     if (pFlow)
@@ -236,15 +222,10 @@ Cleanup:
     }
     else
     {
-        if (pSwitchInfo)
-        {
-            ONB_Destroy(pSwitchInfo, &pOvsNb);
-        }
+        ONB_Destroy(pSwitchInfo, &pOvsNb);
 
         OVS_REFCOUNT_DEREF_AND_DESTROY(pTargetActions);
     }
-
-    OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
 }
 
 static OVS_ERROR _QueueUserspacePacket(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
