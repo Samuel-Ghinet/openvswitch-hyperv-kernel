@@ -800,7 +800,7 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
         upcallInfo.portId = pSourcePort ? pSourcePort->upcallPortId : 0;
 
         //sendpacket to userspace only if the datapath has been 'created' (i.e. activated) from userspace
-        //and we have a persistent port associated with the source NDIS_SWITCH_PORT_ID
+        //and we have an of port associated with the source NDIS_SWITCH_PORT_ID
         if (pDatapath->name && !pDatapath->deleted && pSourcePort)
         {
             QueuePacketToUserspace(pOvsNb->pNbl->FirstNetBuffer, &upcallInfo);
