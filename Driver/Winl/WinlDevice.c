@@ -594,32 +594,41 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             goto Cleanup;
         }
 
+        pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+        if (!pDatapath)
+        {
+            error = OVS_ERROR_NODEV;
+            goto Cleanup;
+        }
+
         switch (pMsg->command)
         {
         case OVS_MESSAGE_COMMAND_NEW:
-            error = WinlOFPort_New(pMsg, pFileObject);
+            error = WinlOFPort_New(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_GET:
-            error = WinlOFPort_Get(pMsg, pFileObject);
+            error = WinlOFPort_Get(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_SET:
-            error = WinlOFPort_Set(pMsg, pFileObject);
+            error = WinlOFPort_Set(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DELETE:
-            error = WinlOFPort_Delete(pMsg, pFileObject);
+            error = WinlOFPort_Delete(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlOFPort_Dump(pMsg, pFileObject);
+            error = WinlOFPort_Dump(pSwitchInfo, pDatapath, pMsg, pFileObject);
             break;
 
         default:
             error = OVS_ERROR_INVAL;
             break;
         }
+
+        OVS_REFCOUNT_DEREFERENCE(pDatapath);
         break;
 
     case OVS_MESSAGE_TARGET_FLOW:

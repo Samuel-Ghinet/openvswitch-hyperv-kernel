@@ -45,16 +45,6 @@ typedef struct _OVS_WINL_PORT
     OVS_ARGUMENT_GROUP* pOptions;
 }OVS_WINL_PORT, *POVS_WINL_PORT;
 
-typedef struct _PORT_FETCH_CTXT
-{
-    int i;
-    OVS_MESSAGE* pReplyMsg;
-    UINT sequence;
-    UINT dpIfIndex;
-    UINT pid;
-    BOOLEAN multipleUpcallPids;
-}PORT_FETCH_CTXT;
-
 /************************/
 
 static __inline VOID _OFPort_AddStats(_Inout_ OVS_OFPORT_STATS* pDest, _In_ const  OVS_OFPORT_STATS* pSrc)
@@ -113,18 +103,12 @@ static OVS_ARGUMENT_GROUP* _OFPort_OptionsToGroup(_In_ const OVS_TUNNELING_PORT_
     OVS_ARGUMENT* pArg = NULL;
     UINT16 i = 0;
 
-    if (!pOptions)
-    {
-        return NULL;
-    }
+    OVS_CHECK_RET(pOptions, NULL);
 
     countArgs = (UINT16)_CountBits(pOptions->optionsFlags);
 
     pOptionsGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!pOptionsGroup)
-    {
-        return NULL;
-    }
+    OVS_CHECK_RET(pOptionsGroup, NULL);
 
     AllocateArgumentsToGroup(countArgs, pOptionsGroup);
 
@@ -133,7 +117,6 @@ static OVS_ARGUMENT_GROUP* _OFPort_OptionsToGroup(_In_ const OVS_TUNNELING_PORT_
         pArg = pOptionsGroup->args + i;
 
         ok = SetArgument_Alloc(pArg, OVS_ARGTYPE_OFPORT_OPTION_DESTINATION_PORT, &pOptions->udpDestPort);
-
         if (!ok)
         {
             goto Cleanup;
@@ -151,99 +134,76 @@ Cleanup:
 
     return pOptionsGroup;
 }
-/************************/
 
-static BOOLEAN _CreateMsgFromWinlPort(OVS_WINL_PORT* pPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid, BOOLEAN multipleUpcallPids)
+static OVS_ERROR _CreateMsgFromOFPort(OVS_OFPORT* pOFPort, const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT8 command, BOOLEAN multipleUpcallPids)
 {
     OVS_ARGUMENT* pArgPortName = NULL, *pArgPortType = NULL, *pArgPortNumber = NULL;
     OVS_ARGUMENT* pArgUpcallPid = NULL, *pArgPortSats = NULL, *pArgPortOpts = NULL;
-    BOOLEAN ok = TRUE;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
     UINT16 argsCount = 5;
-    UINT16 argsSize = 0;
+    ULONG i = 0;
+    OVS_WINL_PORT winlPort = { 0 };
 
-    OVS_CHECK(pMsg);
+    OVS_CHECK(pOutMsg);
+    OVS_CHECK(pInMsg);
 
-    RtlZeroMemory(pMsg, sizeof(OVS_MESSAGE));
+    RtlZeroMemory(&winlPort, sizeof(OVS_WINL_PORT));
+    winlPort.number = pOFPort->ofPortNumber;
+    winlPort.pOptions = _OFPort_OptionsToGroup(pOFPort->pOptions);
+    winlPort.type = pOFPort->ofPortType;
+    winlPort.name = pOFPort->ofPortName;
+    winlPort.stats = pOFPort->stats;
+    winlPort.upcallPortIds = pOFPort->upcallPortIds;
 
-    pMsg->length = sizeof(OVS_MESSAGE);
-    pMsg->type = OVS_MESSAGE_TARGET_PORT;
-    pMsg->flags = 0;
-    pMsg->sequence = sequence;
-    pMsg->pid = pid;
+    if (winlPort.pOptions)
+    {
+        ++argsCount;
+    }
 
-    pMsg->command = cmd;
-    pMsg->version = 1;
-    pMsg->reserved = 0;
+    RtlZeroMemory(pOutMsg, sizeof(OVS_MESSAGE));
 
-    pMsg->dpIfIndex = dpIfIndex;
+    CHECK_E(CreateReplyMsg(pInMsg, pOutMsg, sizeof(OVS_MESSAGE), command, argsCount));
+    OVS_CHECK(pOutMsg->type == OVS_MESSAGE_TARGET_PORT);
 
     //arg 1: port number
-    pArgPortNumber = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_NUMBER, &pPort->number);
-    if (!pArgPortNumber)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsSize += pArgPortNumber->length;
+    pArgPortNumber = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_NUMBER, &winlPort.number);
+    CHECK_B_E(pArgPortNumber, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pArgPortNumber, &i);
 
     //arg 2: port type
-    pArgPortType = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_TYPE, &pPort->type);
-    if (!pArgPortType)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsSize += pArgPortType->length;
+    pArgPortType = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_TYPE, &winlPort.type);
+    CHECK_B_E(pArgPortType, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pArgPortType, &i);
 
     //arg 3: port name
-    pArgPortName = CreateArgumentStringA_Alloc(OVS_ARGTYPE_OFPORT_NAME, pPort->name);
-    if (!pArgPortName)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsSize += pArgPortName->length;
+    pArgPortName = CreateArgumentStringA_Alloc(OVS_ARGTYPE_OFPORT_NAME, winlPort.name);
+    CHECK_B_E(pArgPortName, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pArgPortName, &i);
 
     //arg 4: port upcall pid
     if (multipleUpcallPids)
     {
-        pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &pPort->upcallPortIds);
+        pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &(winlPort.upcallPortIds));
     }
     else
     {
-        pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &pPort->upcallPortIds.ids[0]);
+        pArgUpcallPid = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID, &(winlPort.upcallPortIds.ids[0]));
     }
 
-    if (!pArgUpcallPid)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
+    CHECK_B_E(pArgUpcallPid, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pArgUpcallPid, &i);
 
-    argsSize += pArgUpcallPid->length;
     //arg 5: port stats
-    pArgPortSats = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_STATS, &pPort->stats);
-    if (!pArgPortSats)
+    pArgPortSats = CreateArgument_Alloc(OVS_ARGTYPE_OFPORT_STATS, &winlPort.stats);
+    CHECK_B_E(pArgPortSats, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pArgPortSats, &i);
+
+    if (winlPort.pOptions)
     {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsSize += pArgPortSats->length;
-
-    if (pPort->pOptions)
-    {
-        pArgPortOpts = CreateArgumentFromGroup(OVS_ARGTYPE_OFPORT_OPTIONS_GROUP, pPort->pOptions);
-        if (!pArgPortOpts)
-        {
-            pArgPortOpts = NULL;
-            return FALSE;
-        }
-
-        argsSize += pArgPortOpts->length;
+        //arg 6
+        pArgPortOpts = CreateArgumentFromGroup(OVS_ARGTYPE_OFPORT_OPTIONS_GROUP, winlPort.pOptions);
+        CHECK_B_E(pArgPortOpts, OVS_ERROR_NOMEM);
+        AddArgToArgGroup(pOutMsg->pArgGroup, pArgPortOpts, &i);
 
         if (pArgPortOpts)
         {
@@ -251,240 +211,200 @@ static BOOLEAN _CreateMsgFromWinlPort(OVS_WINL_PORT* pPort, UINT32 sequence, UIN
         }
     }
 
-    pMsg->pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!pMsg->pArgGroup)
-    {
-        goto Cleanup;
-    }
-
-    AllocateArgumentsToGroup(argsCount, pMsg->pArgGroup);
-    pMsg->pArgGroup->groupSize += argsSize;
-
-    pMsg->pArgGroup->args[0] = *pArgPortNumber;
-    pMsg->pArgGroup->args[1] = *pArgPortType;
-    pMsg->pArgGroup->args[2] = *pArgPortName;
-    pMsg->pArgGroup->args[3] = *pArgUpcallPid;
-    pMsg->pArgGroup->args[4] = *pArgPortSats;
-
-    if (argsCount == 6)
-    {
-        OVS_CHECK(pArgPortOpts);
-        pMsg->pArgGroup->args[5] = *pArgPortOpts;
-    }
+    pOutMsg->pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
+    CHECK_B_E(pOutMsg->pArgGroup, OVS_ERROR_NOMEM);
 
 Cleanup:
-    if (ok)
+    if (error == OVS_ERROR_NOERROR)
     {
-        KFree(pArgPortNumber);
-        KFree(pArgPortType);
-        KFree(pArgPortName);
-        KFree(pArgUpcallPid);
-        KFree(pArgPortSats);
-        KFree(pArgPortOpts);
-
-        return TRUE;
+        KFree(pArgPortNumber); KFree(pArgPortName);
+        KFree(pArgPortType); KFree(pArgPortSats);
+        KFree(pArgUpcallPid); KFree(pArgPortOpts);
     }
     else
     {
-        DestroyArgument(pArgPortNumber);
-        DestroyArgument(pArgPortType);
-        DestroyArgument(pArgPortName);
-        DestroyArgument(pArgUpcallPid);
-        DestroyArgument(pArgPortSats);
-        DestroyArgument(pArgPortOpts);
+        DestroyArgument(pArgPortNumber); DestroyArgument(pArgPortName);
+        DestroyArgument(pArgPortType); DestroyArgument(pArgUpcallPid);
+        DestroyArgument(pArgPortSats); DestroyArgument(pArgPortOpts);
 
-        FreeGroupWithArgs(pMsg->pArgGroup);
-
-        return FALSE;
-    }
-}
-
-static BOOLEAN _CreateMsgFromOFPort(_In_ const OVS_OFPORT* pPort, PORT_FETCH_CTXT* pContext)
-{
-    OVS_WINL_PORT port;
-    BOOLEAN ok = TRUE;
-    OVS_MESSAGE replyMsg = { 0 };
-
-    RtlZeroMemory(&port, sizeof(OVS_WINL_PORT));
-    port.number = pPort->ofPortNumber;
-    port.pOptions = _OFPort_OptionsToGroup(pPort->pOptions);
-    port.type = pPort->ofPortType;
-    port.name = pPort->ofPortName;
-    port.stats = pPort->stats;
-    port.upcallPortIds = pPort->upcallPortIds;
-
-    ok = _CreateMsgFromWinlPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid, pContext->multipleUpcallPids);
-    if (!ok)
-    {
-        goto Cleanup;
+        FreeGroupWithArgs(pOutMsg->pArgGroup);
     }
 
-    OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
-    replyMsg.flags |= OVS_MESSAGE_FLAG_MULTIPART;
-
-    *(pContext->pReplyMsg + pContext->i) = replyMsg;
-Cleanup:
-    //NOTE: we must NOT destroy port.pOptions: it is destroy at replyMsg.pArgGroup destruction
-
-    return ok;
+    return error;
 }
 
-_Use_decl_annotations_
-OVS_ERROR WinlOFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR _CreateOFPortFromArgGroup_Ref(OVS_ARGUMENT_GROUP* pArgGroup, OVS_OFPORT** ppOFPort)
 {
-    OVS_DATAPATH* pDatapath = NULL;
-    UINT32 portNumber = OVS_INVALID_PORT_NUMBER;
-    const char* ofPortName = NULL;
-    UINT32 portType = 0, upcallPortId = 0;
-    OVS_ARGUMENT* pArg = NULL;
-    OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
     OVS_OFPORT* pOFPort = NULL;
-    OVS_MESSAGE replyMsg = { 0 };
-    PORT_FETCH_CTXT context = { 0 };
+    OVS_ARGUMENT* pNameArg = NULL, *pNumberArg = NULL, *pTypeArg = NULL;
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    LOCK_STATE_EX lockState = { 0 };
-    BOOLEAN locked = FALSE;
-    OVS_UPCALL_PORT_IDS upcallPids = { 0 };
-    BOOLEAN multiplePidsPerOFPort = FALSE;
+    const char* ofPortName = NULL;
+    UINT32 portType = 0;
 
     //NAME: required
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
-    if (!pArg)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
-    ofPortName = pArg->data;
+    pNameArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
+    CHECK_B_E(pNameArg, OVS_ERROR_INVAL);
 
     //TYPE: required
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_TYPE);
-    if (!pArg)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    pTypeArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_TYPE);
+    CHECK_B_E(pTypeArg, OVS_ERROR_INVAL);
 
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        error = OVS_ERROR_NODEV;
-        goto Cleanup;
-    }
-
-    DATAPATH_LOCK_READ(pDatapath, &lockState);
-    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
-    DATAPATH_UNLOCK(pDatapath, &lockState);
-
-    portType = GET_ARG_DATA(pArg, UINT32);
-
-    //UPCALL PID(S): required
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
-    if (!pArg)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
-    if (multiplePidsPerOFPort)
-    {
-        UINT32 countPids = pArg->length / sizeof(UINT32);
-
-        upcallPids.count = countPids;
-        upcallPids.ids = KZAlloc(pArg->length);
-
-        RtlCopyMemory(upcallPids.ids, pArg->data, pArg->length);
-    }
-
-    else
-    {
-        upcallPortId = GET_ARG_DATA(pArg, UINT32);
-        upcallPids.count = 1;
-        upcallPids.ids = KZAlloc(sizeof(UINT));
-        upcallPids.ids[0] = upcallPortId;
-    }
+    ofPortName = pNameArg->data;
+    portType = GET_ARG_DATA(pTypeArg, UINT32);
 
     //NOTE: name is required; number is optional
-    //NUMBER: optional
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
-    if (pArg)
+        //NUMBER: optional
+    pNumberArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
+    if (pNumberArg)
     {
-        UINT16 validPortNumber = 0;
-        portNumber = GET_ARG_DATA(pArg, UINT32);
+        UINT16 portNumber = 0;
+        portNumber = (UINT16)GET_ARG_DATA(pNumberArg, UINT32);
 
-        if (portNumber >= OVS_MAX_PORTS)
-        {
-            error = OVS_ERROR_FBIG;
-            goto Cleanup;
-        }
-
-        validPortNumber = (UINT16)portNumber;
-
-        pOFPort = OFPort_Create_Ref(ofPortName, &validPortNumber, portType);
-        if (!pOFPort)
-        {
-            //TODO: perhaps we should give more specific error value
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
+        pOFPort = OFPort_Create_Ref(ofPortName, &portNumber, portType);
+        CHECK_B_E(pOFPort, OVS_ERROR_INVAL);
     }
     else
     {
         OVS_CHECK(ofPortName);
 
         pOFPort = OFPort_Create_Ref(ofPortName, /*number*/ NULL, portType);
-        if (!pOFPort)
-        {
-            //TODO: perhaps we should give more specific error value
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
+        CHECK_B_E(pOFPort, OVS_ERROR_INVAL);
     }
 
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_STATS);
-    if (pArg)
+Cleanup:
+    if (error == OVS_ERROR_NOERROR)
     {
-        OVS_OFPORT_STATS* pStats = pArg->data;
-
-        pOFPort->stats = *pStats;
+        *ppOFPort = pOFPort;
     }
 
-    context.sequence = pMsg->sequence;
-    context.dpIfIndex = pDatapath->switchIfIndex;
-    context.pReplyMsg = &replyMsg;
-    context.pid = pMsg->pid;
-    context.multipleUpcallPids = multiplePidsPerOFPort;
-    context.i = 0;
+    return error;
+}
 
-    PORT_LOCK_READ(pOFPort, &lockState);
-    locked = TRUE;
+OVS_ERROR _FindOFPortFromArgGroup_Ref(OVS_ARGUMENT_GROUP* pArgGroup, OVS_OFPORT** ppOFPort)
+{
+    OVS_OFPORT* pOFPort = NULL;
+    OVS_ARGUMENT* pNameArg = NULL, *pNumberArg = NULL;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    const char* ofPortName = NULL;
 
-    pOFPort->ofPortType = portType;
-    pOFPort->upcallPortIds = upcallPids;
+    //NAME: required
+    pNameArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
+    if (pNameArg)
+    {
+        ofPortName = pNameArg->data;
+        pOFPort = OFPort_FindByName_Ref(ofPortName);
+    }
+    else
+    {
+        pNumberArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
+        CHECK_B_E(pNameArg, OVS_ERROR_INVAL);
+
+        UINT16 portNumber = 0;
+        portNumber = (UINT16)GET_ARG_DATA(pNumberArg, UINT32);
+
+        pOFPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
+    }
+
+    CHECK_B_E(pOFPort, OVS_ERROR_NODEV);
+
+Cleanup:
+    if (error == OVS_ERROR_NOERROR)
+    {
+        *ppOFPort = pOFPort;
+    }
+
+    return error;
+}
+
+OVS_ERROR _OFPort_SetOptions(OVS_OFPORT* pOFPort, OVS_ARGUMENT_GROUP* pArgGroup)
+{
+    OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
 
     //OPTIONS: optional
-    pOptionsGroup = FindArgumentGroup(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_OPTIONS_GROUP);
+    pOptionsGroup = FindArgumentGroup(pArgGroup, OVS_ARGTYPE_OFPORT_OPTIONS_GROUP);
     if (pOptionsGroup)
     {
         if (!pOFPort->pOptions)
         {
             pOFPort->pOptions = KZAlloc(sizeof(OVS_TUNNELING_PORT_OPTIONS));
-            if (!pOFPort->pOptions)
-            {
-                error = OVS_ERROR_INVAL;
-                goto Cleanup;
-            }
+            CHECK_B_E(pOFPort->pOptions, OVS_ERROR_NOMEM);
         }
 
-        _OFPort_GroupToOptions(pOptionsGroup, pOFPort->pOptions);
+        CHECK_B_E(_OFPort_GroupToOptions(pOptionsGroup, pOFPort->pOptions), OVS_ERROR_INVAL);
     }
 
-    //create OVS_MESSAGE from pOFPort
-    if (!_CreateMsgFromOFPort(pOFPort, &context))
+Cleanup:
+    return error;
+}
+
+static OVS_ERROR _OFPort_GetUpcallPids(OVS_ARGUMENT_GROUP* pArgGroup, BOOLEAN multiplePidsPerOFPort, _Out_ OVS_UPCALL_PORT_IDS* pUpcallPids)
+{
+    OVS_ARGUMENT* pArg = NULL;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+
+    //UPCALL PID(S): required
+    pArg = FindArgument(pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
+    CHECK_B_E(pArg, OVS_ERROR_INVAL);
+
+    if (multiplePidsPerOFPort)
     {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
+        UINT32 countPids = pArg->length / sizeof(UINT32);
+
+        pUpcallPids->count = countPids;
+        pUpcallPids->ids = KZAlloc(pArg->length);
+
+        RtlCopyMemory(pUpcallPids->ids, pArg->data, pArg->length);
     }
+    else
+    {
+        pUpcallPids->count = 1;
+        pUpcallPids->ids = KZAlloc(sizeof(UINT));
+        pUpcallPids->ids[0] = GET_ARG_DATA(pArg, UINT32);
+    }
+
+Cleanup:
+    return error;
+}
+
+/*******************************************************************************************/
+
+//NOTE: We're Assuming the verification part has done its job (arg & msg verification), we can use the input data as valid
+
+_Use_decl_annotations_
+OVS_ERROR WinlOFPort_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+{   
+    UINT32 portType = 0, upcallPortId = 0;
+    OVS_ARGUMENT* pArg = NULL;
+    OVS_OFPORT* pOFPort = NULL;
+    OVS_MESSAGE replyMsg = { 0 };
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    LOCK_STATE_EX portLockState = { 0 }, dpLockState = { 0 };
+    BOOLEAN locked = FALSE;
+    BOOLEAN multiplePidsPerOFPort = FALSE;
+    OVS_UPCALL_PORT_IDS upcallPids = { 0 };
+
+    //UPCALL PID: required
+    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
+    CHECK_B_E(pArg, OVS_ERROR_INVAL);
+
+    upcallPortId = GET_ARG_DATA(pArg, UINT32);
+
+    CHECK_E(_CreateOFPortFromArgGroup_Ref(pMsg->pArgGroup, &pOFPort));
+
+    DATAPATH_LOCK_READ(pDatapath, &dpLockState);
+    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
+    DATAPATH_UNLOCK(pDatapath, &dpLockState);
+
+    PORT_LOCK_READ(pOFPort, &portLockState);
+    locked = TRUE;
+
+    pOFPort->ofPortType = portType;
+
+    CHECK_E(_OFPort_SetOptions(pOFPort, pMsg->pArgGroup));
+    CHECK_E(_OFPort_GetUpcallPids(pMsg->pArgGroup, multiplePidsPerOFPort, &upcallPids));
+
+    CHECK_E(_CreateMsgFromOFPort(pOFPort, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW, multiplePidsPerOFPort));
 
     //write reply message to buffer.
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
@@ -493,23 +413,17 @@ OVS_ERROR WinlOFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject
 Cleanup:
     if (pOFPort)
     {
-        if (locked)
-        {
-            PORT_UNLOCK(pOFPort, &lockState);
-        }
+        PORT_UNLOCK_IF(pOFPort, &portLockState, locked);
 
         if (error != OVS_ERROR_NOERROR)
         {
             //NOTE: must be referenced when called for delete
             OFPort_Delete(pOFPort);
+            pOFPort = NULL;
         }
-        else
-        {
-            OVS_REFCOUNT_DEREFERENCE(pOFPort);
-        }
+        
+        OVS_REFCOUNT_DEREFERENCE(pOFPort);
     }
-
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
@@ -517,179 +431,46 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlOFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Set(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_OFPORT* pOFPort = NULL;
-    OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
     UINT32 portType = OVS_OFPORT_TYPE_INVALID;
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
     OVS_ARGUMENT* pArg = NULL;
-    LOCK_STATE_EX lockState = { 0 };
-    const char* ofPortName = NULL;
-    UINT32 portNumber = (UINT)-1;
-    PORT_FETCH_CTXT context = { 0 };
-    OVS_DATAPATH* pDatapath = NULL;
+    LOCK_STATE_EX portLockState = { 0 }, dpLockState = { 0 };
     BOOLEAN locked = FALSE;
-    OVS_UPCALL_PORT_IDS upcallPids = { 0 };
-    UINT32 upcallPortId = 0;
     BOOLEAN multiplePidsPerOFPort = FALSE;
+    OVS_UPCALL_PORT_IDS upcallPids = { 0 };
 
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
-
-    DATAPATH_LOCK_READ(pDatapath, &lockState);
-    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
-    DATAPATH_UNLOCK(pDatapath, &lockState);
-
-    //required: NAME or NUMBER
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
-    if (pArg)
-    {
-        ofPortName = pArg->data;
-        pOFPort = OFPort_FindByName_Ref(ofPortName);
-    }
-    else
-    {
-        pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
-        if (pArg)
-        {
-            portNumber = GET_ARG_DATA(pArg, UINT32);
-
-            if (portNumber >= OVS_MAX_PORTS)
-            {
-                DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number: %u!\n", portNumber);
-                error = OVS_ERROR_FBIG;
-                goto Cleanup;
-            }
-
-            pOFPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
-        }
-        else
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-    }
-
-    if (!pOFPort)
-    {
-        error = OVS_ERROR_NODEV;
-        goto Cleanup;
-    }
-
-    //UPCALL PID(S): required
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID);
-    if (pArg)
-    {
-        if (multiplePidsPerOFPort)
-        {
-            UINT32 countPids = pArg->length / sizeof(UINT32);
-
-            upcallPids.count = countPids;
-            upcallPids.ids = KZAlloc(pArg->length);
-
-            RtlCopyMemory(upcallPids.ids, pArg->data, pArg->length);
-        }
-
-        else
-        {
-            if (!pArg->data)
-            {
-                OVS_CHECK(__UNEXPECTED__);
-                error = OVS_ERROR_INVAL;
-                goto Cleanup;
-            }
-
-            upcallPortId = GET_ARG_DATA(pArg, UINT32);
-            upcallPids.count = 1;
-            upcallPids.ids = KZAlloc(sizeof(UINT));
-            upcallPids.ids[0] = upcallPortId;
-        }
-    }
+    CHECK_E(_FindOFPortFromArgGroup_Ref(pMsg->pArgGroup, &pOFPort));
 
     //TYPE: if set, must be the same as original
     pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_TYPE);
     if (pArg)
     {
         portType = GET_ARG_DATA(pArg, UINT32);
-
-        if (portType != (UINT32)pOFPort->ofPortType)
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
+        CHECK_B_E(portType == (UINT32)pOFPort->ofPortType, OVS_ERROR_INVAL);
     }
 
-    PORT_LOCK_WRITE(pOFPort, &lockState);
+    DATAPATH_LOCK_READ(pDatapath, &dpLockState);
+    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
+    DATAPATH_UNLOCK(pDatapath, &dpLockState);
+
+    PORT_LOCK_WRITE(pOFPort, &portLockState);
     locked = TRUE;
 
-    //OPTIONS: optional
-    pOptionsGroup = FindArgumentGroup(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_OPTIONS_GROUP);
-    if (pOptionsGroup)
-    {
-        if (!pOFPort->pOptions)
-        {
-            pOFPort->pOptions = KZAlloc(sizeof(OVS_TUNNELING_PORT_OPTIONS));
-            if (!pOFPort->pOptions)
-            {
-                error = OVS_ERROR_INVAL;
-                goto Cleanup;
-            }
-        }
+    CHECK_E(_OFPort_SetOptions(pOFPort, pMsg->pArgGroup));
+    CHECK_E(_OFPort_GetUpcallPids(pMsg->pArgGroup, multiplePidsPerOFPort, &upcallPids));
 
-        if (!_OFPort_GroupToOptions(pOptionsGroup, pOFPort->pOptions))
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-    }
-
-    //UPCALL PORT ID: optional
-    if (upcallPids.count > 0)
-    {
-        pOFPort->upcallPortIds = upcallPids;
-    }
-
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_STATS);
-    if (pArg)
-    {
-        OVS_OFPORT_STATS* pStats = pArg->data;
-
-        _OFPort_AddStats(&(pOFPort->stats), pStats);
-    }
-
-    context.sequence = pMsg->sequence;
-    context.dpIfIndex = pDatapath->switchIfIndex;
-    context.pReplyMsg = &replyMsg;
-    context.pid = pMsg->pid;
-    context.multipleUpcallPids = multiplePidsPerOFPort;
-    context.i = 0;
-
-    if (!_CreateMsgFromOFPort(pOFPort, &context))
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    CHECK_E(_CreateMsgFromOFPort(pOFPort, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW, multiplePidsPerOFPort));
 
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
     error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_VPORT_MCGROUP);
 
 Cleanup:
-    if (pOFPort)
-    {
-        if (locked)
-        {
-            PORT_UNLOCK(pOFPort, &lockState);
-        }
-
-        OVS_REFCOUNT_DEREFERENCE(pOFPort);
-    }
-
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
+    PORT_UNLOCK_IF(pOFPort, &portLockState, locked);
+    OVS_REFCOUNT_DEREFERENCE(pOFPort);
 
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
@@ -697,82 +478,60 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlOFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Get(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
     OVS_OFPORT* pOFPort = NULL;
-    OVS_ARGUMENT* pArg = NULL;
-    const char* ofPortName = NULL;
-    UINT32 portNumber = (UINT32)-1;
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    LOCK_STATE_EX lockState = { 0 };
-    PORT_FETCH_CTXT context = { 0 };
-    OVS_DATAPATH* pDatapath = NULL;
+    LOCK_STATE_EX portLockState = { 0 }, dpLockState = { 0 };
     BOOLEAN locked = FALSE;
     BOOLEAN multiplePidsPerOFPort = FALSE;
 
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
+    CHECK_E(_FindOFPortFromArgGroup_Ref(pMsg->pArgGroup, &pOFPort));
 
-    DATAPATH_LOCK_READ(pDatapath, &lockState);
+    DATAPATH_LOCK_READ(pDatapath, &dpLockState);
     multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
-    DATAPATH_UNLOCK(pDatapath, &lockState);
+    DATAPATH_UNLOCK(pDatapath, &dpLockState);
 
-    //required: NAME or NUMBER
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
-    if (pArg)
-    {
-        ofPortName = pArg->data;
-        pOFPort = OFPort_FindByName_Ref(ofPortName);
-    }
-    else
-    {
-        pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
-        if (pArg)
-        {
-            portNumber = GET_ARG_DATA(pArg, UINT32);
-
-            if (portNumber >= OVS_MAX_PORTS)
-            {
-                DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number: %u!\n", portNumber);
-                error = OVS_ERROR_FBIG;
-                goto Cleanup;
-            }
-
-            pOFPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
-        }
-        else
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-    }
-
-    if (!pOFPort)
-    {
-        error = OVS_ERROR_NODEV;
-        goto Cleanup;
-    }
-
-    context.sequence = pMsg->sequence;
-    context.dpIfIndex = pDatapath->switchIfIndex;
-    context.pReplyMsg = &replyMsg;
-    context.pid = pMsg->pid;
-    context.multipleUpcallPids = multiplePidsPerOFPort;
-    context.i = 0;
-
-    PORT_LOCK_READ(pOFPort, &lockState);
+    PORT_LOCK_READ(pOFPort, &portLockState);
     locked = TRUE;
 
-    //create message
-    if (!_CreateMsgFromOFPort(pOFPort, &context))
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    CHECK_E(_CreateMsgFromOFPort(pOFPort, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW, multiplePidsPerOFPort));
+
+    //write message
+    OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
+    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_VPORT_MCGROUP);
+
+Cleanup:
+    PORT_UNLOCK_IF(pOFPort, &portLockState, locked);
+    OVS_REFCOUNT_DEREFERENCE(pOFPort);
+
+    DestroyArgumentGroup(replyMsg.pArgGroup);
+
+    return error;
+}
+
+_Use_decl_annotations_
+OVS_ERROR WinlOFPort_Delete(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+{
+    OVS_MESSAGE replyMsg = { 0 };
+    OVS_OFPORT* pOFPort = NULL;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    LOCK_STATE_EX portLockState = { 0 }, dpLockState = { 0 };
+    BOOLEAN locked = FALSE;
+    BOOLEAN multiplePidsPerOFPort = FALSE;
+
+    CHECK_E(_FindOFPortFromArgGroup_Ref(pMsg->pArgGroup, &pOFPort));
+    CHECK_B_E(pOFPort->ofPortNumber != OVS_LOCAL_PORT_NUMBER, OVS_ERROR_INVAL);
+
+    DATAPATH_LOCK_READ(pDatapath, &dpLockState);
+    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
+    DATAPATH_UNLOCK(pDatapath, &dpLockState);
+
+    PORT_LOCK_WRITE(pOFPort, &portLockState);
+    locked = TRUE;
+
+    CHECK_E(_CreateMsgFromOFPort(pOFPort, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_DELETE, multiplePidsPerOFPort));
 
     //write message
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
@@ -781,189 +540,56 @@ OVS_ERROR WinlOFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject
 Cleanup:
     if (pOFPort)
     {
-        if (locked)
-        {
-            PORT_UNLOCK(pOFPort, &lockState);
-        }
-
-        OVS_REFCOUNT_DEREFERENCE(pOFPort);
-    }
-
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
-    DestroyArgumentGroup(replyMsg.pArgGroup);
-
-    return error;
-}
-
-_Use_decl_annotations_
-OVS_ERROR WinlOFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
-{
-    OVS_MESSAGE replyMsg = { 0 };
-    OVS_ARGUMENT* pArg = NULL;
-    const char* ofPortName = NULL;
-    UINT32 portNumber = (UINT32)-1;
-    OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    OVS_OFPORT* pOFPort = NULL;
-    PORT_FETCH_CTXT context = { 0 };
-    OVS_ERROR error = OVS_ERROR_NOERROR;
-    LOCK_STATE_EX lockState = { 0 };
-    BOOLEAN locked = FALSE;
-    BOOLEAN multiplePidsPerOFPort = FALSE;
-
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
-
-    DATAPATH_LOCK_READ(pDatapath, &lockState);
-    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
-    DATAPATH_UNLOCK(pDatapath, &lockState);
-
-    //required: NAME or NUMBER
-    pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NAME);
-    if (pArg)
-    {
-        ofPortName = pArg->data;
-        pOFPort = OFPort_FindByName_Ref(ofPortName);
-    }
-    else
-    {
-        pArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_NUMBER);
-        if (pArg)
-        {
-            portNumber = GET_ARG_DATA(pArg, UINT32);
-
-            if (portNumber >= OVS_MAX_PORTS)
-            {
-                DEBUGP(LOG_ERROR, __FUNCTION__ " invalid port number: %u\n", portNumber);
-                error = OVS_ERROR_FBIG;
-                goto Cleanup;
-            }
-
-            pOFPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
-        }
-        else
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-    }
-
-    if (!pOFPort)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
-    if (pOFPort->ofPortNumber == OVS_LOCAL_PORT_NUMBER)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
-    context.sequence = pMsg->sequence;
-    context.dpIfIndex = pDatapath->switchIfIndex;
-    context.pReplyMsg = &replyMsg;
-    context.pid = pMsg->pid;
-    context.multipleUpcallPids = multiplePidsPerOFPort;
-    context.i = 0;
-
-    PORT_LOCK_WRITE(pOFPort, &lockState);
-    locked = TRUE;
-
-    //create mesasge
-    if (!_CreateMsgFromOFPort(pOFPort, &context))
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
-    //write message
-    OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
-    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_VPORT_MCGROUP);
-
-Cleanup:
-    if (pOFPort)
-    {
-        if (locked)
-        {
-            PORT_UNLOCK(pOFPort, &lockState);
-        }
-
+        PORT_UNLOCK_IF(pOFPort, &portLockState, locked);
         OFPort_Delete(pOFPort);
     }
 
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
     return error;
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Dump(OVS_SWITCH_INFO* pSwitchInfo, OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE *msgs = NULL;
     int i = 0, countMsgs = 1;
-    LOCK_STATE_EX lockState = { 0 };
-    PORT_FETCH_CTXT context = { 0 };
+    LOCK_STATE_EX fwdLockState = { 0 }, dpLockState = { 0 };
     OVS_GLOBAL_FORWARD_INFO* pForwardInfo = NULL;
-    OVS_DATAPATH* pDatapath;
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    OVS_SWITCH_INFO* pSwitchInfo = NULL;
+    BOOLEAN locked = FALSE;
     BOOLEAN multiplePidsPerOFPort = FALSE;
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
-
-    DATAPATH_LOCK_READ(pDatapath, &lockState);
-    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
-    DATAPATH_UNLOCK(pDatapath, &lockState);
-
-    pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
-    if (!pSwitchInfo)
-    {
-        return OVS_ERROR_NODEV;
-    }
-
-    RtlZeroMemory(&context, sizeof(context));
-    context.sequence = pMsg->sequence;
-    context.dpIfIndex = pDatapath->switchIfIndex;
-    context.pid = pMsg->pid;
-    context.multipleUpcallPids = multiplePidsPerOFPort;
-    context.i = 0;
 
     pForwardInfo = pSwitchInfo->pForwardInfo;
 
-    FXARRAY_LOCK_READ(&pForwardInfo->ofPorts, &lockState);
+    DATAPATH_LOCK_READ(pDatapath, &dpLockState);
+    multiplePidsPerOFPort = (pDatapath->userFeatures & OVS_DATAPATH_FEATURE_MULITPLE_PIDS_PER_VPORT) ? TRUE : FALSE;
+    DATAPATH_UNLOCK(pDatapath, &dpLockState);
+
+    locked = TRUE;
+    FXARRAY_LOCK_READ(&pForwardInfo->ofPorts, &fwdLockState);
 
     if (pForwardInfo->ofPorts.count > 0)
     {
+        OVS_MESSAGE* pReplyMsg = NULL;
+
         countMsgs += pForwardInfo->ofPorts.count;
 
         msgs = KAlloc(countMsgs * sizeof(OVS_MESSAGE));
-        if (!msgs)
-        {
-            FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
-
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
+        CHECK_B_E(msgs, OVS_ERROR_NOMEM);
 
         RtlZeroMemory(msgs, countMsgs * sizeof(OVS_MESSAGE));
-        context.pReplyMsg = msgs + i;
+        pReplyMsg = msgs + i;
 
         OVS_FXARRAY_FOR_EACH(&pForwardInfo->ofPorts, pCurItem, 
-            /*if*/ !(*_CreateMsgFromOFPort)((const OVS_OFPORT*)pCurItem, &context),
-            error = OVS_ERROR_INVAL;
-        );
+            /*if*/ error != OVS_ERROR_NOERROR,
+        {
+            error = _CreateMsgFromOFPort((OVS_OFPORT*)pCurItem, pMsg, pReplyMsg, OVS_MESSAGE_COMMAND_NEW, multiplePidsPerOFPort);
+        });
     }
 
-    FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
+    FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &fwdLockState);
+    locked = FALSE;
 
     if (error != OVS_ERROR_NOERROR)
     {
@@ -981,28 +607,17 @@ OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObjec
     }
     else
     {
+        
         OVS_MESSAGE msgDone = { 0 };
 
         OVS_CHECK(countMsgs == 1);
-
-        msgDone.type = OVS_MESSAGE_TARGET_DUMP_DONE;
-        msgDone.command = OVS_MESSAGE_COMMAND_NEW;
-        msgDone.sequence = pMsg->sequence;
-        msgDone.dpIfIndex = pDatapath->switchIfIndex;
-        msgDone.flags = 0;
-        msgDone.pArgGroup = NULL;
-        msgDone.length = sizeof(OVS_MESSAGE_DONE);
-        msgDone.pid = pMsg->pid;
-        msgDone.reserved = 0;
-        msgDone.version = 1;
+        CHECK_E(CreateReplyMsgDone(pMsg, &msgDone, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_COMMAND_NEW));
 
         error = WriteMsgsToDevice((OVS_NLMSGHDR*)&msgDone, 1, pFileObject, OVS_VPORT_MCGROUP);
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-    OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
-
+    FXARRAY_UNLOCK_IF(&pForwardInfo->ofPorts, &fwdLockState, locked);
     DestroyMessages(msgs, countMsgs);
 
     return error;
