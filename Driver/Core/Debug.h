@@ -80,26 +80,30 @@ extern ULONG g_debugLevel;
 #define OVS_CHECK_GC(x) { if (!(x)) goto Cleanup; }
 #endif //OVS_USE_ASSERTS
 
-#define EXPECT(expr)                        \
-if (!(expr))                                \
-{                                           \
-    OVS_CHECK_RET(__UNEXPECTED__, FALSE);   \
-}
+#define EXPECT(expr)    OVS_CHECK_RET(expr, FALSE)
 
 #define CHECK_E(expr)                           \
 {                                               \
     error = (expr);                             \
     if (error != OVS_ERROR_NOERROR)             \
     {                                           \
+    OVS_CHECK(__UNEXPECTED__);                  \
     goto Cleanup;                               \
     }                                           \
 }
 
-#define CHECK_GC(expr)                      \
-if (!(expr))                                \
-{                                           \
-    OVS_CHECK_GC(__UNEXPECTED__);           \
+//check boolean expr, and use OVS_ERROR
+#define CHECK_B_E(expr, errorVal)               \
+{                                               \
+    if (!(expr))                                \
+    {                                           \
+    error = errorVal;                           \
+    OVS_CHECK(__UNEXPECTED__);                  \
+    goto Cleanup;                               \
+    }                                           \
 }
+
+#define CHECK_GC(expr)  OVS_CHECK_GC(expr)
 
 #pragma warning( disable: 4127)
 
