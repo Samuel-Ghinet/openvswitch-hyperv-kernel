@@ -52,7 +52,6 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
-    OVS_DATAPATH* pDatapath = NULL;
     OVS_ETHERNET_HEADER* ethHeader = NULL;
     BOOLEAN ok = FALSE;
     LOCK_STATE_EX lockState = { 0 };
@@ -193,14 +192,6 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
         pOvsNb->pSourcePort = OFPort_FindInternal_Ref();
     }
 
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        ok = FALSE;
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: have no datapath!\n");
-        goto Cleanup;
-    }
-
     pOvsNb->pTunnelInfo = NULL;
 
     ok = ExecuteActions(pOvsNb, OutputPacketToPort);
@@ -212,7 +203,6 @@ Cleanup:
     }
 
     OVS_REFCOUNT_DEREFERENCE(pTargetActions);
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
     OVS_REFCOUNT_DEREFERENCE(pOvsNb->pSourcePort);
 
     if (ok)
