@@ -48,7 +48,7 @@ static LONG _NextUpcallSequence()
     return result;
 }
 
-VOID Packet_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
+VOID WinlPacket_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;

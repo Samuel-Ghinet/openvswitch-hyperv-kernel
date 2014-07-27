@@ -548,23 +548,23 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         switch (pMsg->command)
         {
         case OVS_MESSAGE_COMMAND_NEW:
-            error = Datapath_New(pMsg, pFileObject);
+            error = WinlDatapath_New(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_SET:
-            error = Datapath_Set(pMsg, pFileObject);
+            error = WinlDatapath_Set(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_GET:
-            error = Datapath_Get(pMsg, pFileObject);
+            error = WinlDatapath_Get(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DELETE:
-            error = Datapath_Delete(pMsg, pFileObject);
+            error = WinlDatapath_Delete(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = Datapath_Dump(pMsg, pFileObject);
+            error = WinlDatapath_Dump(pMsg, pFileObject);
             break;
 
         default:
@@ -619,23 +619,23 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         switch (pMsg->command)
         {
         case OVS_MESSAGE_COMMAND_NEW:
-            error = Flow_New(pMsg, pFileObject);
+            error = WinlFlow_New(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_SET:
-            error = Flow_Set(pMsg, pFileObject);
+            error = WinlFlow_Set(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_GET:
-            error = Flow_Get(pMsg, pFileObject);
+            error = WinlFlow_Get(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DELETE:
-            error = Flow_Delete(pMsg, pFileObject);
+            error = WinlFlow_Delete(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = Flow_Dump(pMsg, pFileObject);
+            error = WinlFlow_Dump(pMsg, pFileObject);
             break;
 
         default:
@@ -655,7 +655,7 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         case OVS_MESSAGE_COMMAND_PACKET_UPCALL_EXECUTE:
             if (pMsg->pArgGroup)
             {
-                Packet_Execute(pMsg->pArgGroup, NULL);
+                WinlPacket_Execute(pMsg->pArgGroup, NULL);
             }
             else
             {

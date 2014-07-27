@@ -29,7 +29,7 @@ limitations under the License.
 #include <Netioapi.h>
 
 _Use_decl_annotations_
-OVS_ERROR Datapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
@@ -116,7 +116,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Datapath_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
     OVS_DATAPATH *pDatapath = NULL;
@@ -178,7 +178,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Datapath_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
     OVS_DATAPATH *pDatapath = NULL;
@@ -220,7 +220,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Datapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH *pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
@@ -257,7 +257,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Datapath_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 }, *msgs = NULL;
