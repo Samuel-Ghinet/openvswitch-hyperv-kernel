@@ -820,16 +820,16 @@ OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObjec
 
     pForwardInfo = pSwitchInfo->pForwardInfo;
 
-    FXARRAY_LOCK_READ(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_LOCK_READ(&pForwardInfo->ofPorts, &lockState);
 
-    if (pForwardInfo->persistentPortsInfo.count > 0)
+    if (pForwardInfo->ofPorts.count > 0)
     {
-        countMsgs += pForwardInfo->persistentPortsInfo.count;
+        countMsgs += pForwardInfo->ofPorts.count;
 
         msgs = KAlloc(countMsgs * sizeof(OVS_MESSAGE));
         if (!msgs)
         {
-            FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+            FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
 
             error = OVS_ERROR_INVAL;
             goto Cleanup;
@@ -838,13 +838,13 @@ OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObjec
         RtlZeroMemory(msgs, countMsgs * sizeof(OVS_MESSAGE));
         context.pReplyMsg = msgs + i;
 
-        OVS_FXARRAY_FOR_EACH(&pForwardInfo->persistentPortsInfo, pCurItem, 
+        OVS_FXARRAY_FOR_EACH(&pForwardInfo->ofPorts, pCurItem, 
             /*if*/ !(*_CreateMsgFromPersistentPort)((const OVS_OFPORT*)pCurItem, &context),
             error = OVS_ERROR_INVAL;
         );
     }
 
-    FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
 
     if (error != OVS_ERROR_NOERROR)
     {
