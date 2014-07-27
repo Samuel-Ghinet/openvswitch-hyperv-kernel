@@ -27,7 +27,7 @@ limitations under the License.
 ULONG g_extAllocationTag = 'xsvO';
 NDIS_RW_LOCK_EX* g_pRefRwLock = NULL;
 
-NDIS_STATUS OvsInit(NDIS_HANDLE ndisHandle)
+NDIS_STATUS OvsInit(NET_IFINDEX dpIfIndex)
 {
     INT64 timeInMs = 10 /*mins*/ * 60 /*s*/ * 1000 /*ms*/;
 
@@ -36,10 +36,9 @@ NDIS_STATUS OvsInit(NDIS_HANDLE ndisHandle)
         return NDIS_STATUS_FAILURE;
     }
 
-    UNREFERENCED_PARAMETER(ndisHandle);
     UNREFERENCED_PARAMETER(timeInMs);
 
-    if (!CreateDefaultDatapath(ndisHandle))
+    if (!CreateDefaultDatapath(dpIfIndex))
     {
         return NDIS_STATUS_FAILURE;
     }

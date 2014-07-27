@@ -42,7 +42,7 @@ extern ULONG  g_extAllocationTag;
 
 /*************************************/
 
-NDIS_STATUS OvsInit(NDIS_HANDLE ndisHandle);
+NDIS_STATUS OvsInit(NET_IFINDEX dpIfIndex);
 VOID OvsUninit();
 
 __inline void WcharArrayToAscii(CHAR* dest, const WCHAR* src, UINT count)
