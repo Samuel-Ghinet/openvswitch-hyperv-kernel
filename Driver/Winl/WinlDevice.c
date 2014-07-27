@@ -584,23 +584,23 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         switch (pMsg->command)
         {
         case OVS_MESSAGE_COMMAND_NEW:
-            error = OFPort_New(pMsg, pFileObject);
+            error = WinlOFPort_New(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_GET:
-            error = OFPort_Get(pMsg, pFileObject);
+            error = WinlOFPort_Get(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_SET:
-            error = OFPort_Set(pMsg, pFileObject);
+            error = WinlOFPort_Set(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DELETE:
-            error = OFPort_Delete(pMsg, pFileObject);
+            error = WinlOFPort_Delete(pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = OFPort_Dump(pMsg, pFileObject);
+            error = WinlOFPort_Dump(pMsg, pFileObject);
             break;
 
         default:

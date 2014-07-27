@@ -308,7 +308,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH* pDatapath = NULL;
     UINT32 portNumber = OVS_INVALID_PORT_NUMBER;
@@ -464,7 +464,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_OFPORT* pPersPort = NULL;
     OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
@@ -598,7 +598,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
     OVS_OFPORT* pPersPort = NULL;
@@ -691,7 +691,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ARGUMENT* pArg = NULL;
@@ -790,7 +790,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE *msgs = NULL;
     int i = 0, countMsgs = 1;

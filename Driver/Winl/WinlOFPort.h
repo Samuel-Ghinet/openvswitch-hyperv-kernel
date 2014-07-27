@@ -21,8 +21,8 @@ limitations under the License.
 
 typedef struct _OVS_MESSAGE OVS_MESSAGE;
 
-OVS_ERROR OFPort_New(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR OFPort_Set(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR OFPort_Get(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR OFPort_Delete(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR OFPort_Dump(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlOFPort_New(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlOFPort_Set(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlOFPort_Get(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlOFPort_Delete(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlOFPort_Dump(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
