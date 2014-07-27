@@ -51,6 +51,7 @@ typedef struct _OVS_FIXED_SIZED_ARRAY
 #define FXARRAY_LOCK_READ(pArray, pLockState) NdisAcquireRWLockRead((pArray)->pRwLock, pLockState, 0)
 #define FXARRAY_LOCK_WRITE(pArray, pLockState) NdisAcquireRWLockWrite((pArray)->pRwLock, pLockState, 0)
 #define FXARRAY_UNLOCK(pArray, pLockState) NdisReleaseRWLock((pArray)->pRwLock, pLockState)
+#define FXARRAY_UNLOCK_IF(pArray, pLockState, locked) { if ((locked) && (pArray)) FXARRAY_UNLOCK((pArray), pLockState); }
 
 #define OVS_FXARRAY_FOR_EACH(pArray, pCurItem, condition, code) \
 {                                                               \

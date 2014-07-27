@@ -613,7 +613,7 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlOFPort_Dump(pMsg, pFileObject);
+            error = WinlOFPort_Dump(pSwitchInfo, pMsg, pFileObject);
             break;
 
         default:
