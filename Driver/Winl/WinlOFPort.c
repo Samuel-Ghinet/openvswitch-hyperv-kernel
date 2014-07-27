@@ -298,7 +298,7 @@ Cleanup:
     }
 }
 
-static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_PERSISTENT_PORT* pPort, PORT_FETCH_CTXT* pContext)
+static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_OFPORT* pPort, PORT_FETCH_CTXT* pContext)
 {
     OVS_WINL_PORT port;
     BOOLEAN ok = TRUE;
@@ -337,7 +337,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     UINT32 portType = 0, upcallPortId = 0;
     OVS_ARGUMENT* pArg = NULL;
     OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
-    OVS_PERSISTENT_PORT* pPersPort = NULL;
+    OVS_OFPORT* pPersPort = NULL;
     OVS_MESSAGE replyMsg = { 0 };
     PORT_FETCH_CTXT context = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
@@ -518,7 +518,7 @@ Cleanup:
 _Use_decl_annotations_
 OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
-    OVS_PERSISTENT_PORT* pPersPort = NULL;
+    OVS_OFPORT* pPersPort = NULL;
     OVS_ARGUMENT_GROUP* pOptionsGroup = NULL;
     UINT32 portType = OVS_OFPORT_TYPE_INVALID;
     OVS_MESSAGE replyMsg = { 0 };
@@ -699,7 +699,7 @@ _Use_decl_annotations_
 OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
-    OVS_PERSISTENT_PORT* pPersPort = NULL;
+    OVS_OFPORT* pPersPort = NULL;
     OVS_ARGUMENT* pArg = NULL;
     const char* ofPortName = NULL;
     UINT32 portNumber = (UINT32)-1;
@@ -803,7 +803,7 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     const char* ofPortName = NULL;
     UINT32 portNumber = (UINT32)-1;
     OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    OVS_PERSISTENT_PORT* pPersPort = NULL;
+    OVS_OFPORT* pPersPort = NULL;
     PORT_FETCH_CTXT context = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState = { 0 };
@@ -957,7 +957,7 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         context.pReplyMsg = msgs + i;
 
         OVS_FXARRAY_FOR_EACH(&pForwardInfo->persistentPortsInfo, pCurItem, 
-            /*if*/ !(*_CreateMsgFromPersistentPort)((const OVS_PERSISTENT_PORT*)pCurItem, &context),
+            /*if*/ !(*_CreateMsgFromPersistentPort)((const OVS_OFPORT*)pCurItem, &context),
             error = OVS_ERROR_INVAL;
         );
     }

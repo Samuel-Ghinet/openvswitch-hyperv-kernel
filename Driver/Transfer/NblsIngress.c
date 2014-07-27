@@ -732,7 +732,7 @@ Cleanup:
     update datapath statistics
 
     */
-static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_PERSISTENT_PORT* pSourcePort, const OF_PI_IPV4_TUNNEL* pTunnelInfo)
+static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSourcePort, const OF_PI_IPV4_TUNNEL* pTunnelInfo)
 {
     OVS_OFPACKET_INFO packetInfo = { 0 };
     OVS_DATAPATH* pDatapath = NULL;
@@ -870,7 +870,7 @@ Cleanup:
 }
 
 static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_ADDRESS_LENGTH],
-    OVS_NET_BUFFER* pOvsNb, _Out_ OF_PI_IPV4_TUNNEL* pTunnelInfo, BOOLEAN* pWasEncapsulated, _Out_ OVS_PERSISTENT_PORT** ppPersPort)
+    OVS_NET_BUFFER* pOvsNb, _Out_ OF_PI_IPV4_TUNNEL* pTunnelInfo, BOOLEAN* pWasEncapsulated, _Out_ OVS_OFPORT** ppPersPort)
 {
     BOOLEAN ok = TRUE;
     const OVS_DECAPSULATOR* pDecapsulator = NULL;
@@ -890,7 +890,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
 
     if (Encap_GetDecapsulator_Gre() == pDecapsulator)
     {
-        OVS_PERSISTENT_PORT* pGrePort = NULL;
+        OVS_OFPORT* pGrePort = NULL;
 
         *pWasEncapsulated = TRUE;
         ok = Encaps_DecapsulateOnb(pDecapsulator, pOvsNb, pTunnelInfo, encapProtocolType);
@@ -906,7 +906,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
     }
     else if (Encap_GetDecapsulator_Vxlan() == pDecapsulator)
     {
-        OVS_PERSISTENT_PORT* pVxlanPort = NULL;
+        OVS_OFPORT* pVxlanPort = NULL;
 
         *pWasEncapsulated = TRUE;
         ok = Encaps_DecapsulateOnb(pDecapsulator, pOvsNb, pTunnelInfo, encapProtocolType);
@@ -923,8 +923,8 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
     }
     else
     {
-        OVS_PERSISTENT_PORT* pInternalPort = NULL;
-        OVS_PERSISTENT_PORT* pExternalPort = NULL;
+        OVS_OFPORT* pInternalPort = NULL;
+        OVS_OFPORT* pExternalPort = NULL;
         OVS_ETHERNET_HEADER* pEthHeader = NULL;
 
         OVS_CHECK(!pDecapsulator);
@@ -1057,7 +1057,7 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             ULONG additionalSize = max(Gre_BytesNeeded(0xFFFF), Vxlan_BytesNeeded(0xFFFF));
             OF_PI_IPV4_TUNNEL tunnelInfo = { 0 }, *pTunnelInfo = NULL;
             BOOLEAN wasEncapsulated = FALSE;
-            OVS_PERSISTENT_PORT* pPersPort = NULL;
+            OVS_OFPORT* pPersPort = NULL;
 
             OVS_NET_BUFFER* pOvsNb = ONB_CreateFromNbAndNbl(pSwitchInfo, pNbl, pNb, additionalSize);
             if (!pOvsNb)

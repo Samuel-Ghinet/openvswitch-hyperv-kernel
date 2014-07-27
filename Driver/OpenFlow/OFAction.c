@@ -222,10 +222,10 @@ static BOOLEAN _ExecuteAction_Recirculation(_Inout_ OVS_NET_BUFFER *pOvsNb, _In_
     return FALSE;
 }
 
-static OVS_PERSISTENT_PORT* _FindDestPort_Ref(_In_ const OVS_PERSISTENT_PORT* pSourcePort, UINT32 persPortNumber)
+static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 persPortNumber)
 {
     UINT16 validPortNumber = OVS_INVALID_PORT_NUMBER;
-    OVS_PERSISTENT_PORT* pDestPersPort = NULL;
+    OVS_OFPORT* pDestPersPort = NULL;
 
     //NOTE: we don't need to lock neither pSourcePort, nor pDestPort, because these fields (id, type, isExternal) never change
     if (persPortNumber >= OVS_MAX_PORTS)
@@ -290,7 +290,7 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
 {
     BOOLEAN ok = TRUE;
     const OVS_ARGUMENT_GROUP* pActionArgs = pOvsNb->pActions->pActionGroup;
-    OVS_PERSISTENT_PORT* pDestPersPort = NULL;
+    OVS_OFPORT* pDestPersPort = NULL;
     UINT32 persPortNumber = (UINT32)-1;
 
     for (UINT i = 0; i < pActionArgs->count; ++i)

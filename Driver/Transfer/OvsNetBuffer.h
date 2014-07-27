@@ -24,15 +24,14 @@ limitations under the License.
 
 typedef struct _OVS_SWITCH_INFO OVS_SWITCH_INFO;
 typedef struct _OVS_NIC_INFO OVS_NIC_INFO;
-typedef struct _OVS_PERSISTENT_PORT OVS_PERSISTENT_PORT;
 typedef struct _OVS_ACTIONS OVS_ACTIONS;
 
 typedef struct _OVS_NET_BUFFER
 {
     OVS_SWITCH_INFO*        pSwitchInfo;
     OVS_NIC_INFO*           pSourceNic;
-    OVS_PERSISTENT_PORT*    pSourcePort;
-    OVS_PERSISTENT_PORT*    pDestinationPort;
+    OVS_OFPORT*    pSourcePort;
+    OVS_OFPORT*    pDestinationPort;
 
     BOOLEAN                 sendToPortNormal;
     ULONG                   sendFlags;

@@ -153,7 +153,7 @@ Cleanup:
 
 UINT16 Sctx_Port_SetPersistentPort(const char* ovsPortName, NDIS_SWITCH_PORT_ID portId)
 {
-    OVS_PERSISTENT_PORT* pPort = NULL;
+    OVS_OFPORT* pPort = NULL;
     UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
 
     pPort = PersPort_FindByName_Ref(ovsPortName);
