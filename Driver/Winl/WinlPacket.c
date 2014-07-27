@@ -167,9 +167,9 @@ VOID Packet_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFile
     pOvsNb->pSwitchInfo = pSwitchInfo;
     pOvsNb->sendFlags = 0;
 
-    if (pOvsNb->pOriginalPacketInfo->physical.ovsInPort != OVS_INVALID_PORT_NUMBER)
+    if (pOvsNb->pOriginalPacketInfo->physical.ofInPort != OVS_INVALID_PORT_NUMBER)
     {
-        OVS_OFPORT* pSourceOFPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ovsInPort);
+        OVS_OFPORT* pSourceOFPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ofInPort);
         NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
 
         //NOTE: actually, the portId of of port CAN change (when mapping it to a hyper-v switch port)

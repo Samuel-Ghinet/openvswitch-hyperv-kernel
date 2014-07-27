@@ -38,7 +38,7 @@ typedef struct _OVS_PHYSICAL
 {
     UINT32    packetPriority;
     UINT32    packetMark;
-    UINT16    ovsInPort;
+    UINT16    ofInPort;
 }OVS_PHYSICAL, *POVS_PHYSICAL;
 C_ASSERT(sizeof(OVS_PHYSICAL) == 16);
 

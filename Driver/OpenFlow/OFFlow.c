@@ -79,7 +79,7 @@ void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacket
     RtlZeroMemory(pFlowMatch, sizeof(OVS_FLOW_MATCH));
     RtlZeroMemory(pPacketInfo, sizeof(OVS_OFPACKET_INFO));
 
-    pPacketInfo->physical.ovsInPort = OVS_INVALID_PORT_NUMBER;
+    pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
 
     pFlowMatch->pPacketInfo = pPacketInfo;
     pFlowMatch->pFlowMask = pFlowMask;
@@ -303,9 +303,9 @@ static void _DbgPrintFlow_Physical(_In_ const OVS_OFPACKET_INFO* pPacketInfo, _I
     enum { maxTempLen = 100 };
     CHAR tempDest[maxTempLen + 1];
 
-    if (!pMask || pMask->physical.ovsInPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
+    if (!pMask || pMask->physical.ofInPort != OVS_PI_MASK_MATCH_WILDCARD(UINT16))
     {
-        ULONG inPort = pPacketInfo->physical.ovsInPort;
+        ULONG inPort = pPacketInfo->physical.ofInPort;
 
         RtlStringCchPrintfA(tempDest, maxTempLen, "in_port: %u; ", inPort);
         RtlStringCchCopyA(str + len, maxLen - len, tempDest);

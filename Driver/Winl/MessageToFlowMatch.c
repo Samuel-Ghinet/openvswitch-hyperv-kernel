@@ -34,7 +34,7 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
     OVS_ARGUMENT* pDatapathInPortArg = NULL;
     OVS_FLOW_MATCH flowMatch = { 0 };
 
-    pPacketInfo->physical.ovsInPort = OVS_INVALID_PORT_NUMBER;
+    pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
     pPacketInfo->physical.packetPriority = 0;
     pPacketInfo->physical.packetMark = 0;
 
