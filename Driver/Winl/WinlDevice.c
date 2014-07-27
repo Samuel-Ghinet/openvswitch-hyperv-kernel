@@ -668,7 +668,16 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         case OVS_MESSAGE_COMMAND_PACKET_UPCALL_EXECUTE:
             if (pMsg->pArgGroup)
             {
-                WinlPacket_Execute(pSwitchInfo, pMsg->pArgGroup, NULL);
+                pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+                if (!pDatapath)
+                {
+                    error = OVS_ERROR_NODEV;
+                    goto Cleanup;
+                }
+
+                WinlPacket_Execute(pSwitchInfo, pDatapath, pMsg->pArgGroup, NULL);
+
+                OVS_REFCOUNT_DEREFERENCE(pDatapath);
             }
             else
             {

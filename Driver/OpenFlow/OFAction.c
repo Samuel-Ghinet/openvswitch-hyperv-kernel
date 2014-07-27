@@ -42,7 +42,7 @@ limitations under the License.
 
 #define OVS_ACTION_SAMPLE_MAX_DEPTH        3
 
-static BOOLEAN _ExecuteAction_OutToUserspace(_In_ NET_BUFFER* pNb, _In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ const OVS_ARGUMENT_GROUP* pArguments)
+static BOOLEAN _ExecuteAction_OutToUserspace(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _In_ const OVS_OFPACKET_INFO* pPacketInfo, _In_ const OVS_ARGUMENT_GROUP* pArguments)
 {
     OVS_UPCALL_INFO upcallInfo = { 0 };
     BOOLEAN ok = FALSE;
@@ -80,7 +80,7 @@ static BOOLEAN _ExecuteAction_OutToUserspace(_In_ NET_BUFFER* pNb, _In_ const OV
         }
     }
 
-    ok = QueuePacketToUserspace(pNb, &upcallInfo);
+    ok = QueuePacketToUserspace(pDatapath, pNb, &upcallInfo);
 
     return ok;
 }
@@ -344,7 +344,12 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
             break;
 
         case OVS_ARGTYPE_ACTION_UPCALL_GROUP:
-            _ExecuteAction_OutToUserspace(ONB_GetNetBuffer(pOvsNb), pOvsNb->pOriginalPacketInfo, pArg->data);
+        {
+            NET_BUFFER* pNb = ONB_GetNetBuffer(pOvsNb);
+            OVS_OFPACKET_INFO* pPacketInfo = pOvsNb->pOriginalPacketInfo;
+
+            _ExecuteAction_OutToUserspace(pOvsNb->pDatapath, pNb, pPacketInfo, pArg->data);
+        }
             break;
 
         case OVS_ARGTYPE_ACTION_SETINFO_GROUP:

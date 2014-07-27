@@ -29,6 +29,8 @@ typedef struct _OVS_ACTIONS OVS_ACTIONS;
 typedef struct _OVS_NET_BUFFER
 {
     OVS_SWITCH_INFO*        pSwitchInfo;
+    OVS_DATAPATH*           pDatapath;
+
     OVS_OFPORT*    			pSourcePort;
     OVS_OFPORT*    			pDestinationPort;
 

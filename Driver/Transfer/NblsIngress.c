@@ -751,6 +751,8 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
         return FALSE;
     }
 
+    pOvsNb->pDatapath = pDatapath;
+
     //note: no need to set pOvsNb->pTunnelInfo because:
     //a) it's being reset to 0 at exec actions;
     //b) it's for 'set tunnel', not for 'received tunnel'
@@ -803,7 +805,7 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
         //and we have an of port associated with the source NDIS_SWITCH_PORT_ID
         if (pDatapath->name && !pDatapath->deleted && pSourcePort)
         {
-            QueuePacketToUserspace(pOvsNb->pNbl->FirstNetBuffer, &upcallInfo);
+            QueuePacketToUserspace(pDatapath, pOvsNb->pNbl->FirstNetBuffer, &upcallInfo);
         }
 
         sent = FALSE;
@@ -1075,6 +1077,8 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             }
 
             pOvsNb->pSwitchInfo = pSwitchInfo;
+            //pDatapath will be set later
+            pOvsNb->pDatapath = NULL;
             pOvsNb->pDestinationPort = NULL;
             pOvsNb->sendToPortNormal = FALSE;
             pOvsNb->sendFlags = sendFlags;

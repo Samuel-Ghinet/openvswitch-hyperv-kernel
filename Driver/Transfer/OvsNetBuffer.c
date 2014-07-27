@@ -241,6 +241,7 @@ OVS_NET_BUFFER* ONB_CreateFromNbAndNbl(const OVS_SWITCH_INFO* pSwitchInfo, NET_B
 
     pOvsNetBuffer->pNbl = pDuplicateNbl;
     pOvsNetBuffer->pSwitchInfo = (OVS_SWITCH_INFO*)pSwitchInfo;
+    pOvsNetBuffer->pDatapath = NULL;
 
     //TODO: read about NDIS_NET_BUFFER_LIST_8021Q_INFO... setting VLAN info for NBLs using NET_BUFFER_LIST_INFO macro?
     //the miniport driver reads this setting and applies the info.
@@ -274,6 +275,8 @@ OVS_NET_BUFFER* ONB_Duplicate(const OVS_NET_BUFFER* pOriginalOnb)
     pDuplicateOnb->pOriginalPacketInfo = pOriginalOnb->pOriginalPacketInfo;
     pDuplicateOnb->pTunnelInfo = pOriginalOnb->pTunnelInfo;
     pDuplicateOnb->pSourcePort = pOriginalOnb->pSourcePort;
+
+    pDuplicateOnb->pDatapath = pOriginalOnb->pDatapath;
 
     return pDuplicateOnb;
 }
