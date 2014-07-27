@@ -98,4 +98,4 @@ VOID NicEntry_DestroyNow_Unsafe(OVS_NIC_LIST_ENTRY* pNicEntry);
 NDIS_STATUS Sctx_DeleteNicUnsafe(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, _In_ NDIS_SWITCH_PORT_ID portId, _In_ NDIS_SWITCH_NIC_INDEX nicIndex);
 
 //returns the ovs port number of the found pers port
-UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId);
+UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId);

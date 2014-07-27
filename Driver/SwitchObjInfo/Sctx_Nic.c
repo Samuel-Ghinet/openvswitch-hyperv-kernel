@@ -331,7 +331,7 @@ Cleanup:
     return status;
 }
 
-UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId)
+UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId)
 {
     OVS_OFPORT* pPort = NULL;
     LOCK_STATE_EX lockState;
