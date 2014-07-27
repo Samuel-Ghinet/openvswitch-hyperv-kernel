@@ -183,7 +183,7 @@ void DbgPrintMultipleDestinations(NDIS_SWITCH_FORWARDING_DESTINATION_ARRAY* broa
 
 _Use_decl_annotations_
 NDIS_SWITCH_FORWARDING_DESTINATION_ARRAY* FindMultipleDestinations(const OVS_SWITCH_INFO* pSwitchInfo, UINT32 availableDestinations,
-const OVS_NIC_INFO* pSourceInfo, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFailReason, ULONG* pMtu, UINT* pCountAdded)
+const OVS_OFPORT* pSourcePort, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFailReason, ULONG* pMtu, UINT* pCountAdded)
 {
     UINT32 growNumber = 0;
     NDIS_STATUS status = NDIS_STATUS_SUCCESS;
@@ -230,7 +230,7 @@ const OVS_NIC_INFO* pSourceInfo, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFa
     FWDINFO_LOCK_READ(pForwardInfo, &lockState);
 
     //set destination ports for broadcasts in broadcastArray destination port lists.
-    *pCountAdded = Sctx_MakeBroadcastArrayUnsafe(pForwardInfo, pBroadcastArray, pSourceInfo->portId, pSourceInfo->nicIndex, /*out*/ pMtu);
+    *pCountAdded = Sctx_MakeBroadcastArrayUnsafe(pForwardInfo, pBroadcastArray, pSourcePort->portId, pSourcePort->nicIndex, /*out*/ pMtu);
 
     OVS_CHECK(*pCountAdded <= neededDestinations);
 
@@ -240,14 +240,14 @@ const OVS_NIC_INFO* pSourceInfo, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFa
 }
 
 _Use_decl_annotations_
-BOOLEAN SetOneDestination(const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFailReason, const OVS_NIC_INFO* pCurDestination)
+BOOLEAN SetOneDestination(const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* pNbl, OVS_NBL_FAIL_REASON* pFailReason, NDIS_SWITCH_PORT_ID portId,
+NDIS_SWITCH_NIC_INDEX nicIndex)
 {
     PNDIS_SWITCH_FORWARDING_DETAIL_NET_BUFFER_LIST_INFO fwdDetail = NULL;
     NDIS_STATUS status = STATUS_SUCCESS;
     NDIS_SWITCH_PORT_DESTINATION ndisPortDestination = { 0 };
 
     OVS_CHECK(pFailReason);
-    OVS_CHECK(pCurDestination);
     *pFailReason = OVS_NBL_FAIL_SUCCESS;
     UNREFERENCED_PARAMETER(pFailReason);
 
@@ -261,8 +261,8 @@ BOOLEAN SetOneDestination(const OVS_SWITCH_INFO* pSwitchInfo, NET_BUFFER_LIST* p
 
     OVS_CHECK(fwdDetail->NumAvailableDestinations > 0);
 
-    ndisPortDestination.PortId = pCurDestination->portId;
-    ndisPortDestination.NicIndex = pCurDestination->nicIndex;
+    ndisPortDestination.PortId = portId;
+    ndisPortDestination.NicIndex = nicIndex;
     ndisPortDestination.PreserveVLAN = TRUE;
     ndisPortDestination.PreservePriority = TRUE;
 
@@ -482,7 +482,7 @@ static BOOLEAN _OutputPacketToPort_Encaps(OVS_NET_BUFFER* pOvsNb)
     encapData.pDeliveryEthHeader = &outerEthHeader;
     encapData.pPayloadEthHeader = &payloadEthHeader;
     encapData.pOvsNb = pOvsNb;
-    encapData.isFromExternal = (pOvsNb->pSourceNic->portId == externalNicInfo.portId);
+    encapData.isFromExternal = (pOvsNb->pSourcePort->portId == externalNicInfo.portId);
     encapData.encapsHeadersSize = encapsulator.BytesNeeded(pOvsNb->pTunnelInfo->tunnelFlags);
 
     //TODO: should we use the DF of the packet to see if we should fragment or not,
@@ -509,7 +509,7 @@ static BOOLEAN _OutputPacketToPort_Encaps(OVS_NET_BUFFER* pOvsNb)
 
             if (RtlUshortByteSwap(pOriginalEthHeader->type) == OVS_ETHERTYPE_IPV6)
             {
-                ONB_OriginateIcmp6Packet_Type2Code0(pOvsNb, newMtu, pOvsNb->pSourceNic);
+                ONB_OriginateIcmp6Packet_Type2Code0(pOvsNb, newMtu, pOvsNb->pSourcePort);
 
                 DEBUGP(LOG_ERROR, "encapsulation failed. originated icmp error. now returning FALSE\n");
                 return FALSE;
@@ -520,7 +520,7 @@ static BOOLEAN _OutputPacketToPort_Encaps(OVS_NET_BUFFER* pOvsNb)
 
                 if (pIpv4Header->DontFragment)
                 {
-                    ONB_OriginateIcmpPacket_Ipv4_Type3Code4(pOvsNb, newMtu, pOvsNb->pSourceNic);
+                    ONB_OriginateIcmpPacket_Ipv4_Type3Code4(pOvsNb, newMtu, pOvsNb->pSourcePort);
 
                     DEBUGP(LOG_ERROR, "encapsulation failed. originated icmp error. now returning FALSE\n");
                     return FALSE;
@@ -541,7 +541,7 @@ static BOOLEAN _OutputPacketToPort_Encaps(OVS_NET_BUFFER* pOvsNb)
         }
     }
 
-    ok = SetOneDestination(pOvsNb->pSwitchInfo, pOvsNb->pNbl, &failReason, /*in*/ &externalNicInfo);
+    ok = SetOneDestination(pOvsNb->pSwitchInfo, pOvsNb->pNbl, &failReason, /*in*/ externalNicInfo.portId, externalNicInfo.nicIndex);
     if (!ok)
     {
         DEBUGP(LOG_ERROR, "set one destination failed. returning FALSE. Fail Reason:%s\n", FailReasonMessageA(failReason));
@@ -562,7 +562,7 @@ static BOOLEAN _OutputPacketToPort_Normal(OVS_NET_BUFFER* pOvsNb)
 
     FWDINFO_LOCK_READ(pForwardInfo, &lockState);
 
-    if (pForwardInfo->pExternalNic && pForwardInfo->pExternalNic->portId == pOvsNb->pSourceNic->portId)
+    if (pForwardInfo->pExternalNic && pForwardInfo->pExternalNic->portId == pOvsNb->pSourcePort->portId)
     {
         /*If the source port is connected to the external network adapter, the non-extensible switch OOB data will be in a receive format.
         For other ports, this OOB data will be in a send format.*/
@@ -618,7 +618,7 @@ static BOOLEAN _OutputPacketToPort_Physical(OVS_NET_BUFFER* pOvsNb)
         pOvsNb->pDestinationPort->stats.bytesSent += bytesSent;
 
         NicListEntry_To_NicInfo(pNicEntry, &nicInfo);
-        ok = SetOneDestination(pOvsNb->pSwitchInfo, pOvsNb->pNbl, &failReason, /*in*/ &nicInfo);
+        ok = SetOneDestination(pOvsNb->pSwitchInfo, pOvsNb->pNbl, &failReason, /*in*/ nicInfo.portId, nicInfo.nicIndex);
         if (!ok)
         {
             DEBUGP(LOG_ERROR, "set one destination failed. returning FALSE. Fail Reason:%s\n", FailReasonMessageA(failReason));
@@ -1077,7 +1077,6 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             pOvsNb->pSwitchInfo = pSwitchInfo;
             pOvsNb->pDestinationPort = NULL;
             pOvsNb->sendToPortNormal = FALSE;
-            pOvsNb->pSourceNic = pSourceInfo;
             pOvsNb->sendFlags = sendFlags;
             pOvsNb->pSourcePort = pOFPort;
 

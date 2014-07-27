@@ -154,7 +154,7 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
 
     pOvsNb->pDestinationPort = NULL;
     pOvsNb->sendToPortNormal = FALSE;
-    pOvsNb->pSourceNic = &sourcePort;
+    //pOvsNb->pSourceNic = &sourcePort;
 
     pOvsNb->pSwitchInfo = pSwitchInfo;
     pOvsNb->sendFlags = 0;
