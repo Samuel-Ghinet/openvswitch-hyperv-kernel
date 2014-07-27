@@ -19,6 +19,8 @@ limitations under the License.
 #include "precomp.h"
 #include "OFPort.h"
 
+#include "FixedSizedArray.h"
+
 #define OVS_LOCAL_PORT_NUMBER            ((UINT32)0)
 #define OVS_MAX_PORTS                    MAXUINT16
 #define OVS_INVALID_PORT_NUMBER          OVS_MAX_PORTS
@@ -31,10 +33,7 @@ typedef struct _OVS_SWITCH_INFO OVS_SWITCH_INFO;
 
 typedef struct _OVS_PERSISTENT_PORT
 {
-    //must be the first field in the struct
-    OVS_REF_COUNT refCount;
-
-    NDIS_RW_LOCK_EX* pRwLock;
+    OVS_FXARRAY_ITEM;
 
     //port number assigned by OVS (userspace, or computed in driver)
     UINT16           ovsPortNumber;
@@ -66,24 +65,9 @@ typedef struct _OVS_LOGICAL_PORT_ENTRY
     OVS_PERSISTENT_PORT* pPort;
 }OVS_LOGICAL_PORT_ENTRY;
 
-typedef struct _OVS_PERSISTENT_PORTS_INFO
-{
-    NDIS_RW_LOCK_EX* pRwLock;
-
-    OVS_PERSISTENT_PORT* portsArray[OVS_MAX_PORTS];
-    UINT16 count;
-    UINT16 firstPortFree;
-}OVS_PERSISTENT_PORTS_INFO;
-
-#define PERSPORTS_LOCK_READ(pPersPorts, pLockState) NdisAcquireRWLockRead((pPersPorts)->pRwLock, pLockState, 0)
-#define PERSPORTS_LOCK_WRITE(pPersPorts, pLockState) NdisAcquireRWLockWrite((pPersPorts)->pRwLock, pLockState, 0)
-#define PERSPORTS_UNLOCK(pPersPorts, pLockState) NdisReleaseRWLock((pPersPorts)->pRwLock, pLockState)
-
 typedef struct _OF_PI_IPV4_TUNNEL OF_PI_IPV4_TUNNEL;
 
 OVS_PERSISTENT_PORT* PersPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT16* pPortNumber, OVS_OFPORT_TYPE portType);
-
-BOOLEAN PersPort_CForEach_Unsafe(_In_ const OVS_PERSISTENT_PORTS_INFO* pPorts, VOID* pContext, BOOLEAN(*Action)(int, OVS_PERSISTENT_PORT*, VOID*));
 
 OVS_PERSISTENT_PORT* PersPort_FindByName_Ref(const char* ofPortName);
 OVS_PERSISTENT_PORT* PersPort_FindByNumber_Ref(UINT16 portNumber);
@@ -91,7 +75,6 @@ OVS_PERSISTENT_PORT* PersPort_FindByNumber_Ref(UINT16 portNumber);
 OVS_PERSISTENT_PORT* PersPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId);
 OVS_PERSISTENT_PORT* PersPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId);
 
-OVS_PERSISTENT_PORT* PersPort_GetInternal_Ref();
 BOOLEAN PersPort_Delete(OVS_PERSISTENT_PORT* pPersPort);
 
 _Ret_maybenull_

@@ -33,6 +33,7 @@ limitations under the License.
 
 typedef struct _PORT_FETCH_CTXT
 {
+    int i;
     OVS_MESSAGE* pReplyMsg;
     UINT sequence;
     UINT dpIfIndex;
@@ -124,13 +125,11 @@ Cleanup:
 }
 /************************/
 
-static BOOLEAN _CreateMsgFromPersistentPort(int i, _In_ const OVS_PERSISTENT_PORT* pPort, PORT_FETCH_CTXT* pContext)
+static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_PERSISTENT_PORT* pPort, PORT_FETCH_CTXT* pContext)
 {
     OVS_WINL_PORT port;
     BOOLEAN ok = TRUE;
     OVS_MESSAGE replyMsg = { 0 };
-
-    UNREFERENCED_PARAMETER(i);
 
     RtlZeroMemory(&port, sizeof(OVS_WINL_PORT));
     port.number = pPort->ovsPortNumber;
@@ -149,7 +148,7 @@ static BOOLEAN _CreateMsgFromPersistentPort(int i, _In_ const OVS_PERSISTENT_POR
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_PORT);
     replyMsg.flags |= OVS_MESSAGE_FLAG_MULTIPART;
 
-    *(pContext->pReplyMsg + i) = replyMsg;
+    *(pContext->pReplyMsg + pContext->i) = replyMsg;
 Cleanup:
     //NOTE: we must NOT destroy port.pOptions: it is destroy at replyMsg.pArgGroup destruction
 
@@ -250,6 +249,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+    context.i = 0;
 
     PORT_LOCK_READ(pPersPort, &lockState);
     locked = TRUE;
@@ -275,7 +275,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     }
 
     //create OVS_MESSAGE from pPersPort
-    if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
+    if (!_CreateMsgFromPersistentPort(pPersPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -416,8 +416,9 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+    context.i = 0;
 
-    if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
+    if (!_CreateMsgFromPersistentPort(pPersPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -503,12 +504,13 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+    context.i = 0;
 
     PORT_LOCK_READ(pPersPort, &lockState);
     locked = TRUE;
 
     //create message
-    if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
+    if (!_CreateMsgFromPersistentPort(pPersPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -601,12 +603,13 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pReplyMsg = &replyMsg;
     context.pid = pMsg->pid;
+    context.i = 0;
 
     PORT_LOCK_WRITE(pPersPort, &lockState);
     locked = TRUE;
 
     //create mesasge
-    if (!_CreateMsgFromPersistentPort(0, pPersPort, &context))
+    if (!_CreateMsgFromPersistentPort(pPersPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -661,10 +664,11 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     context.sequence = pMsg->sequence;
     context.dpIfIndex = pDatapath->switchIfIndex;
     context.pid = pMsg->pid;
+    context.i = 0;
 
     pForwardInfo = pSwitchInfo->pForwardInfo;
 
-    PERSPORTS_LOCK_READ(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_LOCK_READ(&pForwardInfo->persistentPortsInfo, &lockState);
 
     if (pForwardInfo->persistentPortsInfo.count > 0)
     {
@@ -673,7 +677,7 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         msgs = KAlloc(countMsgs * sizeof(OVS_MESSAGE));
         if (!msgs)
         {
-            PERSPORTS_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+            FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
 
             error = OVS_ERROR_INVAL;
             goto Cleanup;
@@ -682,13 +686,13 @@ OVS_ERROR OFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         RtlZeroMemory(msgs, countMsgs * sizeof(OVS_MESSAGE));
         context.pReplyMsg = msgs + i;
 
-        if (!PersPort_CForEach_Unsafe(&pForwardInfo->persistentPortsInfo, &context, _CreateMsgFromPersistentPort))
-        {
+        OVS_FXARRAY_FOR_EACH(&pForwardInfo->persistentPortsInfo, pCurItem, 
+            /*if*/ !(*_CreateMsgFromPersistentPort)((const OVS_PERSISTENT_PORT*)pCurItem, &context),
             error = OVS_ERROR_INVAL;
-        }
+        );
     }
 
-    PERSPORTS_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
 
     if (error != OVS_ERROR_NOERROR)
     {

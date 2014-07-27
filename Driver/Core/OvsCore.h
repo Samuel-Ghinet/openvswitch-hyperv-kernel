@@ -27,6 +27,7 @@ limitations under the License.
 #define KFree(p) KFreeSafe(p)
 
 #define OVS_ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+#define OVS_CONST_CAST(p) ((VOID*)p)
 
 typedef struct _OVS_FLOW                     OVS_FLOW;
 typedef struct _OVS_OFPACKET_INFO            OVS_OFPACKET_INFO;
@@ -92,18 +93,3 @@ static __inline VOID KFreeSafe(VOID* p)
         ExFreePoolWithTag(p, g_extAllocationTag);
     }
 }
-
-//NOTE: experimental
-static __inline VOID* ConstCast(const VOID* value)
-{
-    return (VOID*)value;
-}
-
-#define CONST_CAST_TYPE(Type)                                   \
-static __inline Type* ConstCast##Type(const Type* value)        \
-{                                                               \
-    return (Type*)value;                                        \
-}
-
-//use e.g.: CONST_CAST_TYPE(OVS_FLOW_STATS)
-#define CONST_CAST(Type, value) ConstCast##Type(value)

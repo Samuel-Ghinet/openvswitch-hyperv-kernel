@@ -43,7 +43,7 @@ typedef struct _OVS_GLOBAL_FORWARD_INFO
     UINT32                  countPorts;
     BOOLEAN                 isInitialRestart;
 
-    OVS_PERSISTENT_PORTS_INFO    persistentPortsInfo;
+    OVS_FIXED_SIZED_ARRAY   persistentPortsInfo;
 } OVS_GLOBAL_FORWARD_INFO, *POVS_GLOBAL_FORWARD_INFO;
 
 typedef enum _OVS_SWITCH_DATAFLOW_STATE
