@@ -85,13 +85,13 @@ static void _GetDatapathStats(OVS_DATAPATH* pDatapath, OVS_DATAPATH_STATS* pStat
 
 OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
 {
-    OVS_ARGUMENT_GROUP* pArgGroup = NULL;
     OVS_ARGUMENT* pNameArg = NULL, *pStatsArg = NULL;
     char* datapathName = NULL;
     OVS_DATAPATH_STATS dpStats = { 0 };
     ULONG nameLen = 0;
     OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState;
+    ULONG i = 0;
 
     OVS_CHECK(pMsg);
 
@@ -105,47 +105,16 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
-    pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!pArgGroup)
-    {
-        return OVS_ERROR_NOMEM;
-    }
-
-    AllocateArgumentsToGroup(2, pArgGroup);
+    CHECK_E(CreateMsg(pMsg, pid, sequence, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_DATAPATH, 
+        cmd, dpIfIndex, 2));
 
     pNameArg = CreateArgumentStringA_Alloc(OVS_ARGTYPE_DATAPATH_NAME, datapathName);
-    if (!pNameArg)
-    {
-        error = OVS_ERROR_NOMEM;
-        goto Cleanup;
-    }
-
-    pArgGroup->args[0] = *pNameArg;
-    pArgGroup->groupSize += pNameArg->length;
+    CHECK_B_E(pNameArg, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pMsg->pArgGroup, pNameArg, &i);
 
     pStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_STATS, &dpStats);
-    if (!pStatsArg)
-    {
-        error = OVS_ERROR_NOMEM;
-        goto Cleanup;
-    }
-
-    pArgGroup->args[1] = *pStatsArg;
-    pArgGroup->groupSize += pStatsArg->length;
-
-    pMsg->length = sizeof(OVS_MESSAGE);
-    pMsg->type = OVS_MESSAGE_TARGET_DATAPATH;
-    pMsg->flags = 0;
-    pMsg->sequence = sequence;
-    pMsg->pid = pid;
-
-    pMsg->command = cmd;
-    pMsg->version = 1;
-    pMsg->reserved = 0;
-
-    pMsg->dpIfIndex = dpIfIndex;
-
-    pMsg->pArgGroup = pArgGroup;
+    CHECK_B_E(pStatsArg, OVS_ERROR_NOMEM);
+    AddArgToArgGroup(pMsg->pArgGroup, pStatsArg, &i);
 
 Cleanup:
     KFree(datapathName);
@@ -160,7 +129,7 @@ Cleanup:
         DestroyArgument(pNameArg);
         DestroyArgument(pStatsArg);
 
-        FreeGroupWithArgs(pArgGroup);
+        FreeGroupWithArgs(pMsg->pArgGroup);
     }
 
     return error;
