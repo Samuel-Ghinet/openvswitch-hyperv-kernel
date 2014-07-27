@@ -870,19 +870,19 @@ Cleanup:
 }
 
 static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_ADDRESS_LENGTH],
-    OVS_NET_BUFFER* pOvsNb, _Out_ OF_PI_IPV4_TUNNEL* pTunnelInfo, BOOLEAN* pWasEncapsulated, _Out_ OVS_OFPORT** ppPersPort)
+    OVS_NET_BUFFER* pOvsNb, _Out_ OF_PI_IPV4_TUNNEL* pTunnelInfo, BOOLEAN* pWasEncapsulated, _Out_ OVS_OFPORT** ppOFPort)
 {
     BOOLEAN ok = TRUE;
     const OVS_DECAPSULATOR* pDecapsulator = NULL;
     BYTE encapProtocolType = 0;
     LE16 udpDestPort = 0;
 
-    OVS_CHECK(ppPersPort);
+    OVS_CHECK(ppOFPort);
     OVS_CHECK(pWasEncapsulated);
     OVS_CHECK(pTunnelInfo);
 
     *pWasEncapsulated = FALSE;
-    *ppPersPort = NULL;
+    *ppOFPort = NULL;
 
     RtlZeroMemory(pTunnelInfo, sizeof(OF_PI_IPV4_TUNNEL));
 
@@ -902,7 +902,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
             pGrePort->stats.bytesReceived += ONB_GetDataLength(pOvsNb);
         }
 
-        *ppPersPort = pGrePort;
+        *ppOFPort = pGrePort;
     }
     else if (Encap_GetDecapsulator_Vxlan() == pDecapsulator)
     {
@@ -919,7 +919,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
             pVxlanPort->stats.bytesReceived += ONB_GetDataLength(pOvsNb);
         }
 
-        *ppPersPort = pVxlanPort;
+        *ppOFPort = pVxlanPort;
     }
     else
     {
@@ -943,18 +943,18 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
                 ++pInternalPort->stats.packetsReceived;
                 pInternalPort->stats.bytesReceived += ONB_GetDataLength(pOvsNb);
 
-                *ppPersPort = pInternalPort;
+                *ppOFPort = pInternalPort;
                 OVS_REFCOUNT_DEREFERENCE(pExternalPort);
             }
             else
             {
-                *ppPersPort = pExternalPort;
+                *ppOFPort = pExternalPort;
                 OVS_REFCOUNT_DEREFERENCE(pInternalPort);
             }
         }
         else
         {
-            *ppPersPort = pExternalPort;
+            *ppOFPort = pExternalPort;
             OVS_REFCOUNT_DEREFERENCE(pInternalPort);
         }
     }
@@ -1057,7 +1057,7 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             ULONG additionalSize = max(Gre_BytesNeeded(0xFFFF), Vxlan_BytesNeeded(0xFFFF));
             OF_PI_IPV4_TUNNEL tunnelInfo = { 0 }, *pTunnelInfo = NULL;
             BOOLEAN wasEncapsulated = FALSE;
-            OVS_OFPORT* pPersPort = NULL;
+            OVS_OFPORT* pOFPort = NULL;
 
             OVS_NET_BUFFER* pOvsNb = ONB_CreateFromNbAndNbl(pSwitchInfo, pNbl, pNb, additionalSize);
             if (!pOvsNb)
@@ -1068,10 +1068,10 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             if (isFromExternal)
             {
                 //if has gre / vxlan => decapsulates
-                BOOLEAN ok = _DecapsulateIfNeeded_Ref(managOsMac, pOvsNb, &tunnelInfo, &wasEncapsulated, &pPersPort);
+                BOOLEAN ok = _DecapsulateIfNeeded_Ref(managOsMac, pOvsNb, &tunnelInfo, &wasEncapsulated, &pOFPort);
                 if (!ok)
                 {
-                    OVS_REFCOUNT_DEREFERENCE(pPersPort);
+                    OVS_REFCOUNT_DEREFERENCE(pOFPort);
 
                     ONB_Destroy(pSwitchInfo, &pOvsNb);
                     continue;
@@ -1084,7 +1084,7 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             }
             else
             {
-                pPersPort = OFPort_FindById_Ref(pSourceInfo->portId);
+                pOFPort = OFPort_FindById_Ref(pSourceInfo->portId);
             }
 
             pOvsNb->pSwitchInfo = pSwitchInfo;
@@ -1092,9 +1092,9 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             pOvsNb->sendToPortNormal = FALSE;
             pOvsNb->pSourceNic = pSourceInfo;
             pOvsNb->sendFlags = sendFlags;
-            pOvsNb->pSourcePort = pPersPort;
+            pOvsNb->pSourcePort = pOFPort;
 
-            if (!_ProcessPacket(pOvsNb, pPersPort, pTunnelInfo))
+            if (!_ProcessPacket(pOvsNb, pOFPort, pTunnelInfo))
             {
                 OVS_CHECK(pOvsNb->pNbl != pNbl);
 
@@ -1107,7 +1107,7 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
                 KFree(pOvsNb);
             }
 
-            OVS_REFCOUNT_DEREFERENCE(pPersPort);
+            OVS_REFCOUNT_DEREFERENCE(pOFPort);
         }
     }
 
