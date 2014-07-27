@@ -110,7 +110,7 @@ VOID Port_Update(const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_
         //could not have marked for deletion this quickly.
         OVS_CHECK(pPortEntry);
 
-        //if the name of the hyper-v switch port has changed, and we did not have a mapping between this hyper-v switch port and an ovs port,
+        //if the name of the hyper-v switch port has changed, and we did not have a mapping between this hyper-v switch port and an of port,
         //we find a mapping now
         if (pPortEntry->ofPortNumber == OVS_INVALID_PORT_NUMBER &&
             (pPortEntry->portFriendlyName.Length != pPort->PortFriendlyName.Length ||

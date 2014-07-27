@@ -89,7 +89,7 @@ typedef enum _OVS_ARGTYPE
     //data type: UINT32
     OVS_ARGTYPE_PI_PACKET_PRIORITY,         //0x041
 
-    //source port / input port, given as the ovs port number (not hyper-v switch port id)
+    //source port / input port, given as the of port number (not hyper-v switch port id)
     //data type: UINT32
     OVS_ARGTYPE_PI_DP_INPUT_PORT,            //0x042
 
@@ -223,7 +223,7 @@ typedef enum _OVS_ARGTYPE
     OVS_ARGTYPE_ACTION_INVALID = 0x0A0,
     OVS_ARGTYPE_FIRST_ACTION = OVS_ARGTYPE_ACTION_INVALID,
 
-    //ovs port number to which to send the packet to (no hyper-v switch port id)
+    //of port number to which to send the packet to (no hyper-v switch port id)
     //data type: UINT32 (however, it is used as UINT16)
     OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT,      //0x0A1
 
@@ -329,7 +329,7 @@ typedef enum _OVS_ARGTYPE
     OVS_ARGTYPE_OFPORT_INVALID = 0x120,
     OVS_ARGTYPE_FIRST_OFPORT = OVS_ARGTYPE_OFPORT_INVALID,
 
-    //ovs port number (not hyper-v switch port id)
+    //of port number (not hyper-v switch port id)
     //data type: UINT32. It is used in code as UINT16
     OVS_ARGTYPE_OFPORT_NUMBER,              //0x121
 
@@ -342,11 +342,11 @@ typedef enum _OVS_ARGTYPE
     OVS_ARGTYPE_OFPORT_OPTIONS_GROUP,       //0x124
 
     //OVS 1.11:
-    //The Port Id associated with the file HANDLE that handles the upcalls coming from this ovs port.
+    //The Port Id associated with the file HANDLE that handles the upcalls coming from this of port.
     //if (portId == 0) => do not queue upcall
     //data type: UINT32
     //OVS 2.3:
-    //array of Port Ids associated with the file HANDLE that handles the upcalls coming from this ovs port.
+    //array of Port Ids associated with the file HANDLE that handles the upcalls coming from this of port.
     //if we have only one port id, and its value is 0 => don't queue upcall
     OVS_ARGTYPE_OFPORT_UPCALL_PORT_ID,        //0x125
 
