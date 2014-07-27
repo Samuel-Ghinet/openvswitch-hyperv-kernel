@@ -19,7 +19,6 @@ limitations under the License.
 #include "OFDatapath.h"
 #include "OFFlow.h"
 #include "WinlDevice.h"
-#include "OFPort.h"
 #include "Gre.h"
 #include "Vxlan.h"
 #include "OFFlowTable.h"

@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 #include "OFDatapath.h"
-#include "OFPort.h"
 #include "OvsCore.h"
 #include "WinlDatapath.h"
 #include "List.h"

@@ -21,7 +21,6 @@ limitations under the License.
 #include "Types.h"
 #include "Ethernet.h"
 #include "Buffer.h"
-#include "OFPort.h"
 
 typedef struct _OVS_SWITCH_INFO OVS_SWITCH_INFO;
 typedef struct _OVS_NIC_INFO OVS_NIC_INFO;

@@ -181,7 +181,6 @@
     <ClCompile Include="OpenFlow\OFFlow.c" />
     <ClCompile Include="OpenFlow\PacketInfo.c" />
     <ClCompile Include="OpenFlow\PersistentPort.c" />
-    <ClCompile Include="OpenFlow\OFPort.c" />
     <ClCompile Include="OID\OIDRequest.c" />
     <ClCompile Include="OID\OidNic.c" />
     <ClCompile Include="OID\OidPort.c" />
@@ -264,7 +263,6 @@
     <ClInclude Include="OID\OIDRequest.h" />
     <ClInclude Include="OID\OidPort.h" />
     <ClInclude Include="OpenFlow\PersistentPort.h" />
-    <ClInclude Include="OpenFlow\OFPort.h" />
     <ClInclude Include="SwitchObjInfo\Sctx_Nic.h" />
     <ClInclude Include="SwitchObjInfo\StatusIndication.h" />
     <ClInclude Include="SwitchObjInfo\Switch.h" />

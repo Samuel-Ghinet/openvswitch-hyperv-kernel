@@ -17,7 +17,6 @@ limitations under the License.
 #pragma once
 
 #include "precomp.h"
-#include "OFPort.h"
 #include "Error.h"
 
 typedef struct _OVS_MESSAGE OVS_MESSAGE;
