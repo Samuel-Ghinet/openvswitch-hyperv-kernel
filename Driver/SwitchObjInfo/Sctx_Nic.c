@@ -337,7 +337,7 @@ UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SW
     LOCK_STATE_EX lockState;
     UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
 
-    FXARRAY_LOCK_WRITE(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_LOCK_WRITE(&pForwardInfo->ofPorts, &lockState);
 
     pPort = OFPort_FindById_Unsafe(portId);
     if (pPort)
@@ -352,7 +352,7 @@ UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SW
         FXITEM_UNLOCK(pPort, &lockState);
     }
 
-    FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
 
     return ovsPortNumber;
 }

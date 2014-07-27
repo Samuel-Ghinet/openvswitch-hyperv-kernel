@@ -304,7 +304,7 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
     pForwardInfo = pSwitchInfo->pForwardInfo;
     OVS_CHECK(pForwardInfo);
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     FXARRAY_LOCK_WRITE(pPortsArray, &lockState);
     locked = TRUE;
@@ -469,7 +469,7 @@ OVS_OFPORT* OFPort_FindExternal_Ref()
 
     OVS_CHECK(pSwitchInfo->pForwardInfo);
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_IsExternal, NULL);
 
@@ -502,7 +502,7 @@ OVS_OFPORT* OFPort_FindInternal_Ref()
         goto Cleanup;
     }
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_IsInternal, NULL);
 
@@ -534,7 +534,7 @@ OVS_OFPORT* OFPort_FindByName_Ref(const char* ofPortName)
         goto Cleanup;
     }
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_NameEquals, ofPortName);
 
@@ -566,7 +566,7 @@ OVS_OFPORT* OFPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId)
         goto Cleanup;
     }
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_PortIdEquals, &portId);
 
@@ -590,7 +590,7 @@ OVS_OFPORT* OFPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId)
         goto Cleanup;
     }
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Unsafe(pPortsArray, _OFPort_PortIdEquals, &portId);
 
@@ -622,7 +622,7 @@ OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber)
         goto Cleanup;
     }
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     pOutPort = (OVS_OFPORT*)FXArray_Find_Ref(pPortsArray, _OFPort_PortNumberEquals, &portNumber);
 
@@ -652,7 +652,7 @@ BOOLEAN OFPort_Delete(OVS_OFPORT* pPort)
 
     OVS_CHECK(pSwitchInfo->pForwardInfo);
 
-    pPortsArray = &pSwitchInfo->pForwardInfo->persistentPortsInfo;
+    pPortsArray = &pSwitchInfo->pForwardInfo->ofPorts;
 
     FXARRAY_LOCK_WRITE(pPortsArray, &lockState);
     portsLocked = TRUE;

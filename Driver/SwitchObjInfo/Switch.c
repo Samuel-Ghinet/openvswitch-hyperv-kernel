@@ -43,7 +43,7 @@ NDIS_STATUS Switch_CreateForwardInfo(NDIS_HANDLE filterHandle, OVS_GLOBAL_FORWAR
         goto Cleanup;
     }
 
-    pForwardInfo->persistentPortsInfo.pRwLock = NdisAllocateRWLock(filterHandle);
+    pForwardInfo->ofPorts.pRwLock = NdisAllocateRWLock(filterHandle);
     pForwardInfo->isInitialRestart = TRUE;
 
     *ppForwardInfo = pForwardInfo;
@@ -62,7 +62,7 @@ VOID Switch_DeleteForwardInfo(OVS_GLOBAL_FORWARD_INFO* pForwardInfo)
 {
     Sctx_ClearNicListUnsafe(pForwardInfo);
 
-    NdisFreeRWLock(pForwardInfo->persistentPortsInfo.pRwLock);
+    NdisFreeRWLock(pForwardInfo->ofPorts.pRwLock);
     NdisFreeRWLock(pForwardInfo->pRwLock);
     KFree(pForwardInfo);
 }
