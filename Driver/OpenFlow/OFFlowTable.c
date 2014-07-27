@@ -17,6 +17,20 @@ limitations under the License.
 #include "OFFlowTable.h"
 #include "OFFlow.h"
 
+#include "SpookyHash.h"
+
+#define OVS_FLOW_TABLE_AT(lists, hash)  (lists + (hash & (OVS_FLOW_TABLE_HASH_COUNT - 1)));
+
+static __inline UINT32 _Flow_HashPacketInfo_Offset(_In_ const VOID* pPacketInfo, SIZE_T offset, SIZE_T size)
+{
+    const BYTE* data = pPacketInfo;
+    
+    data += offset;
+    size -= offset;
+
+    return Spooky_Hash32(data, size, 0);
+}
+
 //pUnmaskedPacketInfo: extracted packet info
 //unsafe = does not lock pFlowTable
 static OVS_FLOW* _FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, const OVS_OFPACKET_INFO* pUnmaskedPacketInfo, OVS_FLOW_MASK* pFlowMask)
@@ -24,14 +38,18 @@ static OVS_FLOW* _FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, co
     SIZE_T startRange = pFlowMask->piRange.startRange;
     SIZE_T endRange = pFlowMask->piRange.endRange;
     OVS_OFPACKET_INFO maskedPacketInfo = { 0 };
+    UINT32 hash = 0;
 
-    LIST_ENTRY* pFlowEntry = NULL;
+    LIST_ENTRY* pFlowEntry = NULL, *pHeadEntry = NULL;
 
     ApplyMaskToPacketInfo(&maskedPacketInfo, pUnmaskedPacketInfo, pFlowMask);
 
-    pFlowEntry = pFlowTable->pFlowList->Flink;
+    hash = _Flow_HashPacketInfo_Offset(&maskedPacketInfo, startRange, endRange - startRange);
 
-    while (pFlowEntry != pFlowTable->pFlowList)
+    pHeadEntry = OVS_FLOW_TABLE_AT(pFlowTable->pFlowLists, hash);
+    pFlowEntry = pHeadEntry->Flink;
+
+    while (pFlowEntry != pHeadEntry)
     {
         LOCK_STATE_EX lockState = { 0 };
         OVS_FLOW* pFlow = NULL;
@@ -62,7 +80,7 @@ static __inline VOID _FlowTable_Free(OVS_FLOW_TABLE* pFlowTable)
 {
     OVS_CHECK(pFlowTable);
 
-    KFree(pFlowTable->pFlowList);
+    KFree(pFlowTable->pFlowLists);
     KFree(pFlowTable->pMaskList);
     KFree(pFlowTable);
 }
@@ -76,12 +94,17 @@ VOID FlowTable_DestroyNow_Unsafe(OVS_FLOW_TABLE* pFlowTable)
         return;
     }
 
-    while (!IsListEmpty(pFlowTable->pFlowList))
+    for (ULONG i = 0; i < OVS_FLOW_TABLE_HASH_COUNT; ++i)
     {
-        pFlowEntry = RemoveHeadList(pFlowTable->pFlowList);
+        LIST_ENTRY* pList = OVS_FLOW_TABLE_AT(pFlowTable->pFlowLists, i);
 
-        OVS_FLOW* pFlow = CONTAINING_RECORD(pFlowEntry, OVS_FLOW, listEntry);
-        OVS_REFCOUNT_DESTROY(pFlow);
+        while (!IsListEmpty(pList))
+        {
+            pFlowEntry = RemoveHeadList(pList);
+
+            OVS_FLOW* pFlow = CONTAINING_RECORD(pFlowEntry, OVS_FLOW, listEntry);
+            OVS_REFCOUNT_DESTROY(pFlow);
+        }
     }
 
     OVS_CHECK(IsListEmpty(pFlowTable->pMaskList));
@@ -233,12 +256,25 @@ void FlowTable_InsertFlowMask(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_MASK* pFlowMa
 void FlowTable_InsertFlow_Unsafe(_Inout_ OVS_FLOW_TABLE* pFlowTable, _In_ OVS_FLOW* pFlow)
 {
     LOCK_STATE_EX lockState;
+    OVS_OFPACKET_INFO* pPacketInfo = NULL;
+    SIZE_T startRange = 0;
+    SIZE_T endRange = 0;
+    UINT32 hash = 0;
+    LIST_ENTRY* pList = NULL;
 
     OVS_CHECK(pFlowTable);
     OVS_CHECK(pFlow);
 
+    pPacketInfo = &(pFlow->maskedPacketInfo);
+    startRange = pFlow->pMask->piRange.startRange;
+    endRange = pFlow->pMask->piRange.endRange;
+
     FLOWTABLE_LOCK_WRITE(pFlowTable, &lockState);
-    InsertHeadList(pFlowTable->pFlowList, &pFlow->listEntry);
+
+    hash = _Flow_HashPacketInfo_Offset(pPacketInfo, startRange, endRange - startRange);
+    pList = OVS_FLOW_TABLE_AT(pFlowTable->pFlowLists, hash);
+
+    InsertHeadList(pList, &pFlow->listEntry);
     pFlowTable->countFlows++;
     FLOWTABLE_UNLOCK(pFlowTable, &lockState);
 }
@@ -262,8 +298,8 @@ OVS_FLOW_TABLE* FlowTable_Create()
         return NULL;
     }
 
-    pFlowTable->pFlowList = KAlloc(sizeof(LIST_ENTRY));
-    if (!pFlowTable->pFlowList)
+    pFlowTable->pFlowLists = KAlloc(OVS_FLOW_TABLE_HASH_COUNT * sizeof(LIST_ENTRY));
+    if (!pFlowTable->pFlowLists)
     {
         ok = FALSE;
         goto Cleanup;
@@ -276,7 +312,13 @@ OVS_FLOW_TABLE* FlowTable_Create()
         goto Cleanup;
     }
 
-    InitializeListHead(pFlowTable->pFlowList);
+    for (ULONG i = 0; i < OVS_FLOW_TABLE_HASH_COUNT; ++i)
+    {
+        LIST_ENTRY* pList = pFlowTable->pFlowLists + i;
+
+        InitializeListHead(pList);
+    }
+
     InitializeListHead(pFlowTable->pMaskList);
     pFlowTable->refCount.Destroy = FlowTable_DestroyNow_Unsafe;
     pFlowTable->pRwLock = NdisAllocateRWLock(NULL);

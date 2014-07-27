@@ -22,6 +22,8 @@ typedef struct _OVS_FLOW OVS_FLOW;
 typedef struct _OVS_FLOW_MASK OVS_FLOW_MASK;
 typedef struct _OVS_FLOW_MATCH OVS_FLOW_MATCH;
 
+#define OVS_FLOW_TABLE_HASH_COUNT     1024
+
 typedef struct _OVS_FLOW_TABLE
 {
     //must be the first field in the struct
@@ -32,7 +34,7 @@ typedef struct _OVS_FLOW_TABLE
     PNDIS_RW_LOCK_EX pRwLock;
 
     //here we put OVS_FLOW_LIST
-    LIST_ENTRY* pFlowList;
+    LIST_ENTRY* pFlowLists;
     //the OVS_FLOW_MASK-s are enlisted here (i.e. list of shared masks)
     LIST_ENTRY* pMaskList;
 

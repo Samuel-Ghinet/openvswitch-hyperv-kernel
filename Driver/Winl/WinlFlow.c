@@ -627,7 +627,6 @@ OVS_ERROR Flow_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
     if (pFlowTable->countFlows > 0)
     {
-        LIST_ENTRY* pCurItem = pFlowTable->pFlowList->Flink;
         UINT i = 0;
         LOCK_STATE_EX lockState = { 0 };
 
@@ -644,25 +643,33 @@ OVS_ERROR Flow_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
         FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
 
-        while (pCurItem != pFlowTable->pFlowList)
+        for (ULONG i = 0; i < OVS_FLOW_TABLE_HASH_COUNT; ++i)
         {
-            OVS_FLOW* pFlow = CONTAINING_RECORD(pCurItem, OVS_FLOW, listEntry);
-            OVS_MESSAGE* pReplyMsg = msgs + i;
+            LIST_ENTRY* pList = NULL, *pCurEntry = NULL;
 
-            if (!CreateMsgFromFlow(pFlow, OVS_MESSAGE_COMMAND_NEW, pReplyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
+            pList = pFlowTable->pFlowLists + i;
+            pCurEntry = pList->Flink;
+         
+            while (pCurEntry != pList)
             {
-                FLOWTABLE_UNLOCK(pFlowTable, &lockState);
+                OVS_FLOW* pFlow = CONTAINING_RECORD(pCurEntry, OVS_FLOW, listEntry);
+                OVS_MESSAGE* pReplyMsg = msgs + i;
 
-                DEBUGP(LOG_ERROR, "flow dump fail: create msg!\n");
-                error = OVS_ERROR_INVAL;
-                goto Cleanup;
+                if (!CreateMsgFromFlow(pFlow, OVS_MESSAGE_COMMAND_NEW, pReplyMsg, pMsg->sequence, pDatapath->switchIfIndex, pMsg->pid))
+                {
+                    FLOWTABLE_UNLOCK(pFlowTable, &lockState);
+
+                    DEBUGP(LOG_ERROR, "flow dump fail: create msg!\n");
+                    error = OVS_ERROR_INVAL;
+                    goto Cleanup;
+                }
+
+                OVS_CHECK(pReplyMsg->type == OVS_MESSAGE_TARGET_FLOW);
+                pReplyMsg->flags |= OVS_MESSAGE_FLAG_MULTIPART;
+
+                ++i;
+                pCurEntry = pCurEntry->Flink;
             }
-
-            OVS_CHECK(pReplyMsg->type == OVS_MESSAGE_TARGET_FLOW);
-            pReplyMsg->flags |= OVS_MESSAGE_FLAG_MULTIPART;
-
-            ++i;
-            pCurItem = pCurItem->Flink;
         }
 
         FLOWTABLE_UNLOCK(pFlowTable, &lockState);
