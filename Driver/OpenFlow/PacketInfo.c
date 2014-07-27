@@ -328,7 +328,7 @@ static BOOLEAN _ExtractIpv6(VOID* pNbBuffer, ULONG nbLen, _Inout_ OVS_OFPACKET_I
     return TRUE;
 }
 
-BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ovsSourcePort, _Out_ OVS_OFPACKET_INFO* pPacketInfo)
+BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePort, _Out_ OVS_OFPACKET_INFO* pPacketInfo)
 {
     OVS_ETHERNET_HEADER* pEthHeader = NULL;
     OVS_ETHERNET_HEADER_TAGGED* pEthHeaderTagged = NULL;
@@ -338,7 +338,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ovsSourcePo
 
     //OVS SPECIFIC / PHYSICAL LAYER
     //NOTE: on windows, we don't have "packet priority" and "packet mark" associated with a NET_BUFFER / NET_BUFFER_LIST
-    pPacketInfo->physical.ovsInPort = ovsSourcePort;
+    pPacketInfo->physical.ovsInPort = ofSourcePort;
 
     //I. LINK LAYER
     pEthHeader = (OVS_ETHERNET_HEADER*)pNbBuffer;

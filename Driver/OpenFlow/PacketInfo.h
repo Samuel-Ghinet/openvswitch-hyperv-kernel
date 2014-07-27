@@ -272,7 +272,7 @@ VOID PIFromArg_PacketMark(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI
 BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask);
 VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask);
 
-BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ovsSourcePort, _Out_ OVS_OFPACKET_INFO* pPacketInfo);
+BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePort, _Out_ OVS_OFPACKET_INFO* pPacketInfo);
 
 BOOLEAN PacketInfo_Equal(const OVS_OFPACKET_INFO* pLhs, const OVS_OFPACKET_INFO* pRhs, SIZE_T endRange);
 BOOLEAN PacketInfo_EqualAtRange(const OVS_OFPACKET_INFO* pLhsPI, const OVS_OFPACKET_INFO* pRhsPI, SIZE_T startRange, SIZE_T endRange);
