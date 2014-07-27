@@ -222,7 +222,7 @@ static BOOLEAN _ExecuteAction_Recirculation(_Inout_ OVS_NET_BUFFER *pOvsNb, _In_
 static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 ovsPortNumber)
 {
     UINT16 validPortNumber = OVS_INVALID_PORT_NUMBER;
-    OVS_OFPORT* pDestPersPort = NULL;
+    OVS_OFPORT* pDestOFPort = NULL;
 
     //NOTE: we don't need to lock neither pSourcePort, nor pDestPort, because these fields (id, type, isExternal) never change
     if (ovsPortNumber >= OVS_MAX_PORTS)
@@ -233,18 +233,18 @@ static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 
 
     validPortNumber = (UINT16)ovsPortNumber;
 
-    pDestPersPort = OFPort_FindByNumber_Ref(validPortNumber);
-    if (!pDestPersPort)
+    pDestOFPort = OFPort_FindByNumber_Ref(validPortNumber);
+    if (!pDestOFPort)
     {
         DEBUGP(LOG_ERROR, "could not find pers port: %u!\n", validPortNumber);
         return NULL;
     }
 
     //if we know from now that the dest port is not connected (i.e. has no associated NIC), we won't attempt to send through the port
-    if (pDestPersPort->portId == NDIS_SWITCH_DEFAULT_PORT_ID &&
-        (pDestPersPort->ofPortType == OVS_OFPORT_TYPE_PHYSICAL || pDestPersPort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS))
+    if (pDestOFPort->portId == NDIS_SWITCH_DEFAULT_PORT_ID &&
+        (pDestOFPort->ofPortType == OVS_OFPORT_TYPE_PHYSICAL || pDestOFPort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS))
     {
-        OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
+        OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
 
         return NULL;
     }
@@ -252,13 +252,13 @@ static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 
     //if the src port = internal / external, we won't output to gre / vxlan:
     //for external: we would be sending the packet back whence it came
     //for internal: when outputting via NORMAL from hypervisor to hypervisor, we don't want to send to the hypervisor both via external and gre
-    if (pDestPersPort->ofPortType == OVS_OFPORT_TYPE_GRE || pDestPersPort->ofPortType == OVS_OFPORT_TYPE_VXLAN)
+    if (pDestOFPort->ofPortType == OVS_OFPORT_TYPE_GRE || pDestOFPort->ofPortType == OVS_OFPORT_TYPE_VXLAN)
     {
         if (pSourcePort->portId != NDIS_SWITCH_DEFAULT_PORT_ID &&
             pSourcePort->isExternal ||
             pSourcePort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS)
         {
-            OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
+            OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
 
             return NULL;
         }
@@ -268,26 +268,26 @@ static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 
     if (pSourcePort->ofPortType == OVS_OFPORT_TYPE_GRE ||
         pSourcePort->ofPortType == OVS_OFPORT_TYPE_VXLAN)
     {
-        if (pDestPersPort && pDestPersPort->portId != NDIS_SWITCH_DEFAULT_PORT_ID)
+        if (pDestOFPort && pDestOFPort->portId != NDIS_SWITCH_DEFAULT_PORT_ID)
         {
-            if (pDestPersPort->isExternal ||
-                pDestPersPort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS)
+            if (pDestOFPort->isExternal ||
+                pDestOFPort->ofPortType == OVS_OFPORT_TYPE_MANAG_OS)
             {
-                OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
+                OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
 
                 return NULL;
             }
         }
     }
 
-    return pDestPersPort;
+    return pDestOFPort;
 }
 
 BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCallback outputToPort)
 {
     BOOLEAN ok = TRUE;
     const OVS_ARGUMENT_GROUP* pActionArgs = pOvsNb->pActions->pActionGroup;
-    OVS_OFPORT* pDestPersPort = NULL;
+    OVS_OFPORT* pDestOFPort = NULL;
     UINT32 ovsPortNumber = (UINT32)-1;
 
     for (UINT i = 0; i < pActionArgs->count; ++i)
@@ -297,14 +297,14 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
 
         ok = TRUE;
 
-        if (pDestPersPort)
+        if (pDestOFPort)
         {
             OVS_NET_BUFFER* pDuplicateOnb = ONB_Duplicate(pOvsNb);
             OVS_CHECK(pDuplicateOnb);
 
             if (pDuplicateOnb)
             {
-                pDuplicateOnb->pDestinationPort = pDestPersPort;
+                pDuplicateOnb->pDestinationPort = pDestOFPort;
                 pDuplicateOnb->sendToPortNormal = FALSE;
 
                 //output = output packet to port
@@ -321,8 +321,8 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
 
                 ok = TRUE;
 
-                OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
-                pDestPersPort = NULL;
+                OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
+                pDestOFPort = NULL;
             }
         }
 
@@ -333,7 +333,7 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
 
             if (ovsPortNumber < OVS_MAX_PORTS)
             {
-                pDestPersPort = _FindDestPort_Ref(pOvsNb->pSourcePort, ovsPortNumber);
+                pDestOFPort = _FindDestPort_Ref(pOvsNb->pSourcePort, ovsPortNumber);
             }
             else
             {
@@ -392,15 +392,15 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
         }
     }
 
-    if (pDestPersPort)
+    if (pDestOFPort)
     {
-        pOvsNb->pDestinationPort = pDestPersPort;
+        pOvsNb->pDestinationPort = pDestOFPort;
         pOvsNb->sendToPortNormal = FALSE;
 
         ok = (*outputToPort)(pOvsNb);
 
-        OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
-        pDestPersPort = NULL;
+        OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
+        pDestOFPort = NULL;
     }
     else
     {
@@ -409,7 +409,7 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDestPersPort);
+    OVS_REFCOUNT_DEREFERENCE(pDestOFPort);
 
     return ok;
 }

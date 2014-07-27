@@ -169,16 +169,16 @@ VOID Packet_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFile
 
     if (pOvsNb->pOriginalPacketInfo->physical.ovsInPort != OVS_INVALID_PORT_NUMBER)
     {
-        OVS_OFPORT* pSourcePersPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ovsInPort);
+        OVS_OFPORT* pSourceOFPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ovsInPort);
         NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
 
         //NOTE: actually, the portId of pers port CAN change (when mapping it to a hyper-v switch port)
         //pershaps make it volatile and use it with interlocked ops?
-        if (pSourcePersPort && pSourcePersPort->portId != NDIS_SWITCH_DEFAULT_PORT_ID)
+        if (pSourceOFPort && pSourceOFPort->portId != NDIS_SWITCH_DEFAULT_PORT_ID)
         {
             OVS_NIC_LIST_ENTRY* pNicEntry = NULL;
 
-            portId = pSourcePersPort->portId;
+            portId = pSourceOFPort->portId;
 
             FWDINFO_LOCK_READ(pSwitchInfo->pForwardInfo, &lockState);
 
@@ -192,7 +192,7 @@ VOID Packet_Execute(_In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFile
             FWDINFO_UNLOCK(pSwitchInfo->pForwardInfo, &lockState);
         }
 
-        pOvsNb->pSourcePort = pSourcePersPort;
+        pOvsNb->pSourcePort = pSourceOFPort;
     }
 
     else
