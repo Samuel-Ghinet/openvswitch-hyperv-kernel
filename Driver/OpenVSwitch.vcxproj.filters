@@ -176,6 +176,9 @@
     <ClCompile Include="Core\SpookyHash.c">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Core\FixedSizedArray.c">
+      <Filter>Core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="precomp.h" />
@@ -379,6 +382,9 @@
       <Filter>Winl</Filter>
     </ClInclude>
     <ClInclude Include="Core\SpookyHash.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\FixedSizedArray.h">
       <Filter>Core</Filter>
     </ClInclude>
   </ItemGroup>
