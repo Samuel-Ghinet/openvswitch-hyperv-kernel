@@ -188,10 +188,9 @@ Cleanup:
     return ok;
 }
 
-BOOLEAN CreateDefaultDatapath(NDIS_HANDLE ndisFilterHandle)
+BOOLEAN CreateDefaultDatapath(NET_IFINDEX dpIfIndex)
 {
     OVS_DATAPATH* pDatapath = NULL;
-    OVS_SWITCH_INFO* pSwitchInfo = NULL;
     BOOLEAN ok = TRUE;
 
     pDatapath = KZAlloc(sizeof(OVS_DATAPATH));
@@ -201,14 +200,7 @@ BOOLEAN CreateDefaultDatapath(NDIS_HANDLE ndisFilterHandle)
         goto Cleanup;
     }
 
-    pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
-    if (!pSwitchInfo)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    pDatapath->switchIfIndex = pSwitchInfo->datapathIfIndex;
+    pDatapath->switchIfIndex = dpIfIndex;
     pDatapath->refCount.Destroy = Datapath_DestroyNow_Unsafe;
     pDatapath->name = NULL;
 
@@ -223,7 +215,7 @@ BOOLEAN CreateDefaultDatapath(NDIS_HANDLE ndisFilterHandle)
         goto Cleanup;
     }
 
-    pDatapath->pRwLock = NdisAllocateRWLock(ndisFilterHandle);
+    pDatapath->pRwLock = NdisAllocateRWLock(NULL);
 
     OVS_CHECK(!Driver_HaveDatapath());
 
@@ -242,8 +234,6 @@ Cleanup:
         
         KFree(pDatapath);
     }
-
-    OVS_REFCOUNT_DEREFERENCE(pSwitchInfo);
 
     return ok;
 }

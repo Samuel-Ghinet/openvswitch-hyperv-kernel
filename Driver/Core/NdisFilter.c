@@ -185,6 +185,7 @@ NDIS_STATUS FilterAttach(NDIS_HANDLE ndisFilterHandle, NDIS_HANDLE hDriverContex
     OVS_SWITCH_INFO* pSwitchInfo = NULL;
     NET_BUFFER_LIST_POOL_PARAMETERS nbl_pool_params = { 0 };
     NET_BUFFER_POOL_PARAMETERS nb_pool_params = { 0 };
+    NET_IFINDEX dpIfIndex = 0;
 
     UNREFERENCED_PARAMETER(hDriverContext);
 
@@ -250,12 +251,13 @@ NDIS_STATUS FilterAttach(NDIS_HANDLE ndisFilterHandle, NDIS_HANDLE hDriverContex
 
     pSwitchInfo->controlFlowState = OVS_SWITCH_ATTACHED;
     pSwitchInfo->dataFlowState = OVS_SWITCH_PAUSED;
+    dpIfIndex = pSwitchInfo->datapathIfIndex;
 
     DRIVER_LOCK();
     InsertHeadList(&g_driver.switchList, &pSwitchInfo->listEntry);
     DRIVER_UNLOCK();
 
-    status = OvsInit(g_driverHandle);
+    status = OvsInit(dpIfIndex);
     if (status != NDIS_STATUS_SUCCESS)
     {
         goto Cleanup;
