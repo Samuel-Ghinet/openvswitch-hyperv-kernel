@@ -419,7 +419,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 
         validPortNumber = (UINT16)portNumber;
 
-        pPersPort = PersPort_Create_Ref(ofPortName, &validPortNumber, portType);
+        pPersPort = OFPort_Create_Ref(ofPortName, &validPortNumber, portType);
         if (!pPersPort)
         {
             //TODO: perhaps we should give more specific error value
@@ -431,7 +431,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     {
         OVS_CHECK(ofPortName);
 
-        pPersPort = PersPort_Create_Ref(ofPortName, /*number*/ NULL, portType);
+        pPersPort = OFPort_Create_Ref(ofPortName, /*number*/ NULL, portType);
         if (!pPersPort)
         {
             //TODO: perhaps we should give more specific error value
@@ -500,7 +500,7 @@ Cleanup:
         if (error != OVS_ERROR_NOERROR)
         {
             //NOTE: must be referenced when called for delete
-            PersPort_Delete(pPersPort);
+            OFPort_Delete(pPersPort);
         }
         else
         {
@@ -549,7 +549,7 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     if (pArg)
     {
         ofPortName = pArg->data;
-        pPersPort = PersPort_FindByName_Ref(ofPortName);
+        pPersPort = OFPort_FindByName_Ref(ofPortName);
     }
     else
     {
@@ -565,7 +565,7 @@ OVS_ERROR OFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
                 goto Cleanup;
             }
 
-            pPersPort = PersPort_FindByNumber_Ref((UINT16)portNumber);
+            pPersPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
         }
         else
         {
@@ -725,7 +725,7 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     if (pArg)
     {
         ofPortName = pArg->data;
-        pPersPort = PersPort_FindByName_Ref(ofPortName);
+        pPersPort = OFPort_FindByName_Ref(ofPortName);
     }
     else
     {
@@ -741,7 +741,7 @@ OVS_ERROR OFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
                 goto Cleanup;
             }
 
-            pPersPort = PersPort_FindByNumber_Ref((UINT16)portNumber);
+            pPersPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
         }
         else
         {
@@ -824,7 +824,7 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     if (pArg)
     {
         ofPortName = pArg->data;
-        pPersPort = PersPort_FindByName_Ref(ofPortName);
+        pPersPort = OFPort_FindByName_Ref(ofPortName);
     }
     else
     {
@@ -840,7 +840,7 @@ OVS_ERROR OFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
                 goto Cleanup;
             }
 
-            pPersPort = PersPort_FindByNumber_Ref((UINT16)portNumber);
+            pPersPort = OFPort_FindByNumber_Ref((UINT16)portNumber);
         }
         else
         {
@@ -890,7 +890,7 @@ Cleanup:
             PORT_UNLOCK(pPersPort, &lockState);
         }
 
-        PersPort_Delete(pPersPort);
+        OFPort_Delete(pPersPort);
     }
 
     OVS_REFCOUNT_DEREFERENCE(pDatapath);

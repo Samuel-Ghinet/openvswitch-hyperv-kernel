@@ -31,7 +31,7 @@ NDIS_STATUS OvsInit(NDIS_HANDLE ndisHandle)
 {
     INT64 timeInMs = 10 /*mins*/ * 60 /*s*/ * 1000 /*ms*/;
 
-    if (!PersPort_Initialize())
+    if (!OFPort_Initialize())
     {
         return NDIS_STATUS_FAILURE;
     }
@@ -51,5 +51,5 @@ VOID OvsUninit()
 {
     Driver_RemoveDatapath();
 
-    PersPort_Uninitialize();
+    OFPort_Uninitialize();
 }

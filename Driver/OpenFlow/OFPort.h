@@ -149,30 +149,30 @@ typedef struct _OF_PI_IPV4_TUNNEL OF_PI_IPV4_TUNNEL;
 
 /********************************************************************/
 
-OVS_OFPORT* PersPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT16* pPortNumber, OVS_OFPORT_TYPE portType);
+OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT16* pPortNumber, OVS_OFPORT_TYPE portType);
 
-OVS_OFPORT* PersPort_FindByName_Ref(const char* ofPortName);
-OVS_OFPORT* PersPort_FindByNumber_Ref(UINT16 portNumber);
+OVS_OFPORT* OFPort_FindByName_Ref(const char* ofPortName);
+OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber);
 
-OVS_OFPORT* PersPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId);
-OVS_OFPORT* PersPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId);
+OVS_OFPORT* OFPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId);
+OVS_OFPORT* OFPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId);
 
-BOOLEAN PersPort_Delete(OVS_OFPORT* pPersPort);
-
-_Ret_maybenull_
-OVS_OFPORT* PersPort_FindExternal_Ref();
+BOOLEAN OFPort_Delete(OVS_OFPORT* pPersPort);
 
 _Ret_maybenull_
-OVS_OFPORT* PersPort_FindInternal_Ref();
+OVS_OFPORT* OFPort_FindExternal_Ref();
 
 _Ret_maybenull_
-OVS_OFPORT* PersPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
-_Ret_maybenull_
-OVS_OFPORT* PersPort_FindVxlan_Ref(_In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
-_Ret_maybenull_
-OVS_OFPORT* PersPort_FindVxlanByDestPort_Ref(LE16 udpDestPort);
+OVS_OFPORT* OFPort_FindInternal_Ref();
 
-BOOLEAN PersPort_Initialize();
-VOID PersPort_Uninitialize();
+_Ret_maybenull_
+OVS_OFPORT* OFPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
+_Ret_maybenull_
+OVS_OFPORT* OFPort_FindVxlan_Ref(_In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
+_Ret_maybenull_
+OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort);
 
-VOID PersPort_DestroyNow_Unsafe(OVS_OFPORT* pPersPort);
+BOOLEAN OFPort_Initialize();
+VOID OFPort_Uninitialize();
+
+VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pPersPort);
