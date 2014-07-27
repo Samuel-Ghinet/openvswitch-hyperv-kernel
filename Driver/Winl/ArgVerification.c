@@ -17,7 +17,7 @@ limitations under the License.
 #include "ArgVerification.h"
 
 #include "PacketInfo.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "Icmp.h"
 #include "Ipv6.h"
 #include "OFFlow.h"

@@ -18,7 +18,7 @@ limitations under the License.
 
 /* SCTX FUNCTIONS FOR HANDLING SWITCH (OR, PER SWITCH) INFO */
 
-#include "PersistentPort.h"
+#include "OFPort.h"
 
 typedef struct _OVS_NIC_LIST_ENTRY OVS_NIC_LIST_ENTRY;
 typedef struct _OVS_PORT_LIST_ENTRY OVS_PORT_LIST_ENTRY;

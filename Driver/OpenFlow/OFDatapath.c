@@ -21,7 +21,7 @@ limitations under the License.
 #include "Argument.h"
 #include "Message.h"
 #include "ArgumentType.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "OvsCore.h"
 #include "OFFlowTable.h"
 

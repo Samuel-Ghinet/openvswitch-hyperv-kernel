@@ -34,7 +34,7 @@ limitations under the License.
 #include "Message.h"
 #include "NblsIngress.h"
 #include "Arp.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "ArgToAttribute.h"
 #include "Nbls.h"
 #include "Vlan.h"

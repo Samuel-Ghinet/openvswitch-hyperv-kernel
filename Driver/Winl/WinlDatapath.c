@@ -22,7 +22,7 @@ limitations under the License.
 #include "WinlDevice.h"
 #include "Winetlink.h"
 #include "Error.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "Sctx_Nic.h"
 #include "OFFlowTable.h"
 

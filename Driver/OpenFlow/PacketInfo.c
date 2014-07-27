@@ -20,7 +20,7 @@ limitations under the License.
 #include "Argument.h"
 #include "WinlFlow.h"
 #include "ArgumentType.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "Ipv4.h"
 #include "Tcp.h"
 #include "Udp.h"

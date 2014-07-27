@@ -26,7 +26,7 @@ limitations under the License.
 #include "Ipv4.h"
 #include "Icmp.h"
 #include "ArgumentType.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 
 #include "ArgVerification.h"
 #include "MsgVerification.h"

@@ -22,7 +22,7 @@ limitations under the License.
 #include "Gre.h"
 #include "Vxlan.h"
 #include "OFFlowTable.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 
 ULONG g_extAllocationTag = 'xsvO';
 NDIS_RW_LOCK_EX* g_pRefRwLock = NULL;

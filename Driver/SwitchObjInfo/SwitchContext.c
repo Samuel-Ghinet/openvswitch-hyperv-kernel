@@ -20,7 +20,7 @@ limitations under the License.
 #include "StatusIndication.h"
 #include "Sctx_Nic.h"
 #include "Sctx_Port.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include <Netioapi.h>
 
 NDIS_STATUS _PortSupported(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ NDIS_SWITCH_PORT_ID portId)

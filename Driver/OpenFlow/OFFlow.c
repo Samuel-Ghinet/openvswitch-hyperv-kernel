@@ -36,8 +36,7 @@ limitations under the License.
 #include "Gre.h"
 #include "Checksum.h"
 #include "OFFlowTable.h"
-
-#include "PersistentPort.h"
+#include "OFPort.h"
 
 #include <ntstrsafe.h>
 
