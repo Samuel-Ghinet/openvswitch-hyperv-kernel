@@ -68,6 +68,35 @@ static OVS_NET_BUFFER* _CreateONBFromArg(OVS_ARGUMENT* pOnbArg)
     return pOvsNb;
 }
 
+static OVS_FLOW* _CreateFlowFromArgs(OVS_NET_BUFFER* pOvsNb, OVS_ARGUMENT_GROUP* pPIArgs, OVS_ARGUMENT_GROUP* pActionsArgs)
+{
+    OVS_FLOW* pFlow = NULL;
+    BOOLEAN ok = TRUE;
+    OVS_ACTIONS* pTargetActions = NULL;
+
+    pFlow = Flow_Create();
+    CHECK_GC(pFlow);
+
+    ok = PacketInfo_Extract(ONB_GetData(pOvsNb), ONB_GetDataLength(pOvsNb), OVS_INVALID_PORT_NUMBER, &pFlow->maskedPacketInfo);
+    CHECK_GC(ok);
+
+    ok = GetPacketContextFromPIArgs(pPIArgs, &pFlow->maskedPacketInfo);
+    CHECK_GC(ok);
+
+    pTargetActions = Actions_Create();
+    CHECK_GC(pTargetActions);
+
+    CHECK_GC(CopyArgumentGroup(pTargetActions->pActionGroup, pActionsArgs, /*actionsToAdd*/0));
+
+    ok = ProcessReceivedActions(pTargetActions->pActionGroup, &pFlow->maskedPacketInfo, /*recursivity depth*/0);
+    CHECK_GC(ok);
+
+    pFlow->pActions = pTargetActions;
+
+Cleanup:
+    return pFlow;
+}
+
 VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
@@ -75,69 +104,28 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
     BOOLEAN ok = FALSE;
     LOCK_STATE_EX lockState = { 0 };
     OVS_NIC_INFO sourcePort = { 0 };
-    OVS_ARGUMENT* pArg = NULL;
+    OVS_ARGUMENT* pOnbArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pActionsArgs = NULL;
     OVS_ACTIONS* pTargetActions = NULL;
 
     UNREFERENCED_PARAMETER(pFileObject);
 
-    pArg = FindArgument(pArgGroup, OVS_ARGTYPE_PACKET_BUFFER);
-    if (!pArg)
+    pOnbArg = FindArgument(pArgGroup, OVS_ARGTYPE_PACKET_BUFFER);
+    if (!pOnbArg)
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " fail: have no arg net buffer!\n");
         return;
     }
 
-    pOvsNb = _CreateONBFromArg(pArg);
+    pOvsNb = _CreateONBFromArg(pOnbArg);
     if (!pOvsNb)
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not create ONB!\n");
         return;
     }
 
-    pFlow = Flow_Create();
-    if (!pFlow)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not alloc flow!\n");
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    ok = PacketInfo_Extract(ONB_GetData(pOvsNb), ONB_GetDataLength(pOvsNb), OVS_INVALID_PORT_NUMBER, &pFlow->maskedPacketInfo);
-    if (!ok)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not extract keys from packet!\n");
-        goto Cleanup;
-    }
-
-    ok = GetPacketContextFromPIArgs(pPacketInfoArgs, &pFlow->maskedPacketInfo);
-    if (!ok)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not extract context keys from packet!\n");
-        goto Cleanup;
-    }
-
-    pTargetActions = Actions_Create();
-    if (NULL == pTargetActions)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not alloc group for target actions!\n");
-        goto Cleanup;
-    }
-
-    if (!CopyArgumentGroup(pTargetActions->pActionGroup, pActionsArgs, /*actionsToAdd*/0))
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not copy actions group\n");
-        goto Cleanup;
-    }
-
-    ok = ProcessReceivedActions(pTargetActions->pActionGroup, &pFlow->maskedPacketInfo, /*recursivity depth*/0);
-    if (!ok)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ "ProcessReceivedActions failed!\n");
-        goto Cleanup;
-    }
-
-    pFlow->pActions = pTargetActions;
+    pFlow = _CreateFlowFromArgs(pOvsNb, pPacketInfoArgs, pActionsArgs);
+    CHECK_GC(pFlow);
 
     //while we will process the packet, we do not allow its actions to be destroyed
     pOvsNb->pActions = OVS_REFCOUNT_REFERENCE(pTargetActions);
