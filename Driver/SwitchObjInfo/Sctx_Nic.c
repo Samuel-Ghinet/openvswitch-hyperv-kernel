@@ -333,7 +333,7 @@ Cleanup:
 
 UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId)
 {
-    OVS_PERSISTENT_PORT* pPort = NULL;
+    OVS_OFPORT* pPort = NULL;
     LOCK_STATE_EX lockState;
     UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
 

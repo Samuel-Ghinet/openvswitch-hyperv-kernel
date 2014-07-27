@@ -21,7 +21,6 @@ limitations under the License.
 #include "precomp.h"
 
 typedef struct _OVS_GLOBAL_FORWARD_INFO OVS_GLOBAL_FORWARD_INFO;
-typedef struct _OVS_PERSISTENT_PORT OVS_PERSISTENT_PORT;
 
 typedef struct _OVS_PORT_LIST_ENTRY
 {
