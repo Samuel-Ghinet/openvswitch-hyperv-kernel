@@ -25,7 +25,7 @@ limitations under the License.
 #include "SendIngressBasic.h"
 #include "WinlDevice.h"
 #include "OvsCore.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "OidPort.h"
 
 #include <netioapi.h>

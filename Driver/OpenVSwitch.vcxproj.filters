@@ -152,9 +152,6 @@
     <ClCompile Include="OID\OIDRequest.c">
       <Filter>OID</Filter>
     </ClCompile>
-    <ClCompile Include="OpenFlow\PersistentPort.c">
-      <Filter>OpenFlow</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Debug.c">
       <Filter>Core</Filter>
     </ClCompile>
@@ -175,6 +172,9 @@
     </ClCompile>
     <ClCompile Include="Core\FixedSizedArray.c">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="OpenFlow\OFPort.c">
+      <Filter>OpenFlow</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -341,9 +341,6 @@
     <ClInclude Include="OpenFlow\OFDatapath.h">
       <Filter>OpenFlow</Filter>
     </ClInclude>
-    <ClInclude Include="OpenFlow\PersistentPort.h">
-      <Filter>OpenFlow</Filter>
-    </ClInclude>
     <ClInclude Include="OID\OidNic.h">
       <Filter>OID</Filter>
     </ClInclude>
@@ -380,6 +377,9 @@
     </ClInclude>
     <ClInclude Include="Core\FixedSizedArray.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="OpenFlow\OFPort.h">
+      <Filter>OpenFlow</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

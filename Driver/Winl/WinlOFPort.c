@@ -27,7 +27,7 @@ limitations under the License.
 #include "Gre.h"
 #include "NdisFilter.h"
 #include "Sctx_Nic.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "Error.h"
 
 typedef struct _OVS_WINL_PORT

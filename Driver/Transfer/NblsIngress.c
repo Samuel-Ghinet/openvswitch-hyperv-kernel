@@ -34,7 +34,7 @@ limitations under the License.
 #include "Message.h"
 #include "Encapsulator.h"
 #include "NormalTransfer.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 #include "OFFlowTable.h"
 #include "Checksum.h"
 

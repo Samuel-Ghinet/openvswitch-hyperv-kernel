@@ -25,7 +25,7 @@ limitations under the License.
 #include "Ipv6.h"
 #include "OFAction.h"
 #include "ArgumentType.h"
-#include "PersistentPort.h"
+#include "OFPort.h"
 
 BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _Inout_ OVS_OFPACKET_INFO* pPacketInfo)
 {
