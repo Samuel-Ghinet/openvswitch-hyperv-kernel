@@ -83,14 +83,14 @@ static void _GetDatapathStats(OVS_DATAPATH* pDatapath, OVS_DATAPATH_STATS* pStat
     DATAPATH_UNLOCK(pDatapath, &lockStateData);
 }
 
-BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
+OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
 {
     OVS_ARGUMENT_GROUP* pArgGroup = NULL;
     OVS_ARGUMENT* pNameArg = NULL, *pStatsArg = NULL;
     char* datapathName = NULL;
     OVS_DATAPATH_STATS dpStats = { 0 };
-    BOOLEAN ok = TRUE;
     ULONG nameLen = 0;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState;
 
     OVS_CHECK(pMsg);
@@ -108,7 +108,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
     if (!pArgGroup)
     {
-        return FALSE;
+        return OVS_ERROR_NOMEM;
     }
 
     AllocateArgumentsToGroup(2, pArgGroup);
@@ -116,7 +116,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pNameArg = CreateArgumentStringA_Alloc(OVS_ARGTYPE_DATAPATH_NAME, datapathName);
     if (!pNameArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -126,7 +126,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_STATS, &dpStats);
     if (!pStatsArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -150,7 +150,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
 Cleanup:
     KFree(datapathName);
 
-    if (ok)
+    if (error != OVS_ERROR_NOERROR)
     {
         KFree(pNameArg);
         KFree(pStatsArg);
@@ -161,11 +161,9 @@ Cleanup:
         DestroyArgument(pStatsArg);
 
         FreeGroupWithArgs(pArgGroup);
-
-        return FALSE;
     }
 
-    return ok;
+    return error;
 }
 
 BOOLEAN CreateDefaultDatapath(NET_IFINDEX dpIfIndex)
