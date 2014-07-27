@@ -239,7 +239,7 @@ static OVS_OFPORT* _FindDestPort_Ref(_In_ const OVS_OFPORT* pSourcePort, UINT32 
     pDestOFPort = OFPort_FindByNumber_Ref(validPortNumber);
     if (!pDestOFPort)
     {
-        DEBUGP(LOG_ERROR, "could not find pers port: %u!\n", validPortNumber);
+        DEBUGP(LOG_ERROR, "could not find of port: %u!\n", validPortNumber);
         return NULL;
     }
 

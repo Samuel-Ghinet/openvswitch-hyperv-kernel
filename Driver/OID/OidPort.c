@@ -183,7 +183,7 @@ VOID Port_Teardown(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_PORT
 
         if (pPortEntry)
         {
-            //we no longer 'unset' the of port: when it will try to output to pers port, it will find a hyper v switch port / nic,
+            //we no longer 'unset' the of port: when it will try to output to of port, it will find a hyper v switch port / nic,
             //it will not find one, so it will drop the packet.
             --(pForwardInfo->countPorts);
             pPortEntry->on = FALSE;
