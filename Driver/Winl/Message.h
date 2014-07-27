@@ -18,6 +18,7 @@ limitations under the License.
 
 #include "precomp.h"
 #include "Argument.h"
+#include "Error.h"
 
 #define FLAGS enum
 
@@ -281,3 +282,5 @@ static __inline OVS_ARGTYPE MessageTargetTypeToArgType(OVS_MESSAGE_TARGET_TYPE t
         OVS_CHECK_RET(__UNEXPECTED__, OVS_ARGTYPE_INVALID);
     }
 }
+
+OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, OVS_MESSAGE_TARGET_TYPE target, UINT32 portId, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs);
