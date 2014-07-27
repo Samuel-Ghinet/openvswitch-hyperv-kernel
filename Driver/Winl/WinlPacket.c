@@ -125,30 +125,32 @@ static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_
     pOvsNb->pTunnelInfo = NULL;
 }
 
+//NOTE: Assuming the verification part has done its job (arg & msg verification), we can use the input data as valid
+
 VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
     BOOLEAN ok = FALSE;
+    //OVS_NIC_INFO sourcePort = { 0 };
+    
     OVS_ARGUMENT* pOnbArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pActionsArgs = NULL;
-    OVS_ACTIONS* pTargetActions = NULL;
 
     UNREFERENCED_PARAMETER(pFileObject);
 
     pOnbArg = FindArgument(pArgGroup, OVS_ARGTYPE_PACKET_BUFFER);
-    if (!pOnbArg)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: have no arg net buffer!\n");
-        return;
-    }
+    OVS_CHECK(pOnbArg);
+
+    //i.e. packet info
+    pPacketInfoArgs = FindArgumentGroup(pArgGroup, OVS_ARGTYPE_PACKET_PI_GROUP);
+    OVS_CHECK(!pPacketInfoArgs);
+
+    pActionsArgs = FindArgumentGroup(pArgGroup, OVS_ARGTYPE_PACKET_ACTIONS_GROUP);
+    OVS_CHECK(pActionsArgs);
 
     pOvsNb = _CreateONBFromArg(pOnbArg);
-    if (!pOvsNb)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not create ONB!\n");
-        return;
-    }
+    CHECK_GC(pOvsNb);
 
     pFlow = _CreateFlowFromArgs(pOvsNb, pPacketInfoArgs, pActionsArgs);
     CHECK_GC(pFlow);
@@ -163,10 +165,11 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
 Cleanup:
     if (pFlow)
     {
+        OVS_REFCOUNT_DEREF_AND_DESTROY(pFlow->pActions);
+
         Flow_DestroyNow_Unsafe(pFlow);
     }
 
-    OVS_REFCOUNT_DEREFERENCE(pTargetActions);
     OVS_REFCOUNT_DEREFERENCE(pOvsNb->pSourcePort);
 
     if (ok)
@@ -176,9 +179,7 @@ Cleanup:
     }
     else
     {
-        ONB_Destroy(pSwitchInfo, &pOvsNb);
-
-        OVS_REFCOUNT_DEREF_AND_DESTROY(pTargetActions);
+        ONB_Destroy(pSwitchInfo, &pOvsNb);   
     }
 }
 
