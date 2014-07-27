@@ -153,7 +153,7 @@ Cleanup:
 }
 /************************/
 
-static BOOLEAN _CreateMsgFromOFPort(OVS_WINL_PORT* pPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid, BOOLEAN multipleUpcallPids)
+static BOOLEAN _CreateMsgFromWinlPort(OVS_WINL_PORT* pPort, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid, BOOLEAN multipleUpcallPids)
 {
     OVS_ARGUMENT* pArgPortName = NULL, *pArgPortType = NULL, *pArgPortNumber = NULL;
     OVS_ARGUMENT* pArgUpcallPid = NULL, *pArgPortSats = NULL, *pArgPortOpts = NULL;
@@ -299,7 +299,7 @@ Cleanup:
     }
 }
 
-static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_OFPORT* pPort, PORT_FETCH_CTXT* pContext)
+static BOOLEAN _CreateMsgFromOFPort(_In_ const OVS_OFPORT* pPort, PORT_FETCH_CTXT* pContext)
 {
     OVS_WINL_PORT port;
     BOOLEAN ok = TRUE;
@@ -313,7 +313,7 @@ static BOOLEAN _CreateMsgFromPersistentPort(_In_ const OVS_OFPORT* pPort, PORT_F
     port.stats = pPort->stats;
     port.upcallPortIds = pPort->upcallPortIds;
 
-    ok = _CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid, pContext->multipleUpcallPids);
+    ok = _CreateMsgFromWinlPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid, pContext->multipleUpcallPids);
     if (!ok)
     {
         goto Cleanup;
@@ -480,7 +480,7 @@ OVS_ERROR WinlOFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject
     }
 
     //create OVS_MESSAGE from pOFPort
-    if (!_CreateMsgFromPersistentPort(pOFPort, &context))
+    if (!_CreateMsgFromOFPort(pOFPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -669,7 +669,7 @@ OVS_ERROR WinlOFPort_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject
     context.multipleUpcallPids = multiplePidsPerOFPort;
     context.i = 0;
 
-    if (!_CreateMsgFromPersistentPort(pOFPort, &context))
+    if (!_CreateMsgFromOFPort(pOFPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -768,7 +768,7 @@ OVS_ERROR WinlOFPort_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject
     locked = TRUE;
 
     //create message
-    if (!_CreateMsgFromPersistentPort(pOFPort, &context))
+    if (!_CreateMsgFromOFPort(pOFPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -873,7 +873,7 @@ OVS_ERROR WinlOFPort_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObj
     locked = TRUE;
 
     //create mesasge
-    if (!_CreateMsgFromPersistentPort(pOFPort, &context))
+    if (!_CreateMsgFromOFPort(pOFPort, &context))
     {
         error = OVS_ERROR_INVAL;
         goto Cleanup;
@@ -958,7 +958,7 @@ OVS_ERROR WinlOFPort_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObjec
         context.pReplyMsg = msgs + i;
 
         OVS_FXARRAY_FOR_EACH(&pForwardInfo->ofPorts, pCurItem, 
-            /*if*/ !(*_CreateMsgFromPersistentPort)((const OVS_OFPORT*)pCurItem, &context),
+            /*if*/ !(*_CreateMsgFromOFPort)((const OVS_OFPORT*)pCurItem, &context),
             error = OVS_ERROR_INVAL;
         );
     }
