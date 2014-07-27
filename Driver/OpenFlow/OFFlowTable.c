@@ -16,6 +16,7 @@ limitations under the License.
 
 #include "OFFlowTable.h"
 #include "OFFlow.h"
+#include "List.h"
 
 #include "SpookyHash.h"
 
@@ -39,38 +40,31 @@ static OVS_FLOW* _FindFlowMatchingMaskedPI_Unsafe(OVS_FLOW_TABLE* pFlowTable, co
     SIZE_T endRange = pFlowMask->piRange.endRange;
     OVS_OFPACKET_INFO maskedPacketInfo = { 0 };
     UINT32 hash = 0;
-
-    LIST_ENTRY* pFlowEntry = NULL, *pHeadEntry = NULL;
+    OVS_FLOW* pCurFlow = NULL;
+    LIST_ENTRY* pList = NULL;
 
     ApplyMaskToPacketInfo(&maskedPacketInfo, pUnmaskedPacketInfo, pFlowMask);
 
     hash = _Flow_HashPacketInfo_Offset(&maskedPacketInfo, startRange, endRange - startRange);
+    pList = OVS_FLOW_TABLE_AT(pFlowTable->pFlowLists, hash);
 
-    pHeadEntry = OVS_FLOW_TABLE_AT(pFlowTable->pFlowLists, hash);
-    pFlowEntry = pHeadEntry->Flink;
-
-    while (pFlowEntry != pHeadEntry)
+    OVS_LIST_FOR_EACH(OVS_FLOW, pCurFlow, pList)
     {
         LOCK_STATE_EX lockState = { 0 };
-        OVS_FLOW* pFlow = NULL;
 
-        pFlow = CONTAINING_RECORD(pFlowEntry, OVS_FLOW, listEntry);
+        FLOW_LOCK_READ(pCurFlow, &lockState);
 
-        FLOW_LOCK_READ(pFlow, &lockState);
-
-        if (pFlow->pMask == pFlowMask)
+        if (pCurFlow->pMask == pFlowMask)
         {
-            if (PacketInfo_EqualAtRange(&pFlow->maskedPacketInfo, &maskedPacketInfo, startRange, endRange))
+            if (PacketInfo_EqualAtRange(&pCurFlow->maskedPacketInfo, &maskedPacketInfo, startRange, endRange))
             {
-                FLOW_UNLOCK(pFlow, &lockState);
+                FLOW_UNLOCK(pCurFlow, &lockState);
 
-                return pFlow;
+                return pCurFlow;
             }
         }
 
-        FLOW_UNLOCK(pFlow, &lockState);
-
-        pFlowEntry = pFlowEntry->Flink;
+        FLOW_UNLOCK(pCurFlow, &lockState);
     }
 
     return NULL;
@@ -154,9 +148,7 @@ OVS_FLOW* _FlowTable_FindExactFlow_Unsafe(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_M
     OVS_FLOW* pFlow = NULL;
     OVS_FLOW_MASK* pFlowMask = NULL;
 
-    pFlowMask = CONTAINING_RECORD(pFlowTable->pMaskList->Flink, OVS_FLOW_MASK, listEntry);
-
-    while (&pFlowMask->listEntry != pFlowTable->pMaskList)
+    OVS_LIST_FOR_EACH(OVS_FLOW_MASK, pFlowMask, pFlowTable->pMaskList)
     {
         pFlow = _FindFlowMatchingMaskedPI_Unsafe(pFlowTable, pFlowMatch->pPacketInfo, pFlowMask);
         if (pFlow)
@@ -166,9 +158,6 @@ OVS_FLOW* _FlowTable_FindExactFlow_Unsafe(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_M
                 break;
             }
         }
-
-        //advance flow mask to next in list
-        pFlowMask = CONTAINING_RECORD(pFlowMask->listEntry.Flink, OVS_FLOW_MASK, listEntry);
     }
 
     return pFlow;
@@ -215,25 +204,19 @@ UINT32 FlowTable_CountMasks(const OVS_FLOW_TABLE* pFlowTable)
 
 OVS_FLOW_MASK* FlowTable_FindFlowMask(const OVS_FLOW_TABLE* pFlowTable, const OVS_FLOW_MASK* pFlowMask)
 {
-    LIST_ENTRY* pListEntry = NULL;
-    LIST_ENTRY* pHeadEntry = NULL;
     OVS_FLOW_MASK* pOutFlowMask = NULL;
     LOCK_STATE_EX lockState = {0};
+    OVS_FLOW_MASK* pCurFlowMask = NULL;
 
     FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
-    pHeadEntry = pFlowTable->pMaskList;
-    pListEntry = pHeadEntry->Flink;
 
-    while (pListEntry != pHeadEntry)
+    OVS_LIST_FOR_EACH(OVS_FLOW_MASK, pCurFlowMask, pFlowTable->pMaskList)
     {
-        OVS_FLOW_MASK* pFlowMaskInList = CONTAINING_RECORD(pListEntry, OVS_FLOW_MASK, listEntry);
-        if (FlowMask_Equal(pFlowMask, pFlowMaskInList))
+        if (FlowMask_Equal(pFlowMask, pCurFlowMask))
         {
-            pOutFlowMask = pFlowMaskInList;
+            pOutFlowMask = pCurFlowMask;
             break;
         }
-
-        pListEntry = pListEntry->Flink;
     }
 
     FLOWTABLE_UNLOCK(pFlowTable, &lockState);

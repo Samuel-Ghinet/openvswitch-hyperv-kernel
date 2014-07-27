@@ -26,6 +26,7 @@ typedef struct _OVS_FXARRAY_ITEM OVS_FXARRAY_ITEM;
 
 typedef BOOLEAN (*FXArrayCondition)(OVS_FXARRAY_ITEM* pItem, UINT_PTR data);
 
+//specific item entries inherit OVS_FXARRAY_ITEM
 typedef struct _OVS_FXARRAY_ITEM
 {
     //must be the first field in the struct
