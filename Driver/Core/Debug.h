@@ -84,6 +84,15 @@ if (!(expr))                                \
     OVS_CHECK_RET(__UNEXPECTED__, FALSE);   \
 }
 
+#define CHECK_E(expr)                           \
+{                                               \
+    error = (expr);                             \
+    if (error != OVS_ERROR_NOERROR)             \
+    {                                           \
+    goto Cleanup;                               \
+    }                                           \
+}
+
 #pragma warning( disable: 4127)
 
 #if OVS_DBGPRINT_OID
