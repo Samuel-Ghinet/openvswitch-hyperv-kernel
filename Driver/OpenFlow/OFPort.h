@@ -156,7 +156,7 @@ OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber);
 OVS_OFPORT* OFPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId);
 OVS_OFPORT* OFPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId);
 
-BOOLEAN OFPort_Delete(OVS_OFPORT* pPersPort);
+BOOLEAN OFPort_Delete(OVS_OFPORT* pOFPort);
 
 _Ret_maybenull_
 OVS_OFPORT* OFPort_FindExternal_Ref();
@@ -174,4 +174,4 @@ OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort);
 BOOLEAN OFPort_Initialize();
 VOID OFPort_Uninitialize();
 
-VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pPersPort);
+VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pOFPort);
