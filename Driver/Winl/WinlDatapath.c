@@ -213,16 +213,8 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
     }
     else
     {
-        replyMsg.type = OVS_MESSAGE_TARGET_DUMP_DONE;
-        replyMsg.command = OVS_MESSAGE_COMMAND_NEW;
-        replyMsg.sequence = pMsg->sequence;
-        replyMsg.dpIfIndex = pDatapath->switchIfIndex;
-        replyMsg.flags = 0;
-        replyMsg.pArgGroup = NULL;
-        replyMsg.length = sizeof(OVS_MESSAGE_DONE);
-        replyMsg.pid = pMsg->pid;
-        replyMsg.reserved = 0;
-        replyMsg.version = 1;
+        CHECK_E(CreateMsg(&replyMsg, pMsg->pid, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_TARGET_DUMP_DONE, OVS_MESSAGE_COMMAND_NEW, 
+            pDatapath->switchIfIndex, 0));
 
         error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
     }

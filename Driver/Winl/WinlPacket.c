@@ -35,6 +35,19 @@ limitations under the License.
 #include "Gre.h"
 #include "Vxlan.h"
 
+static volatile LONG g_upcallSequence = 0;
+
+static LONG _NextUpcallSequence()
+{
+    LONG result = g_upcallSequence;
+
+    KeMemoryBarrier();
+
+    InterlockedIncrement(&g_upcallSequence);
+
+    return result;
+}
+
 static OVS_NET_BUFFER* _CreateONBFromArg(OVS_ARGUMENT* pOnbArg)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
@@ -187,8 +200,10 @@ static OVS_ERROR _QueueUserspacePacket(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER*
     CHECK_B_E(nbBuffer, OVS_ERROR_INVAL);
     CHECK_B_E(bufLen > USHORT_MAX, OVS_ERROR_INVAL);
 
-    CHECK_E(CreateMsg(&msg, OVS_MESSAGE_TARGET_PACKET, pUpcallInfo->portId, pUpcallInfo->command, 
+    CHECK_E(CreateMsg(&msg, pUpcallInfo->portId, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_PACKET, pUpcallInfo->command,
         pDatapath->switchIfIndex, countArgs));
+
+    msg.sequence = _NextUpcallSequence();
 
     pPacketInfoArg = CreateArgFromPacketInfo(pUpcallInfo->pPacketInfo, NULL, OVS_ARGTYPE_PACKET_PI_GROUP);
     CHECK_B_E(pPacketInfoArg, OVS_ERROR_INVAL);
