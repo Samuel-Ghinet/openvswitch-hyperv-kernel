@@ -28,15 +28,44 @@ limitations under the License.
 
 #include <Netioapi.h>
 
+static OVS_ERROR _Datapath_SetName(OVS_DATAPATH* pDatapath, const char* newName)
+{
+    LOCK_STATE_EX lockState = { 0 };
+    ULONG dpNameLen = 0;
+
+    DATAPATH_LOCK_WRITE(pDatapath, &lockState);
+
+    if (!pDatapath->deleted)
+    {
+        KFree(pDatapath->name);
+    }
+
+    pDatapath->deleted = FALSE;
+
+    dpNameLen = (ULONG)strlen(newName) + 1;
+
+    pDatapath->name = KAlloc(dpNameLen);
+    if (!pDatapath->name)
+    {
+        DATAPATH_UNLOCK(pDatapath, &lockState);
+
+        return OVS_ERROR_NOMEM;
+    }
+
+    RtlCopyMemory(pDatapath->name, newName, dpNameLen);
+
+    DATAPATH_UNLOCK(pDatapath, &lockState);
+
+    return OVS_ERROR_NOERROR;
+}
+
 _Use_decl_annotations_
 OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ARGUMENT* pArgName = NULL, *pArgUpcallPid = NULL;
-    LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
-    ULONG dpNameLen = 0;
     UINT32 upcallPid = 0;
 
     pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
@@ -61,29 +90,11 @@ OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
 
     upcallPid = GET_ARG_DATA(pArgUpcallPid, UINT32);
 
-    DATAPATH_LOCK_WRITE(pDatapath, &lockState);
-
-    if (!pDatapath->deleted)
+    error = _Datapath_SetName(pDatapath, pArgName->data);
+    if (error != OVS_ERROR_NOERROR)
     {
-        KFree(pDatapath->name);
-    }
-
-    pDatapath->deleted = FALSE;
-
-    dpNameLen = (ULONG)strlen(pArgName->data) + 1;
-
-    pDatapath->name = KAlloc(dpNameLen);
-    if (!pDatapath->name)
-    {
-        DATAPATH_UNLOCK(pDatapath, &lockState);
-
-        error = OVS_ERROR_INVAL;
         goto Cleanup;
     }
-
-    RtlCopyMemory(pDatapath->name, pArgName->data, dpNameLen);
-
-    DATAPATH_UNLOCK(pDatapath, &lockState);
 
     if (0 == pDatapath->switchIfIndex)
     {
