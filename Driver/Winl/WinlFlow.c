@@ -36,7 +36,7 @@ limitations under the License.
 #define OVS_CHECK_ECHO 0
 
 _Use_decl_annotations_
-OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlFlow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_ARGUMENT* pFlowActionGroupArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pPacketInfoMaskArgs = NULL;
@@ -276,7 +276,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Flow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlFlow_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_ARGUMENT* pFlowActionGroupArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pPacketInfoMaskArgs = NULL;
@@ -432,7 +432,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Flow_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlFlow_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL;
     OVS_MESSAGE replyMsg = { 0 };
@@ -504,7 +504,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Flow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlFlow_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL;
     OVS_MESSAGE replyMsg = { 0 };
@@ -606,7 +606,7 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR Flow_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlFlow_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_DATAPATH *pDatapath = NULL;
     OVS_FLOW_TABLE *pFlowTable = NULL;

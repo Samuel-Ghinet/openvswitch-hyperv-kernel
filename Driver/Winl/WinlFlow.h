@@ -21,9 +21,9 @@ limitations under the License.
 
 typedef struct _OVS_MESSAGE OVS_MESSAGE;
 
-OVS_ERROR Flow_New(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR Flow_Set(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR Flow_Get(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR Flow_Delete(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_New(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Set(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Get(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Delete(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
 
-OVS_ERROR Flow_Dump(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Dump(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
