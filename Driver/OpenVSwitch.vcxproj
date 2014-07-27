@@ -120,6 +120,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Core\Debug.c" />
+    <ClCompile Include="Core\FixedSizedArray.c" />
     <ClCompile Include="Core\SpookyHash.c" />
     <ClCompile Include="OpenFlow\OFFlowTable.c" />
     <ClCompile Include="precompsrc.c">
@@ -200,6 +201,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Debug.h" />
+    <ClInclude Include="Core\FixedSizedArray.h" />
     <ClInclude Include="Core\OvsRefCount.h" />
     <ClInclude Include="Core\SpookyHash.h" />
     <ClInclude Include="OpenFlow\OFFlowTable.h" />
