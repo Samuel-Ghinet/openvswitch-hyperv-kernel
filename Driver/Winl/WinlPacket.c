@@ -35,19 +35,6 @@ limitations under the License.
 #include "Gre.h"
 #include "Vxlan.h"
 
-static volatile LONG g_upcallSequence = 0;
-
-static LONG _NextUpcallSequence()
-{
-    LONG result = g_upcallSequence;
-
-    KeMemoryBarrier();
-
-    InterlockedIncrement(&g_upcallSequence);
-
-    return result;
-}
-
 static OVS_NET_BUFFER* _CreateONBFromArg(OVS_ARGUMENT* pOnbArg)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
@@ -186,93 +173,41 @@ Cleanup:
 
 static OVS_ERROR _QueueUserspacePacket(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
 {
-    BOOLEAN dbgPrintPacket = FALSE;
     OVS_ERROR error = OVS_ERROR_NOERROR;
     OVS_MESSAGE msg = { 0 };
     UINT16 countArgs = 0;
     OVS_ARGUMENT* pPacketInfoArg = NULL, *pNbArg = NULL, *pUserDataArg = NULL;
-    UINT i = 0;
-    OVS_ETHERNET_HEADER* pEthHeader = NULL;
+    ULONG i = 0;
     VOID* nbBuffer = NULL;
     ULONG bufLen = NET_BUFFER_DATA_LENGTH(pNb);
-
-    nbBuffer = NdisGetDataBuffer(pNb, bufLen, NULL, 1, 0);
-    OVS_CHECK(nbBuffer);
-
-    if (!nbBuffer)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Out;
-    }
-
-    if (dbgPrintPacket)
-    {
-        DbgPrintNbFrames(pNb, "buffer sent to userspace");
-    }
-
-    pEthHeader = nbBuffer;
-
-    UNREFERENCED_PARAMETER(pEthHeader);
-
-    if (bufLen > USHORT_MAX)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Out;
-    }
-
-    msg.length = sizeof(OVS_MESSAGE);
-    msg.type = OVS_MESSAGE_TARGET_PACKET;
-    msg.flags = 0;
-    msg.sequence = _NextUpcallSequence();
-    msg.pid = pUpcallInfo->portId;
-
-    msg.command = pUpcallInfo->command;
-    msg.version = 1;
-    msg.reserved = 0;
-
-    //NOTE: make sure pDatapath->switchIfIndex == pSwitchInfo->datapathIfIndex
-    msg.dpIfIndex = pDatapath->switchIfIndex;
-
-    msg.pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!msg.pArgGroup)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Out;
-    }
-
     countArgs = (pUpcallInfo->pUserData ? 3 : 2);
 
-    AllocateArgumentsToGroup(countArgs, msg.pArgGroup);
+    nbBuffer = NdisGetDataBuffer(pNb, bufLen, NULL, 1, 0);
+
+    CHECK_B_E(nbBuffer, OVS_ERROR_INVAL);
+    CHECK_B_E(bufLen > USHORT_MAX, OVS_ERROR_INVAL);
+
+    CHECK_E(CreateMsg(&msg, OVS_MESSAGE_TARGET_PACKET, pUpcallInfo->portId, pUpcallInfo->command, 
+        pDatapath->switchIfIndex, countArgs));
 
     pPacketInfoArg = CreateArgFromPacketInfo(pUpcallInfo->pPacketInfo, NULL, OVS_ARGTYPE_PACKET_PI_GROUP);
-    OVS_CHECK(pPacketInfoArg);
+    CHECK_B_E(pPacketInfoArg, OVS_ERROR_INVAL);
 
-    i = 0;
-    msg.pArgGroup->args[i] = *pPacketInfoArg;
-    msg.pArgGroup->groupSize += pPacketInfoArg->length;
-    ++i;
+    AddArgToArgGroup(msg.pArgGroup, pPacketInfoArg, &i);
 
     if (pUpcallInfo->pUserData)
     {
         pUserDataArg = CreateArgumentWithSize(OVS_ARGTYPE_PACKET_USERDATA, pUpcallInfo->pUserData->data, pUpcallInfo->pUserData->length);
+        CHECK_B_E(pUserDataArg, OVS_ERROR_NOMEM);
 
-        if (pUserDataArg)
-        {
-            msg.pArgGroup->args[i] = *pUserDataArg;
-            msg.pArgGroup->groupSize += pUserDataArg->length;
-            ++i;
-        }
-        else
-        {
-            OVS_CHECK(pUserDataArg);
-            DEBUGP(LOG_ERROR, __FUNCTION__ "failed to create user data arg!\n");
-        }
+        AddArgToArgGroup(msg.pArgGroup, pUserDataArg, &i);
     }
 
     //we send the net buffer data and only it: starting from eth -> payload.
     pNbArg = CreateArgumentWithSize(OVS_ARGTYPE_PACKET_BUFFER, nbBuffer, bufLen);
-    msg.pArgGroup->args[i] = *pNbArg;
-    msg.pArgGroup->groupSize += pNbArg->length;
+    CHECK_B_E(pNbArg, OVS_ERROR_NOMEM);
+
+    AddArgToArgGroup(msg.pArgGroup, pNbArg, &i);
 
     OVS_CHECK(msg.type == OVS_MESSAGE_TARGET_PACKET);
     OVS_CHECK(msg.command == OVS_MESSAGE_COMMAND_PACKET_UPCALL_ACTION ||
@@ -288,7 +223,7 @@ static OVS_ERROR _QueueUserspacePacket(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER*
         }
     }
 
-Out:
+Cleanup:
     if (msg.pArgGroup)
     {
         DestroyArgumentGroup(msg.pArgGroup);
