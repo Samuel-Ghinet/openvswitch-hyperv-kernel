@@ -26,6 +26,7 @@ limitations under the License.
 #include "List.h"
 #include "BufferControl.h"
 #include "Switch.h"
+#include "OFDatapath.h"
 
 #include "MsgVerification.h"
 
@@ -419,6 +420,7 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
     OVS_MESSAGE* pMsg = NULL;
     VOID* pWriteBuffer = NULL;
     OVS_SWITCH_INFO* pSwitchInfo = NULL;
+    OVS_DATAPATH* pDatapath = NULL;
 #if DBG
     BOOLEAN dbgPrintData = FALSE;
 #endif
@@ -545,32 +547,43 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
             goto Cleanup;
         }
 
+        pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+        if (!pDatapath)
+        {
+            error = OVS_ERROR_NODEV;
+            goto Cleanup;
+        }
+
         switch (pMsg->command)
         {
         case OVS_MESSAGE_COMMAND_NEW:
-            error = WinlDatapath_New(pMsg, pFileObject);
+            //NOTE: we always have one "default" datapath, so when the command NEW arrives,
+            //we must set stuff to the existing datapath.
+            error = WinlDatapath_New(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_SET:
-            error = WinlDatapath_Set(pMsg, pFileObject);
+            error = WinlDatapath_Set(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_GET:
-            error = WinlDatapath_Get(pMsg, pFileObject);
+            error = WinlDatapath_Get(pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DELETE:
-            error = WinlDatapath_Delete(pMsg, pFileObject);
+            error = WinlDatapath_Delete(&pDatapath, pMsg, pFileObject);
             break;
 
         case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlDatapath_Dump(pMsg, pFileObject);
+            error = WinlDatapath_Dump(pDatapath, pMsg, pFileObject);
             break;
 
         default:
             error = OVS_ERROR_INVAL;
             break;
         }
+
+        OVS_REFCOUNT_DEREFERENCE(pDatapath);
         break;
 
     case OVS_MESSAGE_TARGET_PORT:
