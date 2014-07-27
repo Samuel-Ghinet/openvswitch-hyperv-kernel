@@ -60,19 +60,12 @@ static OVS_ERROR _Datapath_SetName(OVS_DATAPATH* pDatapath, const char* newName)
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
-    OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ARGUMENT* pArgName = NULL, *pArgUpcallPid = NULL;
     OVS_ERROR error = OVS_ERROR_NOERROR;
     UINT32 upcallPid = 0;
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
 
     pArgName = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_NAME);
     if (!pArgName)
@@ -119,7 +112,6 @@ OVS_ERROR WinlDatapath_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
@@ -127,20 +119,12 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlDatapath_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Delete(OVS_DATAPATH** ppDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
-    OVS_DATAPATH *pDatapath = NULL;
     LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
-
-    DEBUGP(LOG_ERROR, "cannot delete datapath: we must always have one!\n");
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
+    OVS_DATAPATH* pDatapath = *ppDatapath;
 
     DATAPATH_LOCK_READ(pDatapath, &lockState);
 
@@ -148,7 +132,7 @@ OVS_ERROR WinlDatapath_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileO
     {
         DATAPATH_UNLOCK(pDatapath, &lockState);
 
-        DEBUGP(LOG_ERROR, "expected the datapath not to exist");
+        DEBUGP(LOG_ERROR, "expected the datapath to exist");
         error = OVS_ERROR_INVAL;
         goto Cleanup;
     }
@@ -182,6 +166,7 @@ OVS_ERROR WinlDatapath_Delete(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileO
 
 Cleanup:
     OVS_REFCOUNT_DEREF_AND_DESTROY(pDatapath);
+    *ppDatapath = NULL;
 
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
@@ -189,17 +174,10 @@ Cleanup:
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlDatapath_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Get(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
     OVS_MESSAGE replyMsg = { 0 };
-    OVS_DATAPATH *pDatapath = NULL;
     OVS_ERROR error = OVS_ERROR_NOERROR;
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
 
     RtlZeroMemory(&replyMsg, sizeof(replyMsg));
     if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
@@ -223,28 +201,18 @@ OVS_ERROR WinlDatapath_Get(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
     return error;
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlDatapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Set(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
-    OVS_DATAPATH *pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
 
-    DEBUGP(LOG_ERROR, "setting dp has no meaning!\n");
-    OVS_CHECK(0);
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
+    DEBUGP(LOG_WARN, "setting dp has no meaning!\n");
 
     if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
     {
@@ -260,25 +228,16 @@ OVS_ERROR WinlDatapath_Set(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObje
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
     DestroyArgumentGroup(replyMsg.pArgGroup);
 
     return error;
 }
 
 _Use_decl_annotations_
-OVS_ERROR WinlDatapath_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
+OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
 {
-    OVS_DATAPATH* pDatapath = NULL;
     OVS_MESSAGE replyMsg = { 0 }, *msgs = NULL;
     OVS_ERROR error = OVS_ERROR_NOERROR;
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_NODEV;
-    }
 
     if (!pDatapath->deleted)
     {
@@ -293,7 +252,7 @@ OVS_ERROR WinlDatapath_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObj
         msgs = KAlloc(2 * sizeof(OVS_MESSAGE));
         if (!msgs)
         {
-            error = OVS_ERROR_INVAL;
+            error = OVS_ERROR_NOMEM;
             goto Cleanup;
         }
 
@@ -328,7 +287,5 @@ OVS_ERROR WinlDatapath_Dump(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObj
     }
 
 Cleanup:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
     return error;
 }
