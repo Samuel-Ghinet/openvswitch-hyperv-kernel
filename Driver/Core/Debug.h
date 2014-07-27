@@ -103,8 +103,6 @@ extern ULONG g_debugLevel;
     }                                           \
 }
 
-#define CHECK_GC(expr)  OVS_CHECK_GC(expr)
-
 #pragma warning( disable: 4127)
 
 #if OVS_DBGPRINT_OID

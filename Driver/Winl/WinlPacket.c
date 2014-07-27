@@ -62,21 +62,21 @@ static OVS_FLOW* _CreateFlowFromArgs(OVS_NET_BUFFER* pOvsNb, OVS_ARGUMENT_GROUP*
     OVS_ACTIONS* pTargetActions = NULL;
 
     pFlow = Flow_Create();
-    CHECK_GC(pFlow);
+    OVS_CHECK_GC(pFlow);
 
     ok = PacketInfo_Extract(ONB_GetData(pOvsNb), ONB_GetDataLength(pOvsNb), OVS_INVALID_PORT_NUMBER, &pFlow->maskedPacketInfo);
-    CHECK_GC(ok);
+    OVS_CHECK_GC(ok);
 
     ok = GetPacketContextFromPIArgs(pPIArgs, &pFlow->maskedPacketInfo);
-    CHECK_GC(ok);
+    OVS_CHECK_GC(ok);
 
     pTargetActions = Actions_Create();
-    CHECK_GC(pTargetActions);
+    OVS_CHECK_GC(pTargetActions);
 
-    CHECK_GC(CopyArgumentGroup(pTargetActions->pActionGroup, pActionsArgs, /*actionsToAdd*/0));
+    OVS_CHECK_GC(CopyArgumentGroup(pTargetActions->pActionGroup, pActionsArgs, /*actionsToAdd*/0));
 
     ok = ProcessReceivedActions(pTargetActions->pActionGroup, &pFlow->maskedPacketInfo, /*recursivity depth*/0);
-    CHECK_GC(ok);
+    OVS_CHECK_GC(ok);
 
     pFlow->pActions = pTargetActions;
 
@@ -138,10 +138,10 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, OVS_DATAPATH* pDatapath, _
     OVS_CHECK(pActionsArgs);
 
     pOvsNb = _CreateONBFromArg(pOnbArg);
-    CHECK_GC(pOvsNb);
+    OVS_CHECK_GC(pOvsNb);
 
     pFlow = _CreateFlowFromArgs(pOvsNb, pPacketInfoArgs, pActionsArgs);
-    CHECK_GC(pFlow);
+    OVS_CHECK_GC(pFlow);
 
     OVS_REFCOUNT_REFERENCE(pFlow->pActions)
 
@@ -249,13 +249,6 @@ BOOLEAN QueuePacketToUserspace(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _I
     int dpifindex = 0;
     BOOLEAN ok = TRUE;
 
-    //__DONT_QUEUE_BY_DEFAULT is used for debugging purposes only
-#define __DONT_QUEUE_BY_DEFAULT 0
-
-#if __DONT_QUEUE_BY_DEFAULT
-    BOOLEAN queuePacket = FALSE;
-#endif
-
     if (pUpcallInfo->portId == 0)
     {
         ok = FALSE;
@@ -264,19 +257,14 @@ BOOLEAN QueuePacketToUserspace(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _I
 
     dpifindex = pDatapath->switchIfIndex;
 
-#if __DONT_QUEUE_BY_DEFAULT
-    if (queuePacket)
-#endif
+    OVS_ERROR error = _QueueUserspacePacket(pDatapath, pNb, pUpcallInfo);
+    if (error != OVS_ERROR_NOERROR)
     {
-        OVS_ERROR error = _QueueUserspacePacket(pDatapath, pNb, pUpcallInfo);
-        if (error != OVS_ERROR_NOERROR)
-        {
-            //no other kind of error except 'no space' (for queued buffers) normally happen.
-            //or NOENT = file not found (where to write the info to)
-            OVS_CHECK(error == OVS_ERROR_NOSPC || error == OVS_ERROR_NOENT);
+        //no other kind of error except 'no space' (for queued buffers) normally happen.
+        //or NOENT = file not found (where to write the info to)
+        OVS_CHECK(error == OVS_ERROR_NOSPC || error == OVS_ERROR_NOENT);
 
-            goto Cleanup;
-        }
+        goto Cleanup;
     }
 
 Cleanup:
