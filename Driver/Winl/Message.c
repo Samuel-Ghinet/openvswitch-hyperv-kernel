@@ -673,7 +673,7 @@ VOID DestroyMessages(_Inout_ OVS_MESSAGE* msgs, UINT countMsgs)
     }
 }
 
-OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command, 
+OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command,
     UINT32 dpIfIndex, UINT16 countArgs)
 {
     pMsg->length = length;
@@ -697,7 +697,7 @@ OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 le
         {
             return OVS_ERROR_NOMEM;
         }
-        
+
         if (!AllocateArgumentsToGroup(countArgs, pMsg->pArgGroup))
         {
             KFree(pMsg->pArgGroup);
@@ -706,4 +706,24 @@ OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 le
     }
 
     return OVS_ERROR_NOERROR;
+}
+
+OVS_ERROR CreateReplyMsg(const OVS_MESSAGE* pInMsg, OVS_MESSAGE* pOutMsg, UINT32 length,
+    UINT8 command, UINT16 countArgs)
+{
+    return CreateMsg(pOutMsg, pInMsg->pid, pInMsg->sequence, length, pInMsg->type, command, pInMsg->dpIfIndex, countArgs);
+}
+
+OVS_ERROR CreateReplyMsgDone(const OVS_MESSAGE* pInMsg, OVS_MESSAGE* pOutMsg, UINT32 length,
+    UINT8 command)
+{
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    
+    error = CreateReplyMsg(pInMsg, pOutMsg, length, command, 0);
+    if (error == OVS_ERROR_NOERROR)
+    {
+        pOutMsg->type = OVS_MESSAGE_TARGET_DUMP_DONE;
+    }
+
+    return error;
 }

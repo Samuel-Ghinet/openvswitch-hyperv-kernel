@@ -283,5 +283,11 @@ static __inline OVS_ARGTYPE MessageTargetTypeToArgType(OVS_MESSAGE_TARGET_TYPE t
     }
 }
 
-OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command,
+OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command,
     UINT32 dpIfIndex, UINT16 countArgs);
+
+OVS_ERROR CreateReplyMsg(_In_ const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT32 length,
+    UINT8 command, UINT16 countArgs);
+
+OVS_ERROR CreateReplyMsgDone(_In_ const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT32 length,
+    UINT8 command);

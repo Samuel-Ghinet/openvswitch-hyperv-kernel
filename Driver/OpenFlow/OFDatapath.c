@@ -78,7 +78,7 @@ static void _GetDatapathStats_Unsafe(_In_ OVS_DATAPATH* pDatapath, _Out_ OVS_DAT
     pStats->countLost = pDatapath->statistics.countLost;
 }
 
-OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
+OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, _In_ const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT8 command)
 {
     OVS_ARGUMENT* pNameArg = NULL, *pStatsArg = NULL, *pMFStatsArg = NULL, *pUserFeaturesArg = NULL;
     char* datapathName = NULL;
@@ -90,7 +90,8 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 
     UINT32 userFeatures = 0;
     ULONG i = 0;
 
-    OVS_CHECK(pMsg);
+    OVS_CHECK(pOutMsg);
+    OVS_CHECK(pInMsg);
 
     DATAPATH_LOCK_READ(pDatapath, &lockState);
 
@@ -103,24 +104,23 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
-    CHECK_E(CreateMsg(pMsg, pid, sequence, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_DATAPATH, 
-        cmd, dpIfIndex, 4));
+    CHECK_E(CreateReplyMsg(pInMsg, pOutMsg, sizeof(OVS_MESSAGE), command, 4));
 
     pNameArg = CreateArgumentStringA_Alloc(OVS_ARGTYPE_DATAPATH_NAME, datapathName);
     CHECK_B_E(pNameArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pNameArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pNameArg, &i);
 
     pStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_STATS, &dpStats);
     CHECK_B_E(pStatsArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pStatsArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pStatsArg, &i);
 
     pMFStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS, &dpMegaFlowStats);
     CHECK_B_E(pMFStatsArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pMFStatsArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pMFStatsArg, &i);
 
     pUserFeaturesArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_USER_FEATURES, &userFeatures);
     CHECK_B_E(pUserFeaturesArg, OVS_ERROR_NOMEM);
-    AddArgToArgGroup(pMsg->pArgGroup, pUserFeaturesArg, &i);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pUserFeaturesArg, &i);
 
 Cleanup:
     KFree(datapathName);
@@ -137,7 +137,7 @@ Cleanup:
         DestroyArgument(pMFStatsArg);
         DestroyArgument(pUserFeaturesArg);
 
-        FreeGroupWithArgs(pMsg->pArgGroup);
+        FreeGroupWithArgs(pOutMsg->pArgGroup);
     }
 
     return error;

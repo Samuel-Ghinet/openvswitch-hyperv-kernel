@@ -76,7 +76,7 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     locked = TRUE;
     
     CHECK_E(_Datapath_SetName(pDatapath, pArgName->data));
-    CHECK_B_E(0 == pDatapath->switchIfIndex, OVS_ERROR_NODEV);
+    CHECK_B_E(pDatapath->switchIfIndex, OVS_ERROR_NODEV);
 
     pUserFeaturesArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
     if (pUserFeaturesArg)
@@ -87,7 +87,8 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     DATAPATH_UNLOCK(pDatapath, &lockState);
     locked = FALSE;
 
-    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
+    //TODO: should we set pMsg->dpIfIndex to pDatapath->switchIfIndex?
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW));
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
 
     CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
@@ -118,7 +119,7 @@ OVS_ERROR WinlDatapath_Delete(OVS_DATAPATH** ppDatapath, const OVS_MESSAGE* pMsg
     }
 
     RtlZeroMemory(&replyMsg, sizeof(replyMsg));
-    error = CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_DELETE, &replyMsg, pDatapath->switchIfIndex, pMsg->pid);
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_DELETE));
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
@@ -153,7 +154,7 @@ OVS_ERROR WinlDatapath_Get(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     OVS_ERROR error = OVS_ERROR_NOERROR;
 
     RtlZeroMemory(&replyMsg, sizeof(replyMsg));
-    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW));
 
     if (pMsg->flags & OVS_MESSAGE_FLAG_DUMP)
     {
@@ -190,7 +191,7 @@ OVS_ERROR WinlDatapath_Set(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
-    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW));
 
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
     CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
@@ -209,7 +210,7 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
 
     if (!pDatapath->deleted)
     {
-        CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
+        CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg, &replyMsg, OVS_MESSAGE_COMMAND_NEW));
 
         replyMsg.flags |= OVS_MESSAGE_FLAG_MULTIPART;
 
@@ -232,8 +233,7 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
     }
     else
     {
-        CHECK_E(CreateMsg(&replyMsg, pMsg->pid, pMsg->sequence, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_TARGET_DUMP_DONE, OVS_MESSAGE_COMMAND_NEW, 
-            pDatapath->switchIfIndex, 0));
+        CHECK_E(CreateReplyMsgDone(pMsg, &replyMsg, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_COMMAND_NEW));
 
         error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
     }
