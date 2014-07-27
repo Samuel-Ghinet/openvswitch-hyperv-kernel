@@ -140,9 +140,9 @@ Cleanup:
     return pOutPort;
 }
 
-//TODO: use PersPort_FindVxlan_Ref instead
+//TODO: use OFPort_FindVxlan_Ref instead
 _Use_decl_annotations_
-OVS_OFPORT* PersPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
+OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
 
@@ -163,20 +163,20 @@ OVS_OFPORT* PersPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
 }
 
 _Use_decl_annotations_
-OVS_OFPORT* PersPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
+OVS_OFPORT* OFPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
 {
     return _PersPort_FindTunnel_Ref(&g_grePorts, pTunnelInfo);
 }
 
 _Use_decl_annotations_
-OVS_OFPORT* PersPort_FindVxlan_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
+OVS_OFPORT* OFPort_FindVxlan_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
 {
     return _PersPort_FindTunnel_Ref(&g_vxlanPorts, pTunnelInfo);
 }
 
 /******************************** INIT AND UNINIT ********************************/
 
-BOOLEAN PersPort_Initialize()
+BOOLEAN OFPort_Initialize()
 {
     InitializeListHead(&g_grePorts);
     InitializeListHead(&g_vxlanPorts);
@@ -186,7 +186,7 @@ BOOLEAN PersPort_Initialize()
     return TRUE;
 }
 
-VOID PersPort_Uninitialize()
+VOID OFPort_Uninitialize()
 {
     OVS_CHECK(g_pLogicalPortsLock);
 
@@ -284,7 +284,7 @@ static VOID _PersPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo
     FWDINFO_UNLOCK(pForwardInfo, &lockState);
 }
 
-OVS_OFPORT* PersPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT16* pPortNumber, OVS_OFPORT_TYPE portType)
+OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT16* pPortNumber, OVS_OFPORT_TYPE portType)
 {
     BOOLEAN ok = TRUE;
     OVS_OFPORT* pPort = NULL;
@@ -331,7 +331,7 @@ OVS_OFPORT* PersPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UI
         goto Cleanup;
     }
 
-    pPort->refCount.Destroy = PersPort_DestroyNow_Unsafe;
+    pPort->refCount.Destroy = OFPort_DestroyNow_Unsafe;
     pPort->pRwLock = NdisAllocateRWLock(NULL);
 
     //if name for port was not provided, we must have been given a number
@@ -429,7 +429,7 @@ Cleanup:
     {
         if (pPort)
         {
-            PersPort_DestroyNow_Unsafe(pPort);
+            OFPort_DestroyNow_Unsafe(pPort);
         }
     }
 
@@ -455,7 +455,7 @@ static __inline BOOLEAN _PersPort_IsExternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR d
 }
 
 _Use_decl_annotations_
-OVS_OFPORT* PersPort_FindExternal_Ref()
+OVS_OFPORT* OFPort_FindExternal_Ref()
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     OVS_OFPORT* pOutPort = NULL;
@@ -490,7 +490,7 @@ static __inline BOOLEAN _PersPort_IsInternal(OVS_FXARRAY_ITEM* pItem, UINT_PTR d
 }
 
 _Use_decl_annotations_
-OVS_OFPORT* PersPort_FindInternal_Ref()
+OVS_OFPORT* OFPort_FindInternal_Ref()
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     OVS_OFPORT* pOutPort = NULL;
@@ -520,7 +520,7 @@ static __inline BOOLEAN _PersPort_NameEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR d
     return (0 == strcmp(pCurPort->ovsPortName, ofPortName));
 }
 
-OVS_OFPORT* PersPort_FindByName_Ref(const char* ofPortName)
+OVS_OFPORT* OFPort_FindByName_Ref(const char* ofPortName)
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     BOOLEAN ok = TRUE;
@@ -552,7 +552,7 @@ static __inline BOOLEAN _PersPort_PortIdEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR
     return (pCurPort->portId == portId);
 }
 
-OVS_OFPORT* PersPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId)
+OVS_OFPORT* OFPort_FindById_Ref(NDIS_SWITCH_PORT_ID portId)
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     BOOLEAN ok = TRUE;
@@ -576,7 +576,7 @@ Cleanup:
     return pOutPort;
 }
 
-OVS_OFPORT* PersPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId)
+OVS_OFPORT* OFPort_FindById_Unsafe(NDIS_SWITCH_PORT_ID portId)
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     BOOLEAN ok = TRUE;
@@ -608,7 +608,7 @@ static __inline BOOLEAN _PersPort_PortNumberEquals(OVS_FXARRAY_ITEM* pItem, UINT
     return (pCurPort->ovsPortNumber == portNumber);
 }
 
-OVS_OFPORT* PersPort_FindByNumber_Ref(UINT16 portNumber)
+OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber)
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     OVS_OFPORT* pOutPort = NULL;
@@ -635,7 +635,7 @@ Cleanup:
 /******************************** DELETE FUNCTIONS ********************************/
 
 //TODO: if it comes here unreferenced, then it means it might have been deleted, I think
-BOOLEAN PersPort_Delete(OVS_OFPORT* pPort)
+BOOLEAN OFPort_Delete(OVS_OFPORT* pPort)
 {
     OVS_FIXED_SIZED_ARRAY* pPortsArray = NULL;
     BOOLEAN ok = TRUE;
@@ -685,7 +685,7 @@ Cleanup:
     return ok;
 }
 
-VOID PersPort_DestroyNow_Unsafe(OVS_OFPORT* pPort)
+VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pPort)
 {
     KFree(pPort->ovsPortName);
 

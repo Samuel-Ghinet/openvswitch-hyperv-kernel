@@ -882,7 +882,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
         *pWasEncapsulated = TRUE;
         ok = Encaps_DecapsulateOnb(pDecapsulator, pOvsNb, pTunnelInfo, encapProtocolType);
 
-        pGrePort = PersPort_FindGre_Ref(NULL);
+        pGrePort = OFPort_FindGre_Ref(NULL);
         if (pGrePort)
         {
             pGrePort->stats.packetsReceived++;
@@ -898,7 +898,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
         *pWasEncapsulated = TRUE;
         ok = Encaps_DecapsulateOnb(pDecapsulator, pOvsNb, pTunnelInfo, encapProtocolType);
 
-        pVxlanPort = PersPort_FindVxlanByDestPort_Ref(udpDestPort);
+        pVxlanPort = OFPort_FindVxlanByDestPort_Ref(udpDestPort);
 
         if (pVxlanPort)
         {
@@ -916,8 +916,8 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
 
         OVS_CHECK(!pDecapsulator);
 
-        pInternalPort = PersPort_FindInternal_Ref();
-        pExternalPort = PersPort_FindExternal_Ref();
+        pInternalPort = OFPort_FindInternal_Ref();
+        pExternalPort = OFPort_FindExternal_Ref();
 
         pEthHeader = (OVS_ETHERNET_HEADER*)ONB_GetDataOfSize(pOvsNb, sizeof(OVS_ETHERNET_HEADER));
 
@@ -1071,7 +1071,7 @@ static VOID _ProcessAllNblsIngress(_In_ OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_G
             }
             else
             {
-                pPersPort = PersPort_FindById_Ref(pSourceInfo->portId);
+                pPersPort = OFPort_FindById_Ref(pSourceInfo->portId);
             }
 
             pOvsNb->pSwitchInfo = pSwitchInfo;

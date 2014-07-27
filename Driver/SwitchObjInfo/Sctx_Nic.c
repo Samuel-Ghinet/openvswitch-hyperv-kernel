@@ -339,7 +339,7 @@ UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SW
 
     FXARRAY_LOCK_WRITE(&pForwardInfo->persistentPortsInfo, &lockState);
 
-    pPort = PersPort_FindById_Unsafe(portId);
+    pPort = OFPort_FindById_Unsafe(portId);
     if (pPort)
     {
         LOCK_STATE_EX lockState = { 0 };

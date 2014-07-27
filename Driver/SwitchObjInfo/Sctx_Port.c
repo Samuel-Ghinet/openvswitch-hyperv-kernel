@@ -156,7 +156,7 @@ UINT16 Sctx_Port_SetPersistentPort(const char* ovsPortName, NDIS_SWITCH_PORT_ID 
     OVS_OFPORT* pPort = NULL;
     UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
 
-    pPort = PersPort_FindByName_Ref(ovsPortName);
+    pPort = OFPort_FindByName_Ref(ovsPortName);
     if (pPort)
     {
         LOCK_STATE_EX lockState = { 0 };
