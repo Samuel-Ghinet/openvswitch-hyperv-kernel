@@ -165,11 +165,10 @@ _Ret_maybenull_
 OVS_OFPORT* OFPort_FindInternal_Ref();
 
 _Ret_maybenull_
-OVS_OFPORT* OFPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
+OVS_OFPORT* OFPort_FindGre_Ref();
+
 _Ret_maybenull_
-OVS_OFPORT* OFPort_FindVxlan_Ref(_In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo);
-_Ret_maybenull_
-OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort);
+OVS_OFPORT* OFPort_FindVxlan_Ref(LE16 udpDestPort);
 
 BOOLEAN OFPort_Initialize();
 VOID OFPort_Uninitialize();

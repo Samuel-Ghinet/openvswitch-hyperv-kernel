@@ -898,7 +898,7 @@ static BOOLEAN _DecapsulateIfNeeded_Ref(_In_ const BYTE managOsMac[OVS_ETHERNET_
         *pWasEncapsulated = TRUE;
         ok = Encaps_DecapsulateOnb(pDecapsulator, pOvsNb, pTunnelInfo, encapProtocolType);
 
-        pVxlanPort = OFPort_FindVxlanByDestPort_Ref(udpDestPort);
+        pVxlanPort = OFPort_FindVxlan_Ref(udpDestPort);
 
         if (pVxlanPort)
         {
