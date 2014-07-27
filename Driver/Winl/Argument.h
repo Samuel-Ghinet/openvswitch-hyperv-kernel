@@ -183,3 +183,11 @@ VOID DbgPrintArgGroup(ULONG logLevel, _In_ OVS_ARGUMENT_GROUP* pGroup, int depth
 //returns TRUE on success, FALSE on failure.
 BOOLEAN GetArgumentExpectedSize(OVS_ARGTYPE argumentType, _Inout_ UINT* pSize);
 OVS_ARGTYPE GetParentGroupType(OVS_ARGTYPE childArgType);
+
+static __inline AddArgToArgGroup(OVS_ARGUMENT_GROUP* pArgGroup, OVS_ARGUMENT* pArg, _Inout_ ULONG* pIndex)
+{
+    pArgGroup->args[*pIndex] = *pArg;
+    pArgGroup->groupSize += pArg->length;
+
+    ++pIndex;
+}
