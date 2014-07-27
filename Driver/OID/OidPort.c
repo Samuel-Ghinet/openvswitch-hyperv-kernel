@@ -28,8 +28,8 @@ NDIS_STATUS Port_Create(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH
         NDIS_STATUS status = NDIS_STATUS_SUCCESS;
         LOCK_STATE_EX lockState = { 0 };
         OVS_PORT_LIST_ENTRY* pPortEntry = NULL;
-        UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
-        char* ovsPortName = NULL;
+        UINT16 ofPortNumber = OVS_INVALID_PORT_NUMBER;
+        char* ofPortName = NULL;
         NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
 
         while (pForwardInfo->isInitialRestart)
@@ -52,7 +52,7 @@ NDIS_STATUS Port_Create(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH
             OVS_CHECK(pPortEntry);
 
             portId = pPortEntry->portId;
-            ovsPortName = IfCountedStringToCharArray(&pPortEntry->portFriendlyName);
+            ofPortName = IfCountedStringToCharArray(&pPortEntry->portFriendlyName);
         }
 
         FWDINFO_UNLOCK(pForwardInfo, &lockState);
@@ -62,19 +62,19 @@ NDIS_STATUS Port_Create(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH
             return status;
         }
 
-        if (ovsPortName)
+        if (ofPortName)
         {
-            ovsPortNumber = Sctx_Port_SetOFPort(ovsPortName, portId);
+            ofPortNumber = Sctx_Port_SetOFPort(ofPortName, portId);
         }
 
         OVS_CHECK(pPortEntry);
 
         FWDINFO_LOCK_WRITE(pForwardInfo, &lockState);
-        pPortEntry->ovsPortNumber = ovsPortNumber;
+        pPortEntry->ofPortNumber = ofPortNumber;
         FWDINFO_UNLOCK(pForwardInfo, &lockState);
 
         //Cleanup
-        KFree(ovsPortName);
+        KFree(ofPortName);
 
         OVS_REFCOUNT_DEREFERENCE(pPortEntry);
 
@@ -91,9 +91,9 @@ VOID Port_Update(const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_
     {
         LOCK_STATE_EX lockState = { 0 };
         OVS_PORT_LIST_ENTRY* pPortEntry = NULL;
-        UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+        UINT16 ofPortNumber = OVS_INVALID_PORT_NUMBER;
         NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
-        char* ovsPortName = NULL;
+        char* ofPortName = NULL;
 
         while (pForwardInfo->isInitialRestart)
         {
@@ -112,24 +112,24 @@ VOID Port_Update(const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_
 
         //if the name of the hyper-v switch port has changed, and we did not have a mapping between this hyper-v switch port and an ovs port,
         //we find a mapping now
-        if (pPortEntry->ovsPortNumber == OVS_INVALID_PORT_NUMBER &&
+        if (pPortEntry->ofPortNumber == OVS_INVALID_PORT_NUMBER &&
             (pPortEntry->portFriendlyName.Length != pPort->PortFriendlyName.Length ||
             memcmp(pPortEntry->portFriendlyName.String, pPort->PortFriendlyName.String, pPortEntry->portFriendlyName.Length)))
         {
             portId = pPortEntry->portId;
-            ovsPortName = IfCountedStringToCharArray(&pPortEntry->portFriendlyName);
+            ofPortName = IfCountedStringToCharArray(&pPortEntry->portFriendlyName);
         }
 
         FWDINFO_UNLOCK(pForwardInfo, &lockState);
 
-        if (ovsPortName)
+        if (ofPortName)
         {
-            ovsPortNumber = Sctx_Port_SetOFPort(ovsPortName, portId);
+            ofPortNumber = Sctx_Port_SetOFPort(ofPortName, portId);
         }
 
         FWDINFO_LOCK_WRITE(pForwardInfo, &lockState);
 
-        pPortEntry->ovsPortNumber = ovsPortNumber;
+        pPortEntry->ofPortNumber = ofPortNumber;
         pPortEntry->portFriendlyName = pPort->PortFriendlyName;
         pPortEntry->portType = pPort->PortType;
         pPortEntry->on = (pPort->PortState == NdisSwitchPortStateCreated);
@@ -137,7 +137,7 @@ VOID Port_Update(const OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_
         FWDINFO_UNLOCK(pForwardInfo, &lockState);
 
         //Cleanup
-        KFree(ovsPortName);
+        KFree(ofPortName);
 
         OVS_REFCOUNT_DEREFERENCE(pPortEntry);
     }

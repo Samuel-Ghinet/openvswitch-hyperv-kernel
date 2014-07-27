@@ -1013,20 +1013,20 @@ static BOOLEAN _CreateInPortArgInList(const OVS_OFPACKET_INFO* pPacketInfo, cons
     else
     {
         UINT16 highBits = 0;
-        UINT16 ovsPortNumber = 0;
+        UINT16 ofPortNumber = 0;
 
         if (pMask)
         {
             highBits = OVS_PI_MASK_MATCH_EXACT(UINT16);
-            ovsPortNumber = pMask->physical.ovsInPort;
+            ofPortNumber = pMask->physical.ovsInPort;
         }
         else
         {
             highBits = 0;
-            ovsPortNumber = pPacketInfo->physical.ovsInPort;
+            ofPortNumber = pPacketInfo->physical.ovsInPort;
         }
 
-        inputPortValue = ovsPortNumber | (highBits << 16);
+        inputPortValue = ofPortNumber | (highBits << 16);
     }
 
     if (!CreateArgInList(OVS_ARGTYPE_PI_DP_INPUT_PORT, &inputPortValue, ppArgList))

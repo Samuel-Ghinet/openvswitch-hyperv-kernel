@@ -68,7 +68,7 @@ VOID Nic_Connect(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_NIC_PA
     OVS_NIC_LIST_ENTRY* pNicEntry = NULL;
     NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
     LOCK_STATE_EX lockState = { 0 };
-    UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+    UINT16 ofPortNumber = OVS_INVALID_PORT_NUMBER;
 
     while (pForwardInfo->isInitialRestart)
     {
@@ -105,7 +105,7 @@ VOID Nic_Connect(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_NIC_PA
 
     if (pNicEntry)
     {
-        OVS_CHECK(pNicEntry->ovsPortNumber == OVS_INVALID_PORT_NUMBER);
+        OVS_CHECK(pNicEntry->ofPortNumber == OVS_INVALID_PORT_NUMBER);
 
         portId = pNicEntry->portId;
     }
@@ -114,14 +114,14 @@ VOID Nic_Connect(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_SWITCH_NIC_PA
 
     if (portId != NDIS_SWITCH_DEFAULT_PORT_ID)
     {
-        ovsPortNumber = Sctx_Nic_SetOFPort(pForwardInfo, portId);
+        ofPortNumber = Sctx_Nic_SetOFPort(pForwardInfo, portId);
     }
 
     FWDINFO_LOCK_WRITE(pForwardInfo, &lockState);
 
     if (pNicEntry)
     {
-        pNicEntry->ovsPortNumber = ovsPortNumber;
+        pNicEntry->ofPortNumber = ofPortNumber;
         pNicEntry->connected = TRUE;
 
         ++(pForwardInfo->countNics);

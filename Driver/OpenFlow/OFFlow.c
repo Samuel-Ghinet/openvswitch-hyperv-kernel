@@ -701,9 +701,9 @@ void FlowWithActions_ToString(const char* msg, _In_ const OVS_OFPACKET_INFO* pPa
             {
             case OVS_ARGTYPE_ACTION_OUTPUT_TO_PORT:
             {
-                UINT32 ovsPortNumber = GET_ARG_DATA(pArg, UINT32);
+                UINT32 ofPortNumber = GET_ARG_DATA(pArg, UINT32);
 
-                RtlStringCchPrintfA(tempStr, tempStrSize, "out: %u; ", ovsPortNumber);
+                RtlStringCchPrintfA(tempStr, tempStrSize, "out: %u; ", ofPortNumber);
 
                 RtlStringCchCatA(str, maxLen - 1, tempStr);
             }

@@ -233,7 +233,7 @@ static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, 
         {
             pPort->portId = pForwardInfo->pInternalPort->portId;
             //TODO: should we use interlocked assign for OVS_PORT_LIST_ENTRY's port id?
-            pForwardInfo->pInternalPort->ovsPortNumber = pPort->ovsPortNumber;
+            pForwardInfo->pInternalPort->ofPortNumber = pPort->ofPortNumber;
         }
         else
         {
@@ -248,14 +248,14 @@ static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, 
     {
         pPort->portId = NDIS_SWITCH_DEFAULT_PORT_ID;
     }
-    else if (0 == strcmp(pPort->ovsPortName, externalPortName))
+    else if (0 == strcmp(pPort->ofPortName, externalPortName))
     {
         if (pForwardInfo->pExternalPort)
         {
             //TODO: should we use interlockd assign for OVS_PORT_LIST_ENTRY's port id?
             pPort->portId = pForwardInfo->pExternalPort->portId;
             pPort->isExternal = TRUE;
-            pForwardInfo->pExternalPort->ovsPortNumber = pPort->ovsPortNumber;
+            pForwardInfo->pExternalPort->ofPortNumber = pPort->ofPortNumber;
         }
         else
         {
@@ -266,7 +266,7 @@ static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, 
     {
         OVS_PORT_LIST_ENTRY* pPortEntry = NULL;
 
-        pPortEntry = Sctx_FindPortBy_Unsafe(pForwardInfo, pPort->ovsPortName, _PortFriendlyNameIs);
+        pPortEntry = Sctx_FindPortBy_Unsafe(pForwardInfo, pPort->ofPortName, _PortFriendlyNameIs);
 
         if (pPortEntry)
         {
@@ -276,7 +276,7 @@ static VOID _OFPort_SetNicAndPort_Unsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, 
             pNicEntry = Sctx_FindNicByPortId_Unsafe(pForwardInfo, pPortEntry->portId);
             if (pNicEntry)
             {
-                pNicEntry->ovsPortNumber = pPort->ovsPortNumber;
+                pNicEntry->ofPortNumber = pPort->ofPortNumber;
             }
         }
     }
@@ -343,14 +343,14 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
             goto Cleanup;
         }
 
-        pPort->ovsPortName = KAlloc(257);
-        if (!pPort->ovsPortName)
+        pPort->ofPortName = KAlloc(257);
+        if (!pPort->ofPortName)
         {
             ok = FALSE;
             goto Cleanup;
         }
 
-        RtlStringCchPrintfA((char*)pPort->ovsPortName, 257, "kport_%u", *pPortNumber);
+        RtlStringCchPrintfA((char*)pPort->ofPortName, 257, "kport_%u", *pPortNumber);
     }
 
     //if a name has been given, we use it
@@ -358,18 +358,18 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
     {
         ULONG portNameLen = (ULONG)strlen(portName) + 1;
 
-        pPort->ovsPortName = KAlloc(portNameLen);
-        if (!pPort->ovsPortName)
+        pPort->ofPortName = KAlloc(portNameLen);
+        if (!pPort->ofPortName)
         {
             ok = FALSE;
             goto Cleanup;
         }
 
-        RtlStringCchCopyA((char*)pPort->ovsPortName, portNameLen, portName);
+        RtlStringCchCopyA((char*)pPort->ofPortName, portNameLen, portName);
     }
 
     //if port number was not given, we set it now to 0 an call below _OFPort_AddByName_Unsafe
-    pPort->ovsPortNumber = (pPortNumber ? *pPortNumber : 0);
+    pPort->ofPortNumber = (pPortNumber ? *pPortNumber : 0);
     pPort->ofPortType = portType;
 
     pPort = OVS_REFCOUNT_REFERENCE(pPort);
@@ -399,16 +399,16 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
 
     if (pPortNumber)
     {
-        OVS_ERROR error = FXArray_AddByNumber_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, pPort->ovsPortNumber);
+        OVS_ERROR error = FXArray_AddByNumber_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, pPort->ofPortNumber);
 
         if (error == OVS_ERROR_EXIST)
         {
-            const OVS_OFPORT* pOtherPort = (OVS_OFPORT*)pPortsArray->array[pPort->ovsPortNumber];
+            const OVS_OFPORT* pOtherPort = (OVS_OFPORT*)pPortsArray->array[pPort->ofPortNumber];
 
             UNREFERENCED_PARAMETER(pOtherPort);
 
             OVS_CHECK(pOtherPort->ofPortType == pPort->ofPortType);
-            OVS_CHECK(pOtherPort->ovsPortNumber == pPort->ovsPortNumber);
+            OVS_CHECK(pOtherPort->ofPortNumber == pPort->ofPortNumber);
 
             ok = (error == OVS_ERROR_NOERROR);
         }
@@ -416,7 +416,7 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
     }
     else
     {
-        ok = FXArray_Add_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, &(pPort->ovsPortNumber));
+        ok = FXArray_Add_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, &(pPort->ofPortNumber));
     }
 
     if (!ok)
@@ -517,7 +517,7 @@ static __inline BOOLEAN _OFPort_NameEquals(OVS_FXARRAY_ITEM* pItem, UINT_PTR dat
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
     const char* ofPortName = (const char*)data;
 
-    return (0 == strcmp(pCurPort->ovsPortName, ofPortName));
+    return (0 == strcmp(pCurPort->ofPortName, ofPortName));
 }
 
 OVS_OFPORT* OFPort_FindByName_Ref(const char* ofPortName)
@@ -605,7 +605,7 @@ static __inline BOOLEAN _OFPort_PortNumberEquals(OVS_FXARRAY_ITEM* pItem, UINT_P
     OVS_OFPORT* pCurPort = (OVS_OFPORT*)pItem;
     UINT16 portNumber = (UINT16)data;
 
-    return (pCurPort->ovsPortNumber == portNumber);
+    return (pCurPort->ofPortNumber == portNumber);
 }
 
 OVS_OFPORT* OFPort_FindByNumber_Ref(UINT16 portNumber)
@@ -666,7 +666,7 @@ BOOLEAN OFPort_Delete(OVS_OFPORT* pPort)
         _RemoveOFPort_Vxlan(pPort);
     }
 
-    ok = FXArray_Remove_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, pPort->ovsPortNumber);
+    ok = FXArray_Remove_Unsafe(pPortsArray, (OVS_FXARRAY_ITEM*)pPort, pPort->ofPortNumber);
     if (!ok)
     {
         goto Cleanup;
@@ -687,7 +687,7 @@ Cleanup:
 
 VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pPort)
 {
-    KFree(pPort->ovsPortName);
+    KFree(pPort->ofPortName);
 
     /* previously, we 'unset' the nic and port: the hyper-v switch ports & nics were set to have pPort = NULL
     ** Now we use numbers instead. Anyway, there's no need to do unset now, because:

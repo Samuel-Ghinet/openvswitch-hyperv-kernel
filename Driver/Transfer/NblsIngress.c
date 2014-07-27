@@ -626,7 +626,7 @@ static BOOLEAN _OutputPacketToPort_Physical(OVS_NET_BUFFER* pOvsNb)
     }
     else
     {
-        DEBUGP(LOG_LOUD, "ovs port %s does not have a nic associated!\n", pOvsNb->pDestinationPort->ovsPortName);
+        DEBUGP(LOG_LOUD, "ovs port %s does not have a nic associated!\n", pOvsNb->pDestinationPort->ofPortName);
         ok = FALSE;
     }
 
@@ -762,7 +762,7 @@ static BOOLEAN _ProcessPacket(OVS_NET_BUFFER* pOvsNb, _In_ const OVS_OFPORT* pSo
 
     if (pSourcePort)
     {
-        ovsInPortNumber = pSourcePort->ovsPortNumber;
+        ovsInPortNumber = pSourcePort->ofPortNumber;
     }
 
     if (!PacketInfo_Extract(pNbBuffer, nbLen, ovsInPortNumber, &packetInfo))

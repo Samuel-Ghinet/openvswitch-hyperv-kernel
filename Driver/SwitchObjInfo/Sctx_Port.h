@@ -35,7 +35,7 @@ typedef struct _OVS_PORT_LIST_ENTRY
     BOOLEAN                          on;
 
     //OVS_INVALID_PORT_NUMBER (0xFFFF) when we don't have one
-    UINT16                           ovsPortNumber;
+    UINT16                           ofPortNumber;
 } OVS_PORT_LIST_ENTRY, *POVS_PORT_LIST_ENTRY;
 
 OVS_PORT_LIST_ENTRY* Sctx_FindPortById_Unsafe(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardIno, _In_ NDIS_SWITCH_PORT_ID portId);
@@ -47,4 +47,4 @@ NDIS_STATUS Sctx_DeletePort_Unsafe(_In_ const OVS_GLOBAL_FORWARD_INFO* pForwardI
 OVS_PORT_LIST_ENTRY* Sctx_FindPortBy_Unsafe(_In_ OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const VOID* pContext, BOOLEAN(*Predicate)(int, const VOID*, _In_ const OVS_PORT_LIST_ENTRY*));
 
 //returns ovs port number
-UINT16 Sctx_Port_SetOFPort(const char* ovsPortName, NDIS_SWITCH_PORT_ID portId);
+UINT16 Sctx_Port_SetOFPort(const char* ofPortName, NDIS_SWITCH_PORT_ID portId);

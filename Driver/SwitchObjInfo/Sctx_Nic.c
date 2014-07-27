@@ -63,7 +63,7 @@ NDIS_STATUS Sctx_AddNicUnsafe(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, const NDIS_
     pNicEntry->nicType = pCurNic->NicType;
     pNicEntry->connected = (pCurNic->NicState == NdisSwitchNicStateConnected);
     pNicEntry->mtu = pCurNic->MTU;
-    pNicEntry->ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+    pNicEntry->ofPortNumber = OVS_INVALID_PORT_NUMBER;
 
 #ifdef DBG
     WcharArrayToAscii(pNicEntry->vmName, pCurNic->VmFriendlyName.String, min(OVS_NIC_ENTRY_NAME_SIZE, pCurNic->VmFriendlyName.Length));
@@ -335,7 +335,7 @@ UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_POR
 {
     OVS_OFPORT* pPort = NULL;
     LOCK_STATE_EX lockState;
-    UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
+    UINT16 ofPortNumber = OVS_INVALID_PORT_NUMBER;
 
     FXARRAY_LOCK_WRITE(&pForwardInfo->ofPorts, &lockState);
 
@@ -347,12 +347,12 @@ UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_POR
         FXITEM_LOCK_WRITE(pPort, &lockState);
 
         pPort->portId = portId;
-        ovsPortNumber = pPort->ovsPortNumber;
+        ofPortNumber = pPort->ofPortNumber;
 
         FXITEM_UNLOCK(pPort, &lockState);
     }
 
     FXARRAY_UNLOCK(&pForwardInfo->ofPorts, &lockState);
 
-    return ovsPortNumber;
+    return ofPortNumber;
 }
