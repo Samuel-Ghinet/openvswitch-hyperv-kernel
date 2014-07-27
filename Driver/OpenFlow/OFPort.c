@@ -392,7 +392,7 @@ OVS_OFPORT* OFPort_Create_Ref(_In_opt_ const char* portName, _In_opt_ const UINT
         _AddOFPort_Vxlan(pPort);
     }
 
-    //NOTE: we may have more persistent ports than NICS: logical ports don't have nics associated
+    //NOTE: we may have more of ports than NICS: logical ports don't have nics associated
     //the same goes with hyper-v switch ports
 
     _OFPort_SetNicAndPort_Unsafe(pForwardInfo, pPort);
@@ -692,8 +692,8 @@ VOID OFPort_DestroyNow_Unsafe(OVS_OFPORT* pPort)
     /* previously, we 'unset' the nic and port: the hyper-v switch ports & nics were set to have pPort = NULL
     ** Now we use numbers instead. Anyway, there's no need to do unset now, because:
     ** o) the only reason we keep the mapping between ovs port numbers and hyper-v switch port ids is because we need to find a port id, given an ovs port number (or ovs port name)
-    ** o) we need to be able to find a persistent port, when knowing a port id, only when setting a hyper-v switch port name.
-    ** o) any packet is sent out using an ovs port number (persistent port)
+    ** o) we need to be able to find an of port, when knowing a port id, only when setting a hyper-v switch port name.
+    ** o) any packet is sent out using an ovs port number (of port)
     ** o) it never happens for a port (hyper-v switch port or ovs port) to be created with the same number as one that had been deleted.
     */
 
