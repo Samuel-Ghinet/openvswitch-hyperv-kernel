@@ -94,57 +94,31 @@ static BOOLEAN _RemoveOFPort_Vxlan(_In_ const OVS_OFPORT* pPort)
     return _RemoveOFPort_Logical(&g_vxlanPorts, pPort);
 }
 
-static OVS_OFPORT* _OFPort_FindTunnel_Ref(_In_ const LIST_ENTRY* pList, _In_ const OVS_TUNNELING_PORT_OPTIONS* pTunnelOptions)
+_Use_decl_annotations_
+OVS_OFPORT* OFPort_FindGre_Ref()
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
     OVS_OFPORT* pOutPort = NULL;
     LOCK_STATE_EX lockState = { 0 };
 
-    if (pList == &g_vxlanPorts)
-    {
-        OVS_CHECK(pTunnelOptions);
-    }
-
     NdisAcquireRWLockRead(g_pLogicalPortsLock, &lockState, 0);
 
-    OVS_LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, pList)
-    {
-        if (pList == &g_grePorts)
-        {
-            pPortEntry = CONTAINING_RECORD(pList->Flink, OVS_LOGICAL_PORT_ENTRY, listEntry);
-            pOutPort = OVS_REFCOUNT_REFERENCE(pPortEntry->pPort);
-            goto Cleanup;
-        }
-        else
-        {
-            //VXLAN
-            OVS_TUNNELING_PORT_OPTIONS* pOptions = NULL;
+    pPortEntry = CONTAINING_RECORD(g_grePorts.Flink, OVS_LOGICAL_PORT_ENTRY, listEntry);
+    pOutPort = OVS_REFCOUNT_REFERENCE(pPortEntry->pPort);
 
-            OVS_CHECK(pList == &g_vxlanPorts);
-
-            pOptions = pPortEntry->pPort->pOptions;
-            OVS_CHECK(pOptions);
-            OVS_CHECK(pTunnelOptions->optionsFlags & OVS_TUNNEL_OPTIONS_HAVE_UDP_DST_PORT);
-
-            if (pOptions->udpDestPort == pTunnelOptions->udpDestPort)
-            {
-                pOutPort = OVS_REFCOUNT_REFERENCE(pPortEntry->pPort);
-                goto Cleanup;
-            }
-        }
-    }
-
-Cleanup:
     NdisReleaseRWLock(g_pLogicalPortsLock, &lockState);
 
     return pOutPort;
 }
 
-//TODO: use OFPort_FindVxlan_Ref instead
 _Use_decl_annotations_
-OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
+OVS_OFPORT* OFPort_FindVxlan_Ref(LE16 udpDestPort)
 {
     OVS_LOGICAL_PORT_ENTRY* pPortEntry = NULL;
+    OVS_OFPORT* pOutPort = NULL;
+    LOCK_STATE_EX lockState = { 0 };
+
+    NdisAcquireRWLockRead(g_pLogicalPortsLock, &lockState, 0);
 
     OVS_LIST_FOR_EACH(OVS_LOGICAL_PORT_ENTRY, pPortEntry, &g_vxlanPorts)
     {
@@ -155,23 +129,14 @@ OVS_OFPORT* OFPort_FindVxlanByDestPort_Ref(LE16 udpDestPort)
 
         if (pOptions->udpDestPort == udpDestPort)
         {
-            return OVS_REFCOUNT_REFERENCE(pPortEntry->pPort);
+            pOutPort = OVS_REFCOUNT_REFERENCE(pPortEntry->pPort);
+            break;
         }
     }
 
-    return NULL;
-}
+    NdisReleaseRWLock(g_pLogicalPortsLock, &lockState);
 
-_Use_decl_annotations_
-OVS_OFPORT* OFPort_FindGre_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
-{
-    return _OFPort_FindTunnel_Ref(&g_grePorts, pTunnelInfo);
-}
-
-_Use_decl_annotations_
-OVS_OFPORT* OFPort_FindVxlan_Ref(const OVS_TUNNELING_PORT_OPTIONS* pTunnelInfo)
-{
-    return _OFPort_FindTunnel_Ref(&g_vxlanPorts, pTunnelInfo);
+    return pOutPort;
 }
 
 /******************************** INIT AND UNINIT ********************************/

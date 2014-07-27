@@ -468,7 +468,7 @@ const OVS_DECAPSULATOR* Encap_FindDecapsulator(NET_BUFFER* pNb, BYTE* pEncapProt
             OVS_UDP_HEADER* pUdpHeader = (OVS_UDP_HEADER*)AdvanceIpv4Header(pIpv4Header);
             OVS_OFPORT* pPort = NULL;
 
-            pPort = OFPort_FindVxlanByDestPort_Ref(RtlUshortByteSwap(pUdpHeader->destinationPort));
+            pPort = OFPort_FindVxlan_Ref(RtlUshortByteSwap(pUdpHeader->destinationPort));
 
             if (pPort)
             {
