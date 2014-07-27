@@ -990,11 +990,11 @@ static BOOLEAN _CreateInPortArgInList(const OVS_OFPACKET_INFO* pPacketInfo, cons
 {
     UINT32 inputPortValue = 0;
 
-    if (pPacketInfo->physical.ovsInPort == OVS_INVALID_PORT_NUMBER)
+    if (pPacketInfo->physical.ofInPort == OVS_INVALID_PORT_NUMBER)
     {
         if (pMask)
         {
-            if (pMask->physical.ovsInPort == OVS_PI_MASK_MATCH_EXACT(UINT16))
+            if (pMask->physical.ofInPort == OVS_PI_MASK_MATCH_EXACT(UINT16))
             {
                 inputPortValue = OVS_PI_MASK_MATCH_EXACT(UINT32);
             }
@@ -1018,12 +1018,12 @@ static BOOLEAN _CreateInPortArgInList(const OVS_OFPACKET_INFO* pPacketInfo, cons
         if (pMask)
         {
             highBits = OVS_PI_MASK_MATCH_EXACT(UINT16);
-            ofPortNumber = pMask->physical.ovsInPort;
+            ofPortNumber = pMask->physical.ofInPort;
         }
         else
         {
             highBits = 0;
-            ofPortNumber = pPacketInfo->physical.ovsInPort;
+            ofPortNumber = pPacketInfo->physical.ofInPort;
         }
 
         inputPortValue = ofPortNumber | (highBits << 16);

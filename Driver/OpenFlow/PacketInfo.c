@@ -338,7 +338,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
 
     //OVS SPECIFIC / PHYSICAL LAYER
     //NOTE: on windows, we don't have "packet priority" and "packet mark" associated with a NET_BUFFER / NET_BUFFER_LIST
-    pPacketInfo->physical.ovsInPort = ofSourcePort;
+    pPacketInfo->physical.ofInPort = ofSourcePort;
 
     //I. LINK LAYER
     pEthHeader = (OVS_ETHERNET_HEADER*)pNbBuffer;
@@ -590,11 +590,11 @@ BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
         return FALSE;
     }
 
-    offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ovsInPort);
-    size = sizeof(pPacketInfo->physical.ovsInPort);
+    offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ofInPort);
+    size = sizeof(pPacketInfo->physical.ofInPort);
 
     _UpdateRange(pPiRange, offset, size);
-    pPacketInfo->physical.ovsInPort = (UINT16)inPort;
+    pPacketInfo->physical.ofInPort = (UINT16)inPort;
 
     return TRUE;
 }
@@ -621,11 +621,11 @@ VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, 
     }
     else
     {
-        offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ovsInPort);
-        size = sizeof(pPacketInfo->physical.ovsInPort);
+        offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ofInPort);
+        size = sizeof(pPacketInfo->physical.ofInPort);
 
         _UpdateRange(pPiRange, offset, size);
-        pPacketInfo->physical.ovsInPort = OVS_INVALID_PORT_NUMBER;
+        pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
     }
 }
 
