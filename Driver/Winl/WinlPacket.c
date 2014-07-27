@@ -97,7 +97,7 @@ Cleanup:
     return pFlow;
 }
 
-static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_INFO* pSwitchInfo)
+static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_INFO* pSwitchInfo, OVS_DATAPATH* pDatapath)
 {
     pOvsNb->pActions = pFlow->pActions;
     pOvsNb->pOriginalPacketInfo = &pFlow->maskedPacketInfo;
@@ -108,6 +108,7 @@ static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_
     pOvsNb->sendToPortNormal = FALSE;
 
     pOvsNb->pSwitchInfo = pSwitchInfo;
+    pOvsNb->pDatapath = pDatapath;
     pOvsNb->sendFlags = 0;
 
     if (pOvsNb->pOriginalPacketInfo->physical.ofInPort != OVS_INVALID_PORT_NUMBER)
@@ -127,7 +128,7 @@ static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_
 
 //NOTE: Assuming the verification part has done its job (arg & msg verification), we can use the input data as valid
 
-VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
+VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, OVS_DATAPATH* pDatapath, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
@@ -158,7 +159,7 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
     OVS_REFCOUNT_REFERENCE(pFlow->pActions)
 
     //while we will process the packet, we do not allow its actions to be destroyed
-    _SetOnbMetadata(pOvsNb, pFlow, pSwitchInfo);
+    _SetOnbMetadata(pOvsNb, pFlow, pSwitchInfo, pDatapath);
 
     ok = ExecuteActions(pOvsNb, OutputPacketToPort);
 
@@ -183,7 +184,7 @@ Cleanup:
     }
 }
 
-static OVS_ERROR _QueueUserspacePacket(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
+static OVS_ERROR _QueueUserspacePacket(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
 {
     BOOLEAN dbgPrintPacket = FALSE;
     OVS_ERROR error = OVS_ERROR_NOERROR;
@@ -193,14 +194,7 @@ static OVS_ERROR _QueueUserspacePacket(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCA
     UINT i = 0;
     OVS_ETHERNET_HEADER* pEthHeader = NULL;
     VOID* nbBuffer = NULL;
-    OVS_DATAPATH* pDatapath = NULL;
     ULONG bufLen = NET_BUFFER_DATA_LENGTH(pNb);
-
-    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-    if (!pDatapath)
-    {
-        return OVS_ERROR_INVAL;
-    }
 
     nbBuffer = NdisGetDataBuffer(pNb, bufLen, NULL, 1, 0);
     OVS_CHECK(nbBuffer);
@@ -238,7 +232,6 @@ static OVS_ERROR _QueueUserspacePacket(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCA
 
     //NOTE: make sure pDatapath->switchIfIndex == pSwitchInfo->datapathIfIndex
     msg.dpIfIndex = pDatapath->switchIfIndex;
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     msg.pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
     if (!msg.pArgGroup)
@@ -296,8 +289,6 @@ static OVS_ERROR _QueueUserspacePacket(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCA
     }
 
 Out:
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
-
     if (msg.pArgGroup)
     {
         DestroyArgumentGroup(msg.pArgGroup);
@@ -318,11 +309,10 @@ Out:
     return error;
 }
 
-BOOLEAN QueuePacketToUserspace(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
+BOOLEAN QueuePacketToUserspace(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO* pUpcallInfo)
 {
     int dpifindex = 0;
     BOOLEAN ok = TRUE;
-    OVS_DATAPATH* pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
 
     //__DONT_QUEUE_BY_DEFAULT is used for debugging purposes only
 #define __DONT_QUEUE_BY_DEFAULT 0
@@ -343,7 +333,7 @@ BOOLEAN QueuePacketToUserspace(_In_ NET_BUFFER* pNb, _In_ const OVS_UPCALL_INFO*
     if (queuePacket)
 #endif
     {
-        OVS_ERROR error = _QueueUserspacePacket(pNb, pUpcallInfo);
+        OVS_ERROR error = _QueueUserspacePacket(pDatapath, pNb, pUpcallInfo);
         if (error != OVS_ERROR_NOERROR)
         {
             //no other kind of error except 'no space' (for queued buffers) normally happen.
@@ -365,8 +355,6 @@ Cleanup:
 
         DATAPATH_UNLOCK(pDatapath, &lockState);
     }
-
-    OVS_REFCOUNT_DEREFERENCE(pDatapath);
 
     return ok;
 }
