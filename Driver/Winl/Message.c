@@ -23,19 +23,6 @@ limitations under the License.
 #include "ArgToAttribute.h"
 #include "ArgVerification.h"
 
-static volatile LONG g_upcallSequence = 0;
-
-static LONG _NextUpcallSequence()
-{
-    LONG result = g_upcallSequence;
-
-    KeMemoryBarrier();
-
-    InterlockedIncrement(&g_upcallSequence);
-
-    return result;
-}
-
 static BOOLEAN _ParseArgGroup_FromAttributes(_In_ BYTE** ppBuffer, UINT16* pBytesLeft, UINT16 groupSize, _Inout_ OVS_ARGUMENT_GROUP* pGroup, OVS_ARGTYPE parentArgType, UINT16 targetType, UINT8 cmd);;
 
 static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ OVS_ARGUMENT* pOutArg, OVS_ARGTYPE parentArgType, UINT16 targetType, UINT8 cmd)
@@ -686,13 +673,13 @@ VOID DestroyMessages(_Inout_ OVS_MESSAGE* msgs, UINT countMsgs)
     }
 }
 
-OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, OVS_MESSAGE_TARGET_TYPE target, UINT32 portId, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs)
+OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs)
 {
-    pMsg->length = sizeof(OVS_MESSAGE);
+    pMsg->length = length;
     pMsg->type = target;
     pMsg->flags = 0;
-    pMsg->sequence = _NextUpcallSequence();
     pMsg->pid = portId;
+    pMsg->pArgGroup = NULL;
 
     pMsg->command = command;
     pMsg->version = 1;
@@ -701,16 +688,19 @@ OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, OVS_MESSAGE_TARGET_TYPE target, U
     //NOTE: make sure pDatapath->switchIfIndex == pSwitchInfo->datapathIfIndex
     pMsg->dpIfIndex = dpIfIndex;
 
-    pMsg->pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!pMsg->pArgGroup)
+    if (countArgs)
     {
-        return OVS_ERROR_NOMEM;
-    }
-
-    if (!AllocateArgumentsToGroup(countArgs, pMsg->pArgGroup))
-    {
-        KFree(pMsg->pArgGroup);
-        return OVS_ERROR_NOMEM;
+        pMsg->pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
+        if (!pMsg->pArgGroup)
+        {
+            return OVS_ERROR_NOMEM;
+        }
+        
+        if (!AllocateArgumentsToGroup(countArgs, pMsg->pArgGroup))
+        {
+            KFree(pMsg->pArgGroup);
+            return OVS_ERROR_NOMEM;
+        }
     }
 
     return OVS_ERROR_NOERROR;

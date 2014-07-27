@@ -283,4 +283,4 @@ static __inline OVS_ARGTYPE MessageTargetTypeToArgType(OVS_MESSAGE_TARGET_TYPE t
     }
 }
 
-OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, OVS_MESSAGE_TARGET_TYPE target, UINT32 portId, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs);
+OVS_ERROR CreateMsg(_Inout_ OVS_MESSAGE* pMsg, UINT32 portId, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs);
