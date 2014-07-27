@@ -213,7 +213,7 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
     }
     else
     {
-        CHECK_E(CreateMsg(&replyMsg, pMsg->pid, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_TARGET_DUMP_DONE, OVS_MESSAGE_COMMAND_NEW, 
+        CHECK_E(CreateMsg(&replyMsg, pMsg->pid, pMsg->sequence, sizeof(OVS_MESSAGE_DONE), OVS_MESSAGE_TARGET_DUMP_DONE, OVS_MESSAGE_COMMAND_NEW, 
             pDatapath->switchIfIndex, 0));
 
         error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);

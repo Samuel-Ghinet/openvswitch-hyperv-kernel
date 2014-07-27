@@ -194,16 +194,15 @@ static OVS_ERROR _QueueUserspacePacket(OVS_DATAPATH* pDatapath, _In_ NET_BUFFER*
     VOID* nbBuffer = NULL;
     ULONG bufLen = NET_BUFFER_DATA_LENGTH(pNb);
     countArgs = (pUpcallInfo->pUserData ? 3 : 2);
+    UINT32 sequence = _NextUpcallSequence();
 
     nbBuffer = NdisGetDataBuffer(pNb, bufLen, NULL, 1, 0);
 
     CHECK_B_E(nbBuffer, OVS_ERROR_INVAL);
     CHECK_B_E(bufLen > USHORT_MAX, OVS_ERROR_INVAL);
 
-    CHECK_E(CreateMsg(&msg, pUpcallInfo->portId, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_PACKET, pUpcallInfo->command,
+    CHECK_E(CreateMsg(&msg, pUpcallInfo->portId, sequence, sizeof(OVS_MESSAGE), OVS_MESSAGE_TARGET_PACKET, pUpcallInfo->command,
         pDatapath->switchIfIndex, countArgs));
-
-    msg.sequence = _NextUpcallSequence();
 
     pPacketInfoArg = CreateArgFromPacketInfo(pUpcallInfo->pPacketInfo, NULL, OVS_ARGTYPE_PACKET_PI_GROUP);
     CHECK_B_E(pPacketInfoArg, OVS_ERROR_INVAL);
