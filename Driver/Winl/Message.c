@@ -673,13 +673,15 @@ VOID DestroyMessages(_Inout_ OVS_MESSAGE* msgs, UINT countMsgs)
     }
 }
 
-OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command, UINT32 dpIfIndex, UINT16 countArgs)
+OVS_ERROR CreateMsg(OVS_MESSAGE* pMsg, UINT32 portId, UINT32 sequence, UINT32 length, OVS_MESSAGE_TARGET_TYPE target, UINT8 command, 
+    UINT32 dpIfIndex, UINT16 countArgs)
 {
     pMsg->length = length;
     pMsg->type = target;
     pMsg->flags = 0;
     pMsg->pid = portId;
     pMsg->pArgGroup = NULL;
+    pMsg->sequence = sequence;
 
     pMsg->command = command;
     pMsg->version = 1;
