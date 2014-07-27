@@ -337,22 +337,22 @@ UINT16 Sctx_Nic_SetPersistentPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SW
     LOCK_STATE_EX lockState;
     UINT16 ovsPortNumber = OVS_INVALID_PORT_NUMBER;
 
-    PERSPORTS_LOCK_WRITE(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_LOCK_WRITE(&pForwardInfo->persistentPortsInfo, &lockState);
 
     pPort = PersPort_FindById_Unsafe(portId);
     if (pPort)
     {
         LOCK_STATE_EX lockState = { 0 };
 
-        PORT_LOCK_WRITE(pPort, &lockState);
+        FXITEM_LOCK_WRITE(pPort, &lockState);
 
         pPort->portId = portId;
         ovsPortNumber = pPort->ovsPortNumber;
 
-        PORT_UNLOCK(pPort, &lockState);
+        FXITEM_UNLOCK(pPort, &lockState);
     }
 
-    PERSPORTS_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
+    FXARRAY_UNLOCK(&pForwardInfo->persistentPortsInfo, &lockState);
 
     return ovsPortNumber;
 }
