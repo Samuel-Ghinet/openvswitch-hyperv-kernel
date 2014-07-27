@@ -331,7 +331,7 @@ Cleanup:
     return status;
 }
 
-UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId)
+UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_PORT_ID portId, NDIS_SWITCH_NIC_INDEX nicIndex)
 {
     OVS_OFPORT* pPort = NULL;
     LOCK_STATE_EX lockState;
@@ -347,6 +347,7 @@ UINT16 Sctx_Nic_SetOFPort(OVS_GLOBAL_FORWARD_INFO* pForwardInfo, NDIS_SWITCH_POR
         FXITEM_LOCK_WRITE(pPort, &lockState);
 
         pPort->portId = portId;
+        pPort->nicIndex = nicIndex;
         ofPortNumber = pPort->ofPortNumber;
 
         FXITEM_UNLOCK(pPort, &lockState);
