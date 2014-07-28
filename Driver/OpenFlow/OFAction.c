@@ -475,6 +475,65 @@ static BOOLEAN _ValidateTransportPort(const OVS_OFPACKET_INFO* pPacketInfo)
     }
 }
 
+static BOOLEAN _SetAction_CreateIpv4TunnelFromArg(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OF_PI_IPV4_TUNNEL* pTunnelInfo)
+{
+    BE16 tunnelFlags = 0;
+
+    for (UINT i = 0; i < pArgs->count; ++i)
+    {
+        OVS_ARGUMENT* pArg = pArgs->args + i;
+        OVS_ARGTYPE argType = pArg->type;
+
+        switch (argType)
+        {
+        case OVS_ARGTYPE_PI_TUNNEL_ID:
+            pTunnelInfo->tunnelId = GET_ARG_DATA(pArg, BE64);
+
+            tunnelFlags |= OVS_TUNNEL_FLAG_KEY;
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_IPV4_SRC:
+            pTunnelInfo->ipv4Source = GET_ARG_DATA(pArg, BE32);
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_IPV4_DST:
+            pTunnelInfo->ipv4Destination = GET_ARG_DATA(pArg, BE32);
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_TOS:
+            pTunnelInfo->ipv4TypeOfService = GET_ARG_DATA(pArg, UINT8);
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_TTL:
+            pTunnelInfo->ipv4TimeToLive = GET_ARG_DATA(pArg, UINT8);
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_DONT_FRAGMENT:
+            tunnelFlags |= OVS_TUNNEL_FLAG_DONT_FRAGMENT;
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
+            tunnelFlags |= OVS_TUNNEL_FLAG_CHECKSUM;
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_OAM:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
+        default:
+            return FALSE;
+        }
+    }
+
+    pTunnelInfo->tunnelFlags = tunnelFlags;
+
+    return TRUE;
+}
+
 static BOOLEAN _CreateActionIpv4Tunnel(const OVS_ARGUMENT_GROUP* pTunnelGroup, OVS_ARGUMENT** ppIpv4TunnelArg)
 {
     BOOLEAN ok = FALSE;
@@ -489,7 +548,7 @@ static BOOLEAN _CreateActionIpv4Tunnel(const OVS_ARGUMENT_GROUP* pTunnelGroup, O
 
     RtlZeroMemory(pTunnelInfo, sizeof(OF_PI_IPV4_TUNNEL));
 
-    ok = GetIpv4TunnelFromArgumentsSimple(pTunnelGroup, pTunnelInfo);
+    ok = _SetAction_CreateIpv4TunnelFromArg(pTunnelGroup, pTunnelInfo);
     if (!ok)
     {
         KFree(pTunnelInfo);
@@ -497,7 +556,6 @@ static BOOLEAN _CreateActionIpv4Tunnel(const OVS_ARGUMENT_GROUP* pTunnelGroup, O
     }
 
     pIpv4Tunnel = CreateArgument(OVS_ARGTYPE_PI_IPV4_TUNNEL, pTunnelInfo);
-
     if (!pIpv4Tunnel)
     {
         return FALSE;

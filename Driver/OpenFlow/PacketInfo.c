@@ -527,7 +527,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
     return TRUE;
 }
 
-BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
+static BOOLEAN _PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
 {
     BOOLEAN haveTtl = FALSE;
     BE16 tunnelFlags = 0;
@@ -594,81 +594,7 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
     return TRUE;
 }
 
-BOOLEAN GetIpv4TunnelFromArgumentsSimple(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OF_PI_IPV4_TUNNEL* pTunnelInfo)
-{
-    BE16 tunnelFlags = 0;
-
-    for (UINT i = 0; i < pArgs->count; ++i)
-    {
-        OVS_ARGUMENT* pArg = pArgs->args + i;
-        OVS_ARGTYPE argType = pArg->type;
-
-        switch (argType)
-        {
-        case OVS_ARGTYPE_PI_TUNNEL_ID:
-            pTunnelInfo->tunnelId = GET_ARG_DATA(pArg, BE64);
-
-            tunnelFlags |= OVS_TUNNEL_FLAG_KEY;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_IPV4_SRC:
-            pTunnelInfo->ipv4Source = GET_ARG_DATA(pArg, BE32);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_IPV4_DST:
-            pTunnelInfo->ipv4Destination = GET_ARG_DATA(pArg, BE32);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_TOS:
-            pTunnelInfo->ipv4TypeOfService = GET_ARG_DATA(pArg, UINT8);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_TTL:
-            pTunnelInfo->ipv4TimeToLive = GET_ARG_DATA(pArg, UINT8);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_DONT_FRAGMENT:
-            tunnelFlags |= OVS_TUNNEL_FLAG_DONT_FRAGMENT;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-            tunnelFlags |= OVS_TUNNEL_FLAG_CHECKSUM;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_OAM:
-            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
-            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
-            break;
-
-        default:
-            return FALSE;
-        }
-    }
-
-    pTunnelInfo->tunnelFlags = tunnelFlags;
-
-    return TRUE;
-}
-
-VOID PIFromArg_PacketPriority(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetPriority);
-}
-
-VOID PIFromArg_DatapathHash(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, pPiRange, pArg, UINT32, flowHash);
-}
-
-VOID PIFromArg_DatapathRecirculationId(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, pPiRange, pArg, UINT32, recirculationId);
-}
-
-BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
+static BOOLEAN _PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
 {
     UINT16 inPort = (UINT16)GET_ARG_DATA(pArg, UINT32);
 
@@ -683,37 +609,6 @@ BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     }
 
     OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, ofInPort, inPort);
-
-    return TRUE;
-}
-
-VOID PIFromArg_PacketMark(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetMark);
-}
-
-VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
-{
-    if (!isMask)
-    {
-        OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, packetMark, OVS_INVALID_PORT_NUMBER);
-    }
-}
-
-static VOID _GetPIFromArg_EthAddress(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pEthAddressArg)
-{
-    const OVS_PI_ETH_ADDRESS* pEthAddressPI = pEthAddressArg->data;
-
-    OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, source, pEthAddressPI->source);
-    OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, destination, pEthAddressPI->destination);
-}
-
-static BOOLEAN _GetPIFromArg_VlanTci(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pVlanTciArg)
-{
-    BE16 tci = GET_ARG_DATA(pVlanTciArg, BE16);
-
-    EXPECT(tci & RtlUshortByteSwap(OVS_VLAN_TAG_PRESENT));
-    OVS_PI_UPDATE_ETHINFO_FIELD(pPacketInfo, pPiRange, pVlanTciArg, BE16, tci);
 
     return TRUE;
 }
@@ -798,60 +693,6 @@ static BOOLEAN _GetPIFromArg_Arp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     return TRUE;
 }
 
-static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    const OVS_PI_MPLS* pMplsPI = pArg->data;
-
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, mplsTopLabelStackEntry, pMplsPI->mplsLse);
-
-    return TRUE;
-}
-
-static VOID _GetPIFromArg_TcpFlags(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_TPINFO_FIELD(pPacketInfo, pPiRange, pArg, BE16, tcpFlags);
-}
-
-static VOID _GetPIFromArg_Tcp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pTcpArg)
-{
-    const OVS_PI_TCP* pTcpPI = pTcpArg->data;
-
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pTcpPI->source);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pTcpPI->destination);
-}
-
-static VOID _GetPIFromArg_Udp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pUdpArg)
-{
-    const OVS_PI_UDP* pUdpPI = pUdpArg->data;
-
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pUdpPI->source);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pUdpPI->destination);
-}
-
-static VOID _GetPIFromArg_Sctp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pSctpArg)
-{
-    const OVS_PI_SCTP* pSctpPI = pSctpArg->data;
-
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pSctpPI->source);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pSctpPI->destination);
-}
-
-static VOID _GetPIFromArg_Icmp4(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp4Arg)
-{
-    const OVS_PI_ICMP* pIcmpPI = pIcmp4Arg->data;
-
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpPI->type));
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpPI->code));
-}
-
-static VOID _GetPIFromArg_Icmp6(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp6Arg)
-{
-    const OVS_PI_ICMP6* pIcmpv6PI = pIcmp6Arg->data;
-
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpv6PI->type));
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpv6PI->code));
-}
-
 static VOID _GetPIFromArg_NeighborDiscovery(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp6NdArg)
 {
     const OVS_PI_NEIGHBOR_DISCOVERY* pNdPacketInfo = pIcmp6NdArg->data;
@@ -879,38 +720,48 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
         switch (argType)
         {
         case OVS_ARGTYPE_PI_DATAPATH_HASH:
-            PIFromArg_DatapathHash(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, pPiRange, pArg, UINT32, flowHash);
             break;
 
         case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
-            PIFromArg_DatapathRecirculationId(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, pPiRange, pArg, UINT32, recirculationId);
             break;
 
         case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-            PIFromArg_PacketPriority(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetPriority);
             break;
 
         case OVS_ARGTYPE_PI_DP_INPUT_PORT:
             pDatapathInPortArg = pArg;
-            EXPECT(PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask));
+            EXPECT(_PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_PACKET_MARK:
-            PIFromArg_PacketMark(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetMark);
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_GROUP:
             OVS_CHECK(IsArgTypeGroup(pArg->type));
-            EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask));
+            EXPECT(_PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask));
             break;
 
         case OVS_ARGTYPE_PI_ETH_ADDRESS:
-            _GetPIFromArg_EthAddress(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_ETH_ADDRESS* pEthAddressPI = pArg->data;
+
+            OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, source, pEthAddressPI->source);
+            OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, destination, pEthAddressPI->destination);
+        }
             break;
 
         case OVS_ARGTYPE_PI_VLAN_TCI:
             pVlanTciArg = pArg;
-            EXPECT(_GetPIFromArg_VlanTci(pPacketInfo, pPiRange, pArg));
+            {
+                BE16 tci = GET_ARG_DATA(pVlanTciArg, BE16);
+
+                EXPECT(tci & RtlUshortByteSwap(OVS_VLAN_TAG_PRESENT));
+                OVS_PI_UPDATE_ETHINFO_FIELD(pPacketInfo, pPiRange, pVlanTciArg, BE16, tci);
+            }
             break;
 
         case OVS_ARGTYPE_PI_ETH_TYPE:
@@ -932,31 +783,60 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             break;
 
         case OVS_ARGTYPE_PI_MPLS:
-            _GetPIFromArg_Mpls(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_MPLS* pMplsPI = pArg->data;
+
+            OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, mplsTopLabelStackEntry, pMplsPI->mplsLse);
+        }
             break;
 
         case OVS_ARGTYPE_PI_TCP:
-            _GetPIFromArg_Tcp(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_TCP* pTcpPI = pArg->data;
+
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pTcpPI->source);
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pTcpPI->destination);
+        }
             break;
 
         case OVS_ARGTYPE_PI_TCP_FLAGS:
-            _GetPIFromArg_TcpFlags(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_TPINFO_FIELD(pPacketInfo, pPiRange, pArg, BE16, tcpFlags);
             break;
 
         case OVS_ARGTYPE_PI_UDP:
-            _GetPIFromArg_Udp(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_UDP* pUdpPI = pArg->data;
+
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pUdpPI->source);
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pUdpPI->destination);
+        }
             break;
 
         case OVS_ARGTYPE_PI_SCTP:
-            _GetPIFromArg_Sctp(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_SCTP* pSctpPI = pArg->data;
+
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pSctpPI->source);
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pSctpPI->destination);
+        }
             break;
 
         case OVS_ARGTYPE_PI_ICMP:
-            _GetPIFromArg_Icmp4(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_ICMP* pIcmpPI = pArg->data;
+
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpPI->type));
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpPI->code));
+        }
             break;
 
         case OVS_ARGTYPE_PI_ICMP6:
-            _GetPIFromArg_Icmp6(pPacketInfo, pPiRange, pArg);
+        {
+            const OVS_PI_ICMP6* pIcmpv6PI = pArg->data;
+
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpv6PI->type));
+            OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpv6PI->code));
+        }
             break;
 
         case OVS_ARGTYPE_PI_NEIGHBOR_DISCOVERY:
@@ -969,23 +849,18 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
         }
     }
 
-    if (!pDatapathInPortArg)
+    if (!pDatapathInPortArg && !isMask)
     {
-        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, pPiRange, isMask);
+        OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, packetMark, OVS_INVALID_PORT_NUMBER);
     }
 
     if (!pVlanTciArg)
     {
         if (!isMask)
         {
-            SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ethInfo, OVS_ETH_INFO, tci);
-            SIZE_T size = sizeof(pPacketInfo->ethInfo.tci);
-
-            _UpdateRange(pPiRange, offset, size);
-
             //TODO: we should normally set vlan tci to 0xFFFF in this case.
             //but it used to work with 0 only
-            pPacketInfo->ethInfo.tci = 0;
+            OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(pPacketInfo, pPiRange, tci, 0);
         }
     }
 
@@ -993,22 +868,11 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
     {
         if (isMask)
         {
-            SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ethInfo, OVS_ETH_INFO, type);
-            SIZE_T size = sizeof(pPacketInfo->ethInfo.type);
-
-            _UpdateRange(pPiRange, offset, size);
-            pPacketInfo->ethInfo.type = OVS_PI_MASK_MATCH_EXACT(UINT16);
+            OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(pPacketInfo, pPiRange, type, OVS_PI_MASK_MATCH_EXACT(UINT16));
         }
         else
         {
-            /*//TODO: in the future, we might need to support OVS_ETHERTYPE_802_2. i.e. here, to set ethInfo.type == OVS_ETHERTYPE_802_2
-            DEBUGP(LOG_ERROR, "WE ONLY DEAL WITH 802.3 ETHERNET FRAMES!\n");
-            return FALSE;*/
-            SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ethInfo, OVS_ETH_INFO, type);
-            SIZE_T size = sizeof(pPacketInfo->ethInfo.type);
-
-            _UpdateRange(pPiRange, offset, size);
-            pPacketInfo->ethInfo.type = RtlUshortByteSwap(OVS_ETHERTYPE_802_2);
+            OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(pPacketInfo, pPiRange, type, RtlUshortByteSwap(OVS_ETHERTYPE_802_2));
         }
     }
 
@@ -1082,41 +946,41 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_DATAPATH_HASH);
     if (pArg)
     {
-       PIFromArg_DatapathHash(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, &piRange, pArg, UINT32, flowHash);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID);
     if (pArg)
     {
-        PIFromArg_DatapathRecirculationId(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_MAIN_FIELD(pPacketInfo, &piRange, pArg, UINT32, recirculationId);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_PACKET_PRIORITY);
     if (pArg)
     {
-        PIFromArg_PacketPriority(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, &piRange, pArg, UINT32, packetPriority);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_PACKET_MARK);
     if (pArg)
     {
-        PIFromArg_PacketMark(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, &piRange, pArg, UINT32, packetMark);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_DP_INPUT_PORT);
     if (pArg)
     {
-        EXPECT(PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE));
+        EXPECT(_PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE));
     }
     else
     {
-        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, &piRange, FALSE);
+        OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, &piRange, packetMark, OVS_INVALID_PORT_NUMBER);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_TUNNEL_GROUP);
     if (pArg)
     {
-        EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE));
+        EXPECT(_PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE));
     }
 
     return TRUE;
