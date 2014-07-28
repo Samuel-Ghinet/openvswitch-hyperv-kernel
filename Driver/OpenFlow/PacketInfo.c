@@ -397,7 +397,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
     }
     else
     {
-        return FALSE;
+        OVS_CHECK_RET(__UNEXPECTED__, FALSE);
     }
 
     return TRUE;
@@ -490,17 +490,8 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
 
     if (!isMask)
     {
-        if (!haveTtl)
-        {
-            DEBUGP(LOG_ERROR, "IPV4 TUNNEL: TTL WAS NOT SPECIFIED! IT IS A REQUIRED FIELD.\n");
-            return FALSE;
-        }
-
-        if (!pPacketInfo->tunnelInfo.ipv4Destination)
-        {
-            DEBUGP(LOG_ERROR, "IPV4 TUNNEL: DESTINATION IP ADDRESS == 0.0.0.0! \n");
-            return FALSE;
-        }
+        EXPECT(haveTtl);
+        EXPECT(pPacketInfo->tunnelInfo.ipv4Destination);
     }
 
     return TRUE;
@@ -585,9 +576,10 @@ BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     {
         inPort = OVS_PI_MASK_MATCH_EXACT(UINT32);
     }
-    else if (inPort >= OVS_MAX_PORTS)
+
+    if (!isMask)
     {
-        return FALSE;
+        EXPECT(inPort < OVS_MAX_PORTS);
     }
 
     offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ofInPort);
@@ -615,11 +607,7 @@ VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, 
 {
     SIZE_T offset = 0, size = 0;
 
-    if (isMask)
-    {
-        //if isMask and mask attr not specified, we assume it's 'any'
-    }
-    else
+    if (!isMask)
     {
         offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, physical, OVS_PHYSICAL, ofInPort);
         size = sizeof(pPacketInfo->physical.ofInPort);
@@ -647,24 +635,12 @@ static VOID _GetPIFromArg_EthAddress(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _In
     RtlCopyMemory(&pPacketInfo->ethInfo.destination, pEthAddressPI->destination, OVS_ETHERNET_ADDRESS_LENGTH);
 }
 
-static BOOLEAN _GetPIFromArg_VlanTci(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pVlanTciArg, _In_ BOOLEAN isMask)
+static BOOLEAN _GetPIFromArg_VlanTci(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pVlanTciArg)
 {
     BE16 tci = GET_ARG_DATA(pVlanTciArg, BE16);
     SIZE_T offset = 0, size = 0;
 
-    if (!(tci & RtlUshortByteSwap(OVS_VLAN_TAG_PRESENT)))
-    {
-        if (isMask)
-        {
-            DEBUGP(LOG_ERROR, "VLAN TCI MASK: EXPECTED EXACT MATCH FOR THE OVS_VLAN_TAG_PRESENT BIT.\n");
-        }
-        else
-        {
-            DEBUGP(LOG_ERROR, "VLAN TCI PI: EXPECTED OVS_VLAN_TAG_PRESENT BIT TO BE SET.\n");
-        }
-
-        return FALSE;
-    }
+    EXPECT(tci & RtlUshortByteSwap(OVS_VLAN_TAG_PRESENT));
 
     offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ethInfo, OVS_ETH_INFO, tci);
     size = sizeof(pPacketInfo->ethInfo.tci);
@@ -684,10 +660,10 @@ static BOOLEAN _GetPIFromArg_EthType(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _In
     {
         ethType = OVS_PI_MASK_MATCH_EXACT(UINT16);
     }
-    else if (RtlUshortByteSwap(ethType) < OVS_ETHERTYPE_802_3_MIN)
+
+    if (!isMask)
     {
-        DEBUGP(LOG_ERROR, "INVALID ETH TYPE: %X. MINIMUM ACCEPTABLE IS 802.3 (I.E. 0X0600)\n", RtlUshortByteSwap(ethType));
-        return FALSE;
+        EXPECT(RtlUshortByteSwap(ethType) >= OVS_ETHERTYPE_802_3_MIN);
     }
 
     offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, ethInfo, OVS_ETH_INFO, type);
@@ -706,11 +682,7 @@ static BOOLEAN _GetPIFromArg_Ipv4(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
 
     if (!isMask)
     {
-        if (pIpv4Info->fragmentType > OVS_FRAGMENT_TYPE_MAX)
-        {
-            DEBUGP(LOG_ERROR, "IPV4 PI: INVALID FRAGMENT TYPE: %d\n", pIpv4Info->fragmentType);
-            return FALSE;
-        }
+        EXPECT(pIpv4Info->fragmentType <= OVS_FRAGMENT_TYPE_MAX);
     }
 
     //1. ip protocol
@@ -764,11 +736,7 @@ static BOOLEAN _GetPIFromArg_Ipv6(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
 
     if (!isMask)
     {
-        if (pIpv6Info->fragmentType > OVS_FRAGMENT_TYPE_MAX)
-        {
-            DEBUGP(LOG_ERROR, "IPV6: INVALID FRAGMENT TYPE: %d\n", pIpv6Info->fragmentType);
-            return FALSE;
-        }
+        EXPECT(pIpv6Info->fragmentType <= OVS_FRAGMENT_TYPE_MAX);
     }
 
     //ip6 label
@@ -830,11 +798,7 @@ static BOOLEAN _GetPIFromArg_Arp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
 
     if (!isMask)
     {
-        if (RtlUshortByteSwap(pArpPI->operation) > MAXUINT8)
-        {
-            DEBUGP(LOG_ERROR, "ARP PI: UNKNOWN OPERATION CODE: %d.\n", pArpPI->operation);
-            return FALSE;
-        }
+        EXPECT(RtlUshortByteSwap(pArpPI->operation) <= MAXUINT8);
     }
 
     //src ip
@@ -1098,11 +1062,7 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
         case OVS_ARGTYPE_PI_DP_INPUT_PORT:
             pDatapathInPortArg = pArg;
-            if (!PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_PACKET_MARK:
@@ -1111,12 +1071,7 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
         case OVS_ARGTYPE_PI_TUNNEL_GROUP:
             OVS_CHECK(IsArgTypeGroup(pArg->type));
-
-            if (!PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask));
             break;
 
         case OVS_ARGTYPE_PI_ETH_ADDRESS:
@@ -1125,45 +1080,25 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
         case OVS_ARGTYPE_PI_VLAN_TCI:
             pVlanTciArg = pArg;
-            if (!_GetPIFromArg_VlanTci(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(_GetPIFromArg_VlanTci(pPacketInfo, pPiRange, pArg));
             break;
 
         case OVS_ARGTYPE_PI_ETH_TYPE:
             pEthTypeArg = pArg;
-            if (!_GetPIFromArg_EthType(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(_GetPIFromArg_EthType(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_IPV4:
             haveIpv4 = TRUE;
-
-            if (!_GetPIFromArg_Ipv4(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
+            EXPECT(_GetPIFromArg_Ipv4(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_IPV6:
-            if (!_GetPIFromArg_Ipv6(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(_GetPIFromArg_Ipv6(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_ARP:
-            if (!_GetPIFromArg_Arp(pPacketInfo, pPiRange, pArg, isMask))
-            {
-                return FALSE;
-            }
-
+            EXPECT(_GetPIFromArg_Arp(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_MPLS:
