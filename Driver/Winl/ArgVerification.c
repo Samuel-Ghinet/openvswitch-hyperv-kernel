@@ -38,14 +38,14 @@ limitations under the License.
     OVS_MUST_HAVE_ARG_IN_ARRAY(argArray, argType1);        \
     OVS_MUST_HAVE_ARG_IN_ARRAY(argArray, argType2);
 
-#define OVS_PARSE_ARGS_QUICK(group, pGroup, args)                                    \
-    OVS_ARGUMENT* args[OVS_ARGTYPE_COUNT(group)] = {0};                    \
-    \
-    OVS_FOR_EACH_ARG((pGroup),                                        \
-    \
-    OVS_ARGUMENT** ppCurArg = args + OVS_ARG_TOINDEX(argType, group);    \
-    OVS_CHECK(!*ppCurArg);                                            \
-    *ppCurArg = pArg                                                \
+#define OVS_PARSE_ARGS_QUICK(group, pGroup, args)                       \
+    OVS_ARGUMENT* args[OVS_ARGTYPE_COUNT(group)] = {0};                 \
+                                                                        \
+    OVS_FOR_EACH_ARG((pGroup), pArg, argType,                           \
+                                                                        \
+    OVS_ARGUMENT** ppCurArg = args + OVS_ARG_TOINDEX(argType, group);   \
+    OVS_CHECK(!*ppCurArg);                                              \
+    *ppCurArg = pArg                                                    \
     );
 
 #define OVS_VERIFY_STRUCT_WILDCARD_DEFAULT(Type, pObj)                                      \
@@ -114,7 +114,7 @@ static __inline BOOLEAN _VerifyGroup_PI_Tunnel(OVS_ARGUMENT* pTunArg, OVS_ARGUME
 
     OVS_CHECK(pVerify);
 
-    OVS_FOR_EACH_ARG(pGroup,
+    OVS_FOR_EACH_ARG(pGroup, pArg, argType,
     {
         OVS_ARGTYPE first = pVerify->firstChildArgType;
         Func f = pVerify->f[OVS_ARG_TOINDEX_FIRST(argType, first)];
@@ -742,7 +742,7 @@ static BOOLEAN _VerifyGroup_Default(OVS_ARGUMENT* pGroupArg, OVS_ARGUMENT* pPare
 
     OVS_CHECK(pVerify);
 
-    OVS_FOR_EACH_ARG(pGroup,
+    OVS_FOR_EACH_ARG(pGroup, pArg, argType,
     {
         OVS_ARGTYPE first = pVerify->firstChildArgType;
         Func f = pVerify->f[OVS_ARG_TOINDEX_FIRST(argType, first)];
@@ -771,7 +771,7 @@ static __inline BOOLEAN _VerifyGroup_Flow_PI(OVS_ARGUMENT* pPIArg, OVS_ARGUMENT*
 
     OVS_CHECK(pVerify);
 
-    OVS_FOR_EACH_ARG(pGroup,
+    OVS_FOR_EACH_ARG(pGroup, pArg, argType,
     {
         OVS_ARGTYPE first = pVerify->firstChildArgType;
         Func f = pVerify->f[OVS_ARG_TOINDEX_FIRST(argType, first)];
