@@ -1019,3 +1019,64 @@ BOOLEAN PacketInfo_Equal(const OVS_OFPACKET_INFO* pLhs, const OVS_OFPACKET_INFO*
 
     return PacketInfo_EqualAtRange(pLhs, pRhs, startRange, endRange);
 }
+
+BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _Inout_ OVS_OFPACKET_INFO* pPacketInfo)
+{
+    OF_PI_IPV4_TUNNEL* pTunnelInfo = &pPacketInfo->tunnelInfo;
+    OVS_PI_RANGE piRange = { 0 };
+    OVS_ARGUMENT* pDatapathInPortArg = NULL;
+
+    pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
+    pPacketInfo->physical.packetPriority = 0;
+    pPacketInfo->physical.packetMark = 0;
+
+    RtlZeroMemory(pTunnelInfo, sizeof(OF_PI_IPV4_TUNNEL));
+
+    OVS_CHECK(pArgGroup);
+
+    for (UINT i = 0; i < pArgGroup->count; ++i)
+    {
+        OVS_ARGUMENT* pArg = pArgGroup->args + i;
+        OVS_ARGTYPE argType = pArg->type;
+
+        switch (argType)
+        {
+        case OVS_ARGTYPE_PI_DATAPATH_HASH:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
+        case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
+            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
+            break;
+
+        case OVS_ARGTYPE_PI_PACKET_PRIORITY:
+            PIFromArg_PacketPriority(pPacketInfo, &piRange, pArg);
+            break;
+
+        case OVS_ARGTYPE_PI_PACKET_MARK:
+            PIFromArg_PacketMark(pPacketInfo, &piRange, pArg);
+            break;
+
+        case OVS_ARGTYPE_PI_DP_INPUT_PORT:
+            pDatapathInPortArg = pArg;
+            EXPECT(PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE));
+            break;
+
+        case OVS_ARGTYPE_PI_TUNNEL_GROUP:
+            OVS_CHECK(IsArgTypeGroup(pArg->type));
+            EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE));
+            break;
+
+        default:
+            //nothing to do here: the rest are non-context / non-metadata keys
+            break;
+        }
+    }
+
+    if (!pDatapathInPortArg)
+    {
+        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, &piRange, FALSE);
+    }
+
+    return TRUE;
+}

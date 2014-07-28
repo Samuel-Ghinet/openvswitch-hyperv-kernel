@@ -276,3 +276,5 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
 
 BOOLEAN PacketInfo_Equal(const OVS_OFPACKET_INFO* pLhs, const OVS_OFPACKET_INFO* pRhs, SIZE_T endRange);
 BOOLEAN PacketInfo_EqualAtRange(const OVS_OFPACKET_INFO* pLhsPI, const OVS_OFPACKET_INFO* pRhsPI, SIZE_T startRange, SIZE_T endRange);
+
+BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _Inout_ OVS_OFPACKET_INFO* pPacketInfo);
