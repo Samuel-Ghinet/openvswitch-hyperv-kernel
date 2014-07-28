@@ -82,6 +82,16 @@ C_ASSERT(sizeof(OVS_ARGUMENT_GROUP) == 16);
     code;                                        \
 }
 
+#define OVS_PARSE_ARGS_QUICK(group, pGroup, args)                       \
+    OVS_ARGUMENT* args[OVS_ARGTYPE_COUNT(group)] = {0};                 \
+                                                                        \
+    OVS_FOR_EACH_ARG((pGroup), pArg, argType,                           \
+                                                                        \
+    OVS_ARGUMENT** ppCurArg = args + OVS_ARG_TOINDEX(argType, group);   \
+    OVS_CHECK(!*ppCurArg);                                              \
+    *ppCurArg = pArg                                                    \
+    );
+
 /******************************************* ALLOC & FREE FUNCTIONS **********************************************************************/
 
 //allocates an array of count OVS_ARGUMENT-s, and assigns it to pGroup->args
