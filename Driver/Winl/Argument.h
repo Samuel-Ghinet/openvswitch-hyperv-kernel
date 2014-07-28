@@ -116,6 +116,8 @@ OVS_ARGUMENT* CreateArgument_Alloc(OVS_ARGTYPE argType, const VOID* buffer);
 //allocates an OVS_ARGUMENT and encapsulates the OVS_ARGUMENT_GROUP as its pArg->data (NOTE: not a copy of it)
 OVS_ARGUMENT* CreateArgumentFromGroup(OVS_ARGTYPE argType, const OVS_ARGUMENT_GROUP* pData);
 
+OVS_ARGUMENT_GROUP* CreateGroupFromArgArray(OVS_ARGUMENT* argArray, UINT16 countArgs, UINT16 totalSize);
+
 //allocates an OVS_ARGUMENT and stores the ASCII string "buffer" as its data (NOTE: it does not use a copy of buffer)
 OVS_ARGUMENT* CreateArgumentStringA(OVS_ARGTYPE argType, const char* buffer);
 

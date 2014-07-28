@@ -68,10 +68,10 @@ extern ULONG g_debugLevel;
 //OVS_USE_ASSERTS is not #define-d on release mode
 #if OVS_USE_ASSERTS
 #define OVS_CHECK(x) ASSERT(x)
-#define OVS_CHECK_OR(x, expr) { ASSERT(x); if (!(x)) expr; }
-#define OVS_CHECK_BREAK(x) { ASSERT(x); if (!(x)) break; }
-#define OVS_CHECK_RET(x, value) { ASSERT(x); if (!(x)) return value; }
-#define OVS_CHECK_GC(x) { ASSERT(x); if (!(x)) goto Cleanup; }
+#define OVS_CHECK_OR(x, expr) { if (!(x)) { ASSERT(0); expr; } }
+#define OVS_CHECK_BREAK(x) { if (!(x)) { ASSERT(0); break; } }
+#define OVS_CHECK_RET(x, value) { if (!(x)) { ASSERT(0); return value; } }
+#define OVS_CHECK_GC(x) { if (!(x)) { ASSERT(0); goto Cleanup; } }
 #else
 #define OVS_CHECK(x)
 #define OVS_CHECK_OR(x, expr) { if (!(x)) expr; }
@@ -80,6 +80,7 @@ extern ULONG g_debugLevel;
 #define OVS_CHECK_GC(x) { if (!(x)) goto Cleanup; }
 #endif //OVS_USE_ASSERTS
 
+//on failure, return FALSE
 #define EXPECT(expr)    OVS_CHECK_RET(expr, FALSE)
 
 #define CHECK_E(expr)                           \
@@ -87,6 +88,17 @@ extern ULONG g_debugLevel;
     error = (expr);                             \
     if (error != OVS_ERROR_NOERROR)             \
     {                                           \
+    OVS_CHECK(__UNEXPECTED__);                  \
+    goto Cleanup;                               \
+    }                                           \
+}
+
+//check boolean expr, on failure, set ok = FALSE and goto Cleanup
+#define CHECK_B(expr)                           \
+{                                               \
+    if (!(expr))                                \
+    {                                           \
+    ok = FALSE;                                 \
     OVS_CHECK(__UNEXPECTED__);                  \
     goto Cleanup;                               \
     }                                           \

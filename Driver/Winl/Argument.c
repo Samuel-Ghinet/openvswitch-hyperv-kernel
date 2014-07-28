@@ -357,6 +357,20 @@ OVS_ARGUMENT* CreateArgumentFromGroup(OVS_ARGTYPE argType, const OVS_ARGUMENT_GR
     return pArg;
 }
 
+OVS_ARGUMENT_GROUP* CreateGroupFromArgArray(OVS_ARGUMENT* argArray, UINT16 countArgs, UINT16 totalSize)
+{
+    OVS_ARGUMENT_GROUP* pArgGroup = NULL;
+
+    pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
+    EXPECT(pArgGroup);
+
+    pArgGroup->args = argArray;
+    pArgGroup->count = countArgs;
+    pArgGroup->groupSize = (UINT16)totalSize;
+
+    return pArgGroup;
+}
+
 OVS_ARGUMENT* CreateArgumentStringA(OVS_ARGTYPE argType, const char* buffer)
 {
     OVS_ARGUMENT* pArg;
