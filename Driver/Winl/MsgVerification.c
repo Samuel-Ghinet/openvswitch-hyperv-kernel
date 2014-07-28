@@ -27,12 +27,12 @@ typedef enum
 
 #define OVS_PARSE_ARGS(pGroup, args)                                    \
     OVS_ARGUMENT* args[OVS_ARGTYPE_MAX_COUNT] = {0};                    \
-    \
-    OVS_FOR_EACH_ARG((pGroup),                                        \
-    \
-    OVS_ARGUMENT** ppCurArg = args + ArgTypeToIndex(argType);    \
-    OVS_CHECK(!*ppCurArg);                                            \
-    *ppCurArg = pArg                                                \
+                                                                        \
+    OVS_FOR_EACH_ARG((pGroup), pArg, argType,                           \
+                                                                        \
+    OVS_ARGUMENT** ppCurArg = args + ArgTypeToIndex(argType);           \
+    OVS_CHECK(!*ppCurArg);                                              \
+    *ppCurArg = pArg                                                    \
     );
 
 /*********************************** args allowed **********************************/
@@ -486,7 +486,7 @@ static BOOLEAN _GenlVerifier(OVS_MESSAGE* pMsg, OVS_MSG_KIND reqOrReply)
 
     mainArgType = MessageTargetTypeToArgType(pMsg->type);
 
-    OVS_FOR_EACH_ARG(pMsg->pArgGroup,
+    OVS_FOR_EACH_ARG(pMsg->pArgGroup, pArg, argType,
     {
         const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(mainArgType);
         OVS_VERIFY_OPTIONS options = _GetOptionsForArgGroup(pMsg->command, argType, reqOrReply);

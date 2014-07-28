@@ -74,7 +74,7 @@ C_ASSERT(sizeof(OVS_ARGUMENT_GROUP) == 16);
 #define GET_ARG_DATA_PTR(arg, ptrType) \
     ((ptrType*)arg->data)
 
-#define OVS_FOR_EACH_ARG(pGroup, code)            \
+#define OVS_FOR_EACH_ARG(pGroup, pArg, argType, code)            \
     for (UINT i = 0; i < (pGroup)->count; ++i)    \
 {                                            \
     OVS_ARGUMENT* pArg = (pGroup)->args + i;        \

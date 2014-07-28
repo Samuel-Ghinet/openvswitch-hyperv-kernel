@@ -504,7 +504,7 @@ static ULONG _ComputeGroupAlignedSize_Recursive(OVS_ARGUMENT_GROUP* pGroup)
 {
     ULONG alignedSize = 0;
 
-    OVS_FOR_EACH_ARG(pGroup,
+    OVS_FOR_EACH_ARG(pGroup, pArg, argType,
     {
         alignedSize += sizeof(OVS_NL_ATTRIBUTE);
 
