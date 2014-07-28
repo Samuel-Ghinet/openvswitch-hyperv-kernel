@@ -30,7 +30,7 @@ limitations under the License.
 #include "Gre.h"
 #include "Checksum.h"
 
-#define OVS_PI_ARG_IN_ARRAY(args, argType) (args + OVS_ARG_TOINDEX(argType, PI))
+#define OVS_PI_ARG_IN_ARRAY(args, argType) args[OVS_ARG_TOINDEX(argType, PI)]
 
 #define OVS_PI_SET_IPV4_TP(Type, pIpv4Head, pPacketInfo)                            \
 {                                                                                   \
@@ -500,7 +500,7 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
     return TRUE;
 }
 
-BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
+static BOOLEAN _PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
 {
     BOOLEAN haveTtl = FALSE;
     BE16 tunnelFlags = 0;
@@ -567,71 +567,7 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
     return TRUE;
 }
 
-BOOLEAN GetIpv4TunnelFromArgumentsSimple(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OF_PI_IPV4_TUNNEL* pTunnelInfo)
-{
-    BE16 tunnelFlags = 0;
-
-    for (UINT i = 0; i < pArgs->count; ++i)
-    {
-        OVS_ARGUMENT* pArg = pArgs->args + i;
-        OVS_ARGTYPE argType = pArg->type;
-
-        switch (argType)
-        {
-        case OVS_ARGTYPE_PI_TUNNEL_ID:
-            pTunnelInfo->tunnelId = GET_ARG_DATA(pArg, BE64);
-
-            tunnelFlags |= OVS_TUNNEL_FLAG_KEY;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_IPV4_SRC:
-            pTunnelInfo->ipv4Source = GET_ARG_DATA(pArg, BE32);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_IPV4_DST:
-            pTunnelInfo->ipv4Destination = GET_ARG_DATA(pArg, BE32);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_TOS:
-            pTunnelInfo->ipv4TypeOfService = GET_ARG_DATA(pArg, UINT8);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_TTL:
-            pTunnelInfo->ipv4TimeToLive = GET_ARG_DATA(pArg, UINT8);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_DONT_FRAGMENT:
-            tunnelFlags |= OVS_TUNNEL_FLAG_DONT_FRAGMENT;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_CHECKSUM:
-            tunnelFlags |= OVS_TUNNEL_FLAG_CHECKSUM;
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_OAM:
-            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
-            break;
-
-        case OVS_ARGTYPE_PI_TUNNEL_GENEVE_OPTIONS:
-            OVS_CHECK_RET(__NOT_IMPLEMENTED__, FALSE);
-            break;
-
-        default:
-            return FALSE;
-        }
-    }
-
-    pTunnelInfo->tunnelFlags = tunnelFlags;
-
-    return TRUE;
-}
-
-VOID PIFromArg_PacketPriority(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetPriority);
-}
-
-BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
+static BOOLEAN _PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
 {
     UINT16 inPort = (UINT16)GET_ARG_DATA(pArg, UINT32);
 
@@ -650,12 +586,7 @@ BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
     return TRUE;
 }
 
-VOID PIFromArg_PacketMark(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
-{
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetMark);
-}
-
-VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
+static VOID _PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
 {
     if (!isMask)
     {
@@ -825,7 +756,6 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 {
     BOOLEAN haveIpv4 = FALSE;
     OVS_ARGUMENT* pVlanTciArg = NULL, *pEthTypeArg = NULL, *pDatapathInPortArg = NULL;
-    OVS_ARGUMENT* pArg = NULL;
 
     OVS_CHECK(pPacketInfo);
     OVS_CHECK(pPiRange);
@@ -846,21 +776,21 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
             break;
 
         case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-            PIFromArg_PacketPriority(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetPriority);
             break;
 
         case OVS_ARGTYPE_PI_DP_INPUT_PORT:
             pDatapathInPortArg = pArg;
-            EXPECT(PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask));
+            EXPECT(_PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, isMask));
             break;
 
         case OVS_ARGTYPE_PI_PACKET_MARK:
-            PIFromArg_PacketMark(pPacketInfo, pPiRange, pArg);
+            OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetMark);
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_GROUP:
             OVS_CHECK(IsArgTypeGroup(pArg->type));
-            EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask));
+            EXPECT(_PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, isMask));
             break;
 
         case OVS_ARGTYPE_PI_ETH_ADDRESS:
@@ -930,7 +860,7 @@ BOOLEAN GetPacketInfoFromArguments(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inou
 
     if (!pDatapathInPortArg)
     {
-        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, pPiRange, isMask);
+        _PIFromArg_SetDefaultDatapathInPort(pPacketInfo, pPiRange, isMask);
     }
 
     if (!pVlanTciArg)
@@ -1027,7 +957,6 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
 {
     OF_PI_IPV4_TUNNEL* pTunnelInfo = &pPacketInfo->tunnelInfo;
     OVS_PI_RANGE piRange = { 0 };
-    OVS_ARGUMENT* pDatapathInPortArg = NULL;
     OVS_ARGUMENT* pArg = NULL;
 
     pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
@@ -1053,29 +982,29 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_PACKET_PRIORITY);
     if (pArg)
     {
-        PIFromArg_PacketPriority(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, &piRange, pArg, UINT32, packetPriority);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_PACKET_MARK);
     if (pArg)
     {
-        PIFromArg_PacketMark(pPacketInfo, &piRange, pArg);
+        OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, &piRange, pArg, UINT32, packetMark);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_DP_INPUT_PORT);
     if (pArg)
     {
-        EXPECT(PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE));
+        EXPECT(_PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE));
     }
     else
     {
-        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, &piRange, FALSE);
+        _PIFromArg_SetDefaultDatapathInPort(pPacketInfo, &piRange, FALSE);
     }
 
     pArg = OVS_PI_ARG_IN_ARRAY(args, OVS_ARGTYPE_PI_TUNNEL_GROUP);
     if (pArg)
     {
-        EXPECT(PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE));
+        EXPECT(_PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE));
     }
 
     return TRUE;
