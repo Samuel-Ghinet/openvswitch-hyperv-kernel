@@ -84,9 +84,10 @@ typedef struct _OVS_FLOW
 //a match is a pair (packet info, mask), with PI range = to apply mask and compare [startRange, endRange]
 typedef struct _OVS_FLOW_MATCH
 {
-    OVS_OFPACKET_INFO*        pPacketInfo;
-    OVS_FLOW_MASK*            pFlowMask;
-    OVS_PI_RANGE              piRange;
+    OVS_OFPACKET_INFO       packetInfo;
+    OVS_FLOW_MASK           flowMask;
+    OVS_PI_RANGE            piRange;
+    BOOLEAN                 haveMask;
 }OVS_FLOW_MATCH, *POVS_FLOW_MATCH;
 
 typedef struct _OVS_WINL_FLOW_STATS
@@ -125,7 +126,7 @@ static __inline void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
 void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
 
 /*********************************** FLOW MATCH ***********************************/
-void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacketInfo, OVS_FLOW_MASK* pFlowMask);
+void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, BOOLEAN haveMask);
 
 /*********************************** FLOW MASK ***********************************/
 VOID FlowMask_DeleteReference(OVS_FLOW_MASK* pFlowMask);

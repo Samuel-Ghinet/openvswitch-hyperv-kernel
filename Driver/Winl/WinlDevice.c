@@ -408,6 +408,166 @@ BOOLEAN _Parse_Control(VOID* buffer, _Inout_ OVS_MESSAGE_CONTROL* pCtrlMessage, 
     return FALSE;
 }
 
+static OVS_ERROR _WinlIrpWrite_Datapath(OVS_MESSAGE* pMsg, FILE_OBJECT* pFileObject)
+{
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    OVS_DATAPATH* pDatapath = NULL;
+
+    CHECK_B_E(pMsg, OVS_ERROR_INVAL);
+
+    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+    CHECK_B_E(pDatapath, OVS_ERROR_NODEV);
+
+    switch (pMsg->command)
+    {
+    case OVS_MESSAGE_COMMAND_NEW:
+        //NOTE: we always have one "default" datapath, so when the command NEW arrives,
+        //we must set stuff to the existing datapath.
+        error = WinlDatapath_New(pDatapath, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_SET:
+        error = WinlDatapath_Set(pDatapath, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_GET:
+        error = WinlDatapath_Get(pDatapath, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DELETE:
+        error = WinlDatapath_Delete(&pDatapath, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DUMP:
+        error = WinlDatapath_Dump(pDatapath, pMsg, pFileObject);
+        break;
+
+    default:
+        error = OVS_ERROR_INVAL;
+        break;
+    }
+
+Cleanup:
+    OVS_REFCOUNT_DEREFERENCE(pDatapath);
+
+    return error;
+}
+
+static OVS_ERROR _WinlIrpWrite_Flow(OVS_MESSAGE* pMsg, FILE_OBJECT* pFileObject)
+{
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    OVS_DATAPATH* pDatapath = NULL;
+    OVS_FLOW_TABLE* pFlowTable = NULL;
+
+    CHECK_B_E(pMsg, OVS_ERROR_INVAL);
+
+    pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+    CHECK_B_E(pDatapath, OVS_ERROR_NODEV);
+
+    pFlowTable = Datapath_ReferenceFlowTable(pDatapath);
+    CHECK_B_E(pFlowTable, OVS_ERROR_INVAL);
+
+    switch (pMsg->command)
+    {
+    case OVS_MESSAGE_COMMAND_NEW:
+        error = WinlFlow_New(pFlowTable, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_SET:
+        error = WinlFlow_Set(pFlowTable, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_GET:
+        error = WinlFlow_Get(pFlowTable, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DELETE:
+        error = WinlFlow_Delete(pDatapath, pFlowTable, pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DUMP:
+        error = WinlFlow_Dump(pFlowTable, pMsg, pFileObject);
+        break;
+
+    default:
+        error = OVS_ERROR_INVAL;
+        break;
+    }
+
+Cleanup:
+    OVS_REFCOUNT_DEREFERENCE(pFlowTable);
+    OVS_REFCOUNT_DEREFERENCE(pDatapath);
+
+    return error;
+}
+
+static OVS_ERROR _WinlIrpWrite_OFPort(OVS_MESSAGE* pMsg, FILE_OBJECT* pFileObject, OVS_SWITCH_INFO* pSwitchInfo)
+{
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    
+    CHECK_B_E(pMsg, OVS_ERROR_INVAL);
+    CHECK_B_E(pSwitchInfo, OVS_ERROR_INVAL);
+
+    switch (pMsg->command)
+    {
+    case OVS_MESSAGE_COMMAND_NEW:
+        error = WinlOFPort_New(pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_GET:
+        error = WinlOFPort_Get(pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_SET:
+        error = WinlOFPort_Set(pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DELETE:
+        error = WinlOFPort_Delete(pMsg, pFileObject);
+        break;
+
+    case OVS_MESSAGE_COMMAND_DUMP:
+        error = WinlOFPort_Dump(pSwitchInfo, pMsg, pFileObject);
+        break;
+
+    default:
+        error = OVS_ERROR_INVAL;
+        break;
+    }
+
+Cleanup:
+    return error;
+}
+
+static OVS_ERROR _WinlIrpWrite_Packet(OVS_MESSAGE* pMsg, OVS_SWITCH_INFO* pSwitchInfo)
+{
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    OVS_DATAPATH* pDatapath = NULL;
+
+    CHECK_B_E(pMsg, OVS_ERROR_INVAL);
+
+    switch (pMsg->command)
+    {
+    case OVS_MESSAGE_COMMAND_PACKET_UPCALL_EXECUTE:
+        CHECK_B_E(pMsg->pArgGroup, OVS_ERROR_INVAL);
+
+        pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
+        CHECK_B_E(pDatapath, OVS_ERROR_NODEV);
+
+        WinlPacket_Execute(pSwitchInfo, pDatapath, pMsg->pArgGroup, NULL);
+
+        OVS_REFCOUNT_DEREFERENCE(pDatapath);
+        break;
+
+    default:
+        error = OVS_ERROR_INVAL;
+        break;
+    }
+
+Cleanup:
+    return error;
+}
+
 _Function_class_(DRIVER_DISPATCH)
 NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
 {
@@ -420,7 +580,6 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
     OVS_MESSAGE* pMsg = NULL;
     VOID* pWriteBuffer = NULL;
     OVS_SWITCH_INFO* pSwitchInfo = NULL;
-    OVS_DATAPATH* pDatapath = NULL;
 #if DBG
     BOOLEAN dbgPrintData = FALSE;
 #endif
@@ -433,14 +592,6 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
     if (length > 0xFFFF)
     {
         status = NDIS_STATUS_INVALID_LENGTH;
-        goto Cleanup;
-    }
-
-    pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
-    if (!pSwitchInfo)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " hyper-v extension not enabled!n");
-        error = OVS_ERROR_PERM;
         goto Cleanup;
     }
 
@@ -475,6 +626,8 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
 #if OVS_VERIFY_WINL_MESSAGES
             if (!VerifyMessage(pNlMsg, /*request*/ TRUE))
             {
+                error = OVS_ERROR_INVAL;
+
                 DEBUGP(LOG_ERROR, "msg read from userspace not processed, because it failed verification\n");
                 OVS_CHECK(__UNEXPECTED__);
 
@@ -498,6 +651,14 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         DbgPrintQueuedBuffers();
     }
 #endif
+
+    pSwitchInfo = Driver_GetDefaultSwitch_Ref(__FUNCTION__);
+    if (!pSwitchInfo)
+    {
+        DEBUGP(LOG_ERROR, __FUNCTION__ " hyper-v extension not enabled!n");
+        error = OVS_ERROR_PERM;
+        goto Cleanup;
+    }
 
     switch (pNlMsg->type)
     {
@@ -540,156 +701,21 @@ NTSTATUS _WinlIrpWrite(PDEVICE_OBJECT pDeviceObject, PIRP pIrp)
         break;
 
     case OVS_MESSAGE_TARGET_DATAPATH:
-        OVS_CHECK(pMsg);
-        if (!pMsg)
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-
-        pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-        if (!pDatapath)
-        {
-            error = OVS_ERROR_NODEV;
-            goto Cleanup;
-        }
-
-        switch (pMsg->command)
-        {
-        case OVS_MESSAGE_COMMAND_NEW:
-            //NOTE: we always have one "default" datapath, so when the command NEW arrives,
-            //we must set stuff to the existing datapath.
-            error = WinlDatapath_New(pDatapath, pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_SET:
-            error = WinlDatapath_Set(pDatapath, pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_GET:
-            error = WinlDatapath_Get(pDatapath, pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DELETE:
-            error = WinlDatapath_Delete(&pDatapath, pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlDatapath_Dump(pDatapath, pMsg, pFileObject);
-            break;
-
-        default:
-            error = OVS_ERROR_INVAL;
-            break;
-        }
-
-        OVS_REFCOUNT_DEREFERENCE(pDatapath);
+        error = _WinlIrpWrite_Datapath(pMsg, pFileObject);
         break;
 
     case OVS_MESSAGE_TARGET_PORT:
         groupId = OVS_VPORT_MCGROUP;
-        if (!pMsg)
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-
-        switch (pMsg->command)
-        {
-        case OVS_MESSAGE_COMMAND_NEW:
-            error = WinlOFPort_New(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_GET:
-            error = WinlOFPort_Get(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_SET:
-            error = WinlOFPort_Set(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DELETE:
-            error = WinlOFPort_Delete(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlOFPort_Dump(pSwitchInfo, pMsg, pFileObject);
-            break;
-
-        default:
-            error = OVS_ERROR_INVAL;
-            break;
-        }
+        error = _WinlIrpWrite_OFPort(pMsg, pFileObject, pSwitchInfo);
         break;
 
     case OVS_MESSAGE_TARGET_FLOW:
-        if (!pMsg)
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-
-        switch (pMsg->command)
-        {
-        case OVS_MESSAGE_COMMAND_NEW:
-            error = WinlFlow_New(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_SET:
-            error = WinlFlow_Set(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_GET:
-            error = WinlFlow_Get(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DELETE:
-            error = WinlFlow_Delete(pMsg, pFileObject);
-            break;
-
-        case OVS_MESSAGE_COMMAND_DUMP:
-            error = WinlFlow_Dump(pMsg, pFileObject);
-            break;
-
-        default:
-            error = OVS_ERROR_INVAL;
-            break;
-        }
+        error = _WinlIrpWrite_Flow(pMsg, pFileObject);
         break;
 
     case OVS_MESSAGE_TARGET_PACKET:
-        if (!pMsg)
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
-        switch (pMsg->command)
-        {
-        case OVS_MESSAGE_COMMAND_PACKET_UPCALL_EXECUTE:
-            if (pMsg->pArgGroup)
-            {
-                pDatapath = GetDefaultDatapath_Ref(__FUNCTION__);
-                if (!pDatapath)
-                {
-                    error = OVS_ERROR_NODEV;
-                    goto Cleanup;
-                }
-
-                WinlPacket_Execute(pSwitchInfo, pDatapath, pMsg->pArgGroup, NULL);
-
-                OVS_REFCOUNT_DEREFERENCE(pDatapath);
-            }
-            else
-            {
-                error = OVS_ERROR_INVAL;
-            }
+        error = _WinlIrpWrite_Packet(pMsg, pSwitchInfo);
             break;
-
-        default:
-            error = OVS_ERROR_INVAL;
-            break;
-        }
-        break;
 
     default: OVS_CHECK(0);
     }

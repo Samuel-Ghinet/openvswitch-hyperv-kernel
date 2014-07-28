@@ -150,10 +150,10 @@ OVS_FLOW* _FlowTable_FindExactFlow_Unsafe(OVS_FLOW_TABLE* pFlowTable, OVS_FLOW_M
 
     OVS_LIST_FOR_EACH(OVS_FLOW_MASK, pFlowMask, pFlowTable->pMaskList)
     {
-        pFlow = _FindFlowMatchingMaskedPI_Unsafe(pFlowTable, pFlowMatch->pPacketInfo, pFlowMask);
+        pFlow = _FindFlowMatchingMaskedPI_Unsafe(pFlowTable, &(pFlowMatch->packetInfo), pFlowMask);
         if (pFlow)
         {
-            if (PacketInfo_Equal(&pFlow->unmaskedPacketInfo, pFlowMatch->pPacketInfo, pFlowMatch->piRange.endRange))
+            if (PacketInfo_Equal(&pFlow->unmaskedPacketInfo, &(pFlowMatch->packetInfo), pFlowMatch->piRange.endRange))
             {
                 break;
             }

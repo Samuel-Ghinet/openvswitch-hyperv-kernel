@@ -20,10 +20,11 @@ limitations under the License.
 #include "Error.h"
 
 typedef struct _OVS_MESSAGE OVS_MESSAGE;
+typedef struct _OVS_FLOW_TABLE OVS_FLOW_TABLE;
 
-OVS_ERROR WinlFlow_New(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR WinlFlow_Set(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR WinlFlow_Get(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
-OVS_ERROR WinlFlow_Delete(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_New(OVS_FLOW_TABLE* pFlowTable, _In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Set(OVS_FLOW_TABLE* pFlowTable, _In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Get(OVS_FLOW_TABLE* pFlowTable, _In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Delete(OVS_DATAPATH* pDatapath, OVS_FLOW_TABLE* pFlowTable, _In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
 
-OVS_ERROR WinlFlow_Dump(_In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);
+OVS_ERROR WinlFlow_Dump(OVS_FLOW_TABLE* pFlowTable, _In_ const OVS_MESSAGE* pMsg, _In_ const FILE_OBJECT* pFileObject);

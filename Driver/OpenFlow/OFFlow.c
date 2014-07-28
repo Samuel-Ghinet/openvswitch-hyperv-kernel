@@ -74,21 +74,13 @@ VOID Flow_DestroyNow_Unsafe(OVS_FLOW* pFlow)
     KFree(pFlow);
 }
 
-void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacketInfo, OVS_FLOW_MASK* pFlowMask)
+void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, BOOLEAN haveMask)
 {
+    //NOTE: wildcard value = 0, so if we have mask, it is already initialized to 'wildcard'
     RtlZeroMemory(pFlowMatch, sizeof(OVS_FLOW_MATCH));
-    RtlZeroMemory(pPacketInfo, sizeof(OVS_OFPACKET_INFO));
 
-    pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
-
-    pFlowMatch->pPacketInfo = pPacketInfo;
-    pFlowMatch->pFlowMask = pFlowMask;
-
-    if (pFlowMask)
-    {
-        memset(&pFlowMask->packetInfo, OVS_PI_MASK_MATCH_WILDCARD(UINT8), sizeof(OVS_OFPACKET_INFO));
-        pFlowMask->piRange.startRange = pFlowMask->piRange.endRange = 0;
-    }
+    pFlowMatch->packetInfo.physical.ofInPort = OVS_INVALID_PORT_NUMBER;
+    pFlowMatch->haveMask = haveMask;
 }
 
 OVS_FLOW* Flow_Create()

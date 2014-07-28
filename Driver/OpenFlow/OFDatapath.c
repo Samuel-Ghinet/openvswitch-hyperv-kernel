@@ -185,23 +185,19 @@ Cleanup:
     return ok;
 }
 
-BOOLEAN Datapath_FlushFlows(OVS_DATAPATH* pDatapath)
+OVS_ERROR Datapath_FlushFlows(OVS_DATAPATH* pDatapath)
 {
     OVS_FLOW_TABLE* pOldTable = NULL;
     OVS_FLOW_TABLE* pNewTable = NULL;
     LOCK_STATE_EX lockState = { 0 };
-    BOOLEAN ok = TRUE;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
 
     //pDatapath contains the pFlowTable, so we must lock its rw lock, to replace the pFlowTable
     DATAPATH_LOCK_WRITE(pDatapath, &lockState);
 
     pOldTable = pDatapath->pFlowTable;
     pNewTable = FlowTable_Create();
-    if (!pNewTable)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
+    CHECK_B_E(pNewTable, OVS_ERROR_NOMEM);
 
     pDatapath->pFlowTable = pNewTable;
 
@@ -209,7 +205,7 @@ BOOLEAN Datapath_FlushFlows(OVS_DATAPATH* pDatapath)
 
 Cleanup:
     DATAPATH_UNLOCK(pDatapath, &lockState);
-    return ok;
+    return error;
 }
 
 OVS_FLOW_TABLE* Datapath_ReferenceFlowTable(OVS_DATAPATH* pDatapath)

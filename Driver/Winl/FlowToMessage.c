@@ -1216,24 +1216,26 @@ static UINT64 _TicksToMiliseconds(UINT64 tickCount)
 }
 
 //TODO: should we put OVS_MESSAGE_FLAG_MULTIPART for Flow_Dump?
-BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS_MESSAGE* pMsg, UINT32 sequence, UINT32 dpIfIndex, UINT32 portId)
+OVS_ERROR CreateMsgFromFlow(const OVS_FLOW* pFlow, const OVS_MESSAGE* pInMsg, _Out_ OVS_MESSAGE* pOutMsg, UINT8 command)
 {
     OVS_ARGUMENT_GROUP* pFlowGroup = NULL;
     OVS_ARGUMENT* pPIArg, *pMasksArg, *pTimeUsedArg, *pFlowStats, *pTcpFlags, *pActionsArg;
-    BOOLEAN ok = TRUE;
     UINT16 flowArgCount = 0;
     UINT16 curArg = 0;
     OVS_WINL_FLOW_STATS stats = { 0 };
     UINT64 tickCount = 0;
     UINT8 tcpFlags = 0;
-    UINT16 argsDataSize = 0;
     LOCK_STATE_EX lockState = { 0 };
+    OVS_ERROR error = OVS_ERROR_NOERROR;
+    ULONG i = 0;
 
     OVS_OFPACKET_INFO unmaskedPacketInfo = { 0 };
     OVS_OFPACKET_INFO maskedPacketInfo = { 0 };
     OVS_OFPACKET_INFO packetInfoMask = { 0 };
 
-    OVS_CHECK(pMsg);
+    UINT16 countArgs = 0;
+
+    OVS_CHECK(pOutMsg);
 
     pPIArg = pMasksArg = pTimeUsedArg = pFlowStats = pTcpFlags = pActionsArg = NULL;
 
@@ -1250,47 +1252,34 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
 
     FLOW_UNLOCK(pFlow, &lockState);
 
-    //2. INIT OVS_MESSAGE
-    pMsg->length = sizeof(OVS_MESSAGE);
-    pMsg->type = OVS_MESSAGE_TARGET_FLOW;
-    pMsg->flags = 0;
-    pMsg->sequence = sequence;
-    pMsg->pid = portId;
-
-    pMsg->command = command;
-    pMsg->version = 1;
-    pMsg->reserved = 0;
-
-    pMsg->dpIfIndex = dpIfIndex;
-
-    //3. OVS_ARGUMENT_GROUP
-    pFlowGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
-    if (!pFlowGroup)
+    countArgs = 3;//PacketInfo, Mask, Actions
+    if (tickCount > 0)
     {
-        return FALSE;
+        ++countArgs;
     }
+
+    if (stats.noOfMatchedPackets > 0)
+    {
+        ++countArgs;
+    }
+
+    if (tcpFlags)
+    {
+        ++countArgs;
+    }
+
+    CHECK_E(CreateReplyMsg(pInMsg, pOutMsg, sizeof(OVS_MESSAGE), command, countArgs));
+    OVS_CHECK(pOutMsg->type == OVS_MESSAGE_TARGET_FLOW);
 
     //3.1. Packet Info
     pPIArg = CreateArgFromPacketInfo(&unmaskedPacketInfo, NULL, OVS_ARGTYPE_FLOW_PI_GROUP);
-    if (!pPIArg)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsDataSize += pPIArg->length;
-    ++curArg;
+    CHECK_B_E(pPIArg, OVS_ERROR_INVAL);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pPIArg, &i);
 
     //3.2. Packet Info Mask
     pMasksArg = CreateArgFromPacketInfo(&maskedPacketInfo, &packetInfoMask, OVS_ARGTYPE_FLOW_MASK_GROUP);
-    if (!pMasksArg)
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    argsDataSize += pMasksArg->length;
-    ++curArg;
+    CHECK_B_E(pPIArg, OVS_ERROR_INVAL);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pMasksArg, &i);
 
     //3.3. Flow Time Used
     if (tickCount > 0)
@@ -1301,42 +1290,24 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
         curTimeInMs = _TicksToMiliseconds(KeQueryPerformanceCounter(NULL).QuadPart);
 
         pTimeUsedArg = CreateArgument_Alloc(OVS_ARGTYPE_FLOW_TIME_USED, &usedTimeInMs);
-        if (!pTimeUsedArg)
-        {
-            ok = FALSE;
-            goto Cleanup;
-        }
-
-        argsDataSize += pTimeUsedArg->length;
-        ++curArg;
+        CHECK_B_E(pPIArg, OVS_ERROR_INVAL);
+        AddArgToArgGroup(pOutMsg->pArgGroup, pTimeUsedArg, &i);
     }
 
     //3.4. Flow Stats
     if (stats.noOfMatchedPackets > 0)
     {
         pFlowStats = CreateArgument_Alloc(OVS_ARGTYPE_FLOW_STATS, &stats);
-        if (!pFlowStats)
-        {
-            ok = FALSE;
-            goto Cleanup;
-        }
-
-        argsDataSize += pFlowStats->length;
-        ++curArg;
+        CHECK_B_E(pPIArg, OVS_ERROR_INVAL);
+        AddArgToArgGroup(pOutMsg->pArgGroup, pFlowStats, &i);
     }
 
     //3.5. Flow Tcp Flags
     if (tcpFlags)
     {
         pTcpFlags = CreateArgument_Alloc(OVS_ARGTYPE_FLOW_TCP_FLAGS, &tcpFlags);
-        if (!pTcpFlags)
-        {
-            ok = FALSE;
-            goto Cleanup;
-        }
-
-        argsDataSize += pTcpFlags->length;
-        ++curArg;
+        CHECK_B_E(pPIArg, OVS_ERROR_INVAL);
+        AddArgToArgGroup(pOutMsg->pArgGroup, pTcpFlags, &i);
     }
 
     FLOW_LOCK_READ(pFlow, &lockState);
@@ -1346,75 +1317,27 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
     pActionsArg = _CreateFlowActionsGroup(pFlow->pActions->pActionGroup);
     FLOW_UNLOCK(pFlow, &lockState);
 
-    if (!pActionsArg)
-    {
-        return FALSE;
-    }
-
+    CHECK_B_E(pActionsArg, OVS_ERROR_INVAL);
+    AddArgToArgGroup(pOutMsg->pArgGroup, pActionsArg, &i);
     DBGPRINT_ARG(LOG_INFO, pActionsArg, 0, 0);
 
-    argsDataSize += pActionsArg->length;
-    ++curArg;
-
     flowArgCount = curArg;
-    if (!AllocateArgumentsToGroup(flowArgCount, pFlowGroup))
-    {
-        ok = FALSE;
-        goto Cleanup;
-    }
-
-    pFlowGroup->args[0] = *pPIArg;
-    pFlowGroup->args[1] = *pMasksArg;
-
-    curArg = 2;
-
-    if (pTimeUsedArg)
-    {
-        pFlowGroup->args[curArg] = *pTimeUsedArg;
-        curArg++;
-    }
-
-    if (pFlowStats)
-    {
-        pFlowGroup->args[curArg] = *pFlowStats;
-        curArg++;
-    }
-
-    if (pTcpFlags)
-    {
-        pFlowGroup->args[curArg] = *pTcpFlags;
-        curArg++;
-    }
-
-    pFlowGroup->args[curArg] = *pActionsArg;
-    ++curArg;
-
-    pFlowGroup->groupSize += argsDataSize;
-    pMsg->pArgGroup = pFlowGroup;
 
 Cleanup:
-    VerifyGroup_Size_Recursive(pMsg->pArgGroup);
-
-    if (ok)
+    if (error == OVS_ERROR_NOERROR)
     {
-        KFree(pPIArg);
-        KFree(pMasksArg);
-        KFree(pTimeUsedArg);
-        KFree(pFlowStats);
-        KFree(pTcpFlags);
-        KFree(pActionsArg);
+        KFree(pPIArg); KFree(pMasksArg);
+        KFree(pTimeUsedArg); KFree(pFlowStats);
+        KFree(pTcpFlags); KFree(pActionsArg);
     }
     else
     {
         FreeGroupWithArgs(pFlowGroup);
 
-        DestroyArgument(pPIArg);
-        DestroyArgument(pMasksArg);
-        DestroyArgument(pTimeUsedArg);
-        DestroyArgument(pFlowStats);
-        DestroyArgument(pTcpFlags);
-        DestroyArgument(pActionsArg);
+        DestroyArgument(pPIArg); DestroyArgument(pMasksArg);
+        DestroyArgument(pTimeUsedArg); DestroyArgument(pFlowStats);
+        DestroyArgument(pTcpFlags); DestroyArgument(pActionsArg);
     }
 
-    return ok;
+    return error;
 }
