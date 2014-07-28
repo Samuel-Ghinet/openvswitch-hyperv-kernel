@@ -48,16 +48,16 @@ limitations under the License.
 
 /*************************************************/
 
-#define OVS_PI_UPDATE_ELEM_VALUE(ElemType, elem, field, value, pPacketInfo)                     \
+#define OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, ElemType, elem, field, value)           \
 {                                                                                               \
     SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, elem, ElemType, field);                 \
     SIZE_T size = sizeof((pPacketInfo)->elem.field);                                            \
                                                                                                 \
-    _UpdateRange(pPiRange, offset, size);                                                       \
+    _UpdateRange((pPiRange), offset, size);                                                     \
     (pPacketInfo)->elem.field = (value);                                                        \
 }
 
-#define OVS_PI_UPDATE_ELEM_BYTES(ElemType, elem, field, data, size, pPacketInfo)                \
+#define OVS_PI_UPDATE_ELEM_BYTES(pPacketInfo, pPiRange, ElemType, elem, field, data, size)      \
 {                                                                                               \
     SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, elem, ElemType, field);                 \
                                                                                                 \
@@ -65,64 +65,64 @@ limitations under the License.
     RtlCopyMemory((pPacketInfo)->elem.field, (data), (size));                                   \
 }
 
-#define OVS_PI_UPDATE_ELEM_BYTES_FIELD(ElemType, elem, field, data, size, pPacketInfo)          \
-{                                                                                               \
-    SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, elem, ElemType, field);                 \
-                                                                                                \
-    _UpdateRange(pPiRange, offset, (size));                                                     \
-    RtlCopyMemory(&((pPacketInfo)->elem.field), (data), (size));                                \
+#define OVS_PI_UPDATE_ELEM_BYTES_FIELD(pPacketInfo, pPiRange, ElemType, elem, field, data, size)    \
+{                                                                                                   \
+    SIZE_T offset = NESTED_OFFSET_OF(OVS_OFPACKET_INFO, elem, ElemType, field);                     \
+                                                                                                    \
+    _UpdateRange(pPiRange, offset, (size));                                                         \
+    RtlCopyMemory(&((pPacketInfo)->elem.field), (data), (size));                                    \
 }
 
 /*************************************************/
 
-#define OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(value, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_VALUE(OF_PI_IPV4_TUNNEL, tunnelInfo, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(pPacketInfo, pPiRange, field, value)               \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OF_PI_IPV4_TUNNEL, tunnelInfo, field, value)
 
-#define OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(value, pPacketInfo, field)                       \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_PHYSICAL, physical, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, field, value)             \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_PHYSICAL, physical, field, value)
 
-#define OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(value, pPacketInfo, field)                        \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_ETH_INFO, ethInfo, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                        \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_ETH_INFO, ethInfo, field, value)
 
-#define OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(value, pPacketInfo, field)                       \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_IP4_INFO, netProto.ipv4Info, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                       \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_IP4_INFO, netProto.ipv4Info, field, value)
 
-#define OVS_PI_UPDATE_NETINFO_FIELD_VALUE(value, pPacketInfo, field)                        \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_NET_LAYER_INFO, ipInfo, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                        \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_NET_LAYER_INFO, ipInfo, field, value)
 
-#define OVS_PI_UPDATE_IPV6INFO_FIELD_VALUE(value, pPacketInfo, field)                       \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_IPV6_INFO, netProto.ipv6Info, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_IPV6INFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                       \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_IPV6_INFO, netProto.ipv6Info, field, value)
 
-#define OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(value, pPacketInfo, field)                        \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_ARP_INFO, netProto.arpInfo, field, value, pPacketInfo)
+#define OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                        \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_ARP_INFO, netProto.arpInfo, field, value)
 
-#define OVS_PI_UPDATE_TPINFO_FIELD_VALUE(value, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_VALUE(OVS_TRANSPORT_LAYER_INFO, tpInfo, field, value, pPacketInfo)
-
-/*************************************************/
-
-#define OVS_PI_UPDATE_ETHINFO_ADDRESS(data, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_BYTES(OVS_ETH_INFO, ethInfo, field, data, OVS_ETHERNET_ADDRESS_LENGTH, pPacketInfo)
-
-#define OVS_PI_UPDATE_IPV6INFO_ADDRESS(data, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_BYTES_FIELD(OVS_IPV6_INFO, netProto.ipv6Info, field, data, sizeof(IN6_ADDR), pPacketInfo)
-
-#define OVS_PI_UPDATE_IPV6INFO_BYTES(data, size, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_BYTES(OVS_IPV6_INFO, netProto.ipv6Info, field, data, size, pPacketInfo)
-
-#define OVS_PI_UPDATE_ARPINFO_ADDRESS(data, pPacketInfo, field)                         \
-    OVS_PI_UPDATE_ELEM_BYTES(OVS_ARP_INFO, netProto.arpInfo, field, data, OVS_ETHERNET_ADDRESS_LENGTH, pPacketInfo)
+#define OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, field, value)                         \
+    OVS_PI_UPDATE_ELEM_VALUE(pPacketInfo, pPiRange, OVS_TRANSPORT_LAYER_INFO, tpInfo, field, value)
 
 /*************************************************/
 
-#define OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, field, Type)                          \
-    OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(GET_ARG_DATA(pArg, Type), pPacketInfo, field)
+#define OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, field, data)                         \
+    OVS_PI_UPDATE_ELEM_BYTES(pPacketInfo, pPiRange, OVS_ETH_INFO, ethInfo, field, data, OVS_ETHERNET_ADDRESS_LENGTH)
 
-#define OVS_PI_UPDATE_PHYSICAL_FIELD(pArg, pPacketInfo, field, Type)                        \
-    OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE((Type)GET_ARG_DATA(pArg, Type), pPacketInfo, field)
+#define OVS_PI_UPDATE_IPV6INFO_ADDRESS(pPacketInfo, pPiRange, field, data)                         \
+    OVS_PI_UPDATE_ELEM_BYTES_FIELD(pPacketInfo, pPiRange, OVS_IPV6_INFO, netProto.ipv6Info, field, data, sizeof(IN6_ADDR))
 
-#define OVS_PI_UPDATE_ETHINFO_FIELD(pArg, pPacketInfo, field, Type)                         \
-    OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(GET_ARG_DATA(pArg, Type), pPacketInfo, field)
+#define OVS_PI_UPDATE_IPV6INFO_BYTES(pPacketInfo, pPiRange, field, size, data)                         \
+    OVS_PI_UPDATE_ELEM_BYTES(pPacketInfo, pPiRange, OVS_IPV6_INFO, netProto.ipv6Info, field, data, size)
+
+#define OVS_PI_UPDATE_ARPINFO_ADDRESS(pPacketInfo, pPiRange, field, data)                         \
+    OVS_PI_UPDATE_ELEM_BYTES(pPacketInfo, pPiRange, OVS_ARP_INFO, netProto.arpInfo, field, data, OVS_ETHERNET_ADDRESS_LENGTH)
+
+/*************************************************/
+
+#define OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, Type, field)                          \
+    OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(pPacketInfo, pPiRange, field, GET_ARG_DATA(pArg, Type))
+
+#define OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, Type, field)                        \
+    OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, field, GET_ARG_DATA(pArg, Type))
+
+#define OVS_PI_UPDATE_ETHINFO_FIELD(pPacketInfo, pPiRange, pArg, Type, field)                         \
+    OVS_PI_UPDATE_ETHINFO_FIELD_VALUE(pPacketInfo, pPiRange, field, GET_ARG_DATA(pArg, Type))
 
 
 /****************************************************************/
@@ -511,24 +511,24 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
         switch (argType)
         {
         case OVS_ARGTYPE_PI_TUNNEL_ID:
-            OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, tunnelId, BE64);
+            OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, BE64, tunnelId);
             tunnelFlags |= OVS_TUNNEL_FLAG_KEY;
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_IPV4_SRC:
-            OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, ipv4Source, BE32);
+            OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, BE32, ipv4Source);
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_IPV4_DST:
-            OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, ipv4Destination, BE32);
+            OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, BE32, ipv4Destination);
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_TOS:
-            OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, ipv4TypeOfService, UINT8);
+            OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, UINT8, ipv4TypeOfService);
             break;
 
         case OVS_ARGTYPE_PI_TUNNEL_TTL:
-            OVS_PI_UPDATE_TUNNEL_FIELD(pArg, pPacketInfo, ipv4TimeToLive, UINT8);
+            OVS_PI_UPDATE_TUNNEL_FIELD(pPacketInfo, pPiRange, pArg, UINT8, ipv4TimeToLive);
 
             haveTtl = TRUE;
             break;
@@ -554,7 +554,7 @@ BOOLEAN PIFromArg_Tunnel(const OVS_ARGUMENT_GROUP* pArgs, _Inout_ OVS_OFPACKET_I
         }
     }
 
-    OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(tunnelFlags, pPacketInfo, tunnelFlags);
+    OVS_PI_UPDATE_TUNNEL_FIELD_VALUE(pPacketInfo, pPiRange, tunnelFlags, tunnelFlags);
 
     if (!isMask)
     {
@@ -626,7 +626,7 @@ BOOLEAN GetIpv4TunnelFromArgumentsSimple(const OVS_ARGUMENT_GROUP* pArgs, _Inout
 
 VOID PIFromArg_PacketPriority(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
 {
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pArg, pPacketInfo, packetPriority, UINT32);
+    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetPriority);
 }
 
 BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg, BOOLEAN isMask)
@@ -643,21 +643,21 @@ BOOLEAN PIFromArg_DatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
         EXPECT(inPort < OVS_MAX_PORTS);
     }
 
-    OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(inPort, pPacketInfo, ofInPort);
+    OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, ofInPort, inPort);
 
     return TRUE;
 }
 
 VOID PIFromArg_PacketMark(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pArg)
 {
-    OVS_PI_UPDATE_PHYSICAL_FIELD(pArg, pPacketInfo, packetMark, UINT32);
+    OVS_PI_UPDATE_PHYSICAL_FIELD(pPacketInfo, pPiRange, pArg, UINT32, packetMark);
 }
 
 VOID PIFromArg_SetDefaultDatapathInPort(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, BOOLEAN isMask)
 {
     if (!isMask)
     {
-        OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(OVS_INVALID_PORT_NUMBER, pPacketInfo, packetMark);
+        OVS_PI_UPDATE_PHYSICAL_FIELD_VALUE(pPacketInfo, pPiRange, packetMark, OVS_INVALID_PORT_NUMBER);
     }
 }
 
@@ -665,8 +665,8 @@ static VOID _GetPIFromArg_EthAddress(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _In
 {
     const OVS_PI_ETH_ADDRESS* pEthAddressPI = pEthAddressArg->data;
 
-    OVS_PI_UPDATE_ETHINFO_ADDRESS(pEthAddressPI->source, pPacketInfo, source);
-    OVS_PI_UPDATE_ETHINFO_ADDRESS(pEthAddressPI->destination, pPacketInfo, destination);
+    OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, source, pEthAddressPI->source);
+    OVS_PI_UPDATE_ETHINFO_ADDRESS(pPacketInfo, pPiRange, destination, pEthAddressPI->destination);
 }
 
 static BOOLEAN _GetPIFromArg_VlanTci(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pVlanTciArg)
@@ -674,7 +674,7 @@ static BOOLEAN _GetPIFromArg_VlanTci(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _In
     BE16 tci = GET_ARG_DATA(pVlanTciArg, BE16);
 
     EXPECT(tci & RtlUshortByteSwap(OVS_VLAN_TAG_PRESENT));
-    OVS_PI_UPDATE_ETHINFO_FIELD(pVlanTciArg, pPacketInfo, tci, BE16);
+    OVS_PI_UPDATE_ETHINFO_FIELD(pPacketInfo, pPiRange, pVlanTciArg, BE16, tci);
 
     return TRUE;
 }
@@ -693,7 +693,7 @@ static BOOLEAN _GetPIFromArg_EthType(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _In
         EXPECT(RtlUshortByteSwap(ethType) >= OVS_ETHERTYPE_802_3_MIN);
     }
 
-    OVS_PI_UPDATE_ETHINFO_FIELD(pEthTypeArg, pPacketInfo, type, BE16);
+    OVS_PI_UPDATE_ETHINFO_FIELD(pPacketInfo, pPiRange, pEthTypeArg, BE16, type);
 
     return TRUE;
 }
@@ -707,13 +707,13 @@ static BOOLEAN _GetPIFromArg_Ipv4(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
         EXPECT(pIpv4Info->fragmentType <= OVS_FRAGMENT_TYPE_MAX);
     }
 
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv4Info->protocol, pPacketInfo, protocol);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv4Info->tos, pPacketInfo, typeOfService);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv4Info->ttl, pPacketInfo, timeToLive);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv4Info->fragmentType, pPacketInfo, fragment);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, protocol, pIpv4Info->protocol);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, typeOfService, pIpv4Info->tos);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, timeToLive, pIpv4Info->ttl);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, fragment, pIpv4Info->fragmentType);
 
-    OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(pIpv4Info->source, pPacketInfo, source.S_un.S_addr);
-    OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(pIpv4Info->destination, pPacketInfo, destination.S_un.S_addr);
+    OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(pPacketInfo, pPiRange, source.S_un.S_addr, pIpv4Info->source);
+    OVS_PI_UPDATE_IPV4INFO_FIELD_VALUE(pPacketInfo, pPiRange, destination.S_un.S_addr, pIpv4Info->destination);
 
     return TRUE;
 }
@@ -727,14 +727,14 @@ static BOOLEAN _GetPIFromArg_Ipv6(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
         EXPECT(pIpv6Info->fragmentType <= OVS_FRAGMENT_TYPE_MAX);
     }
 
-    OVS_PI_UPDATE_IPV6INFO_FIELD_VALUE(pIpv6Info->label, pPacketInfo, flowLabel);
-    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pIpv6Info->source, pPacketInfo, source);
-    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pIpv6Info->destination, pPacketInfo, destination);
+    OVS_PI_UPDATE_IPV6INFO_FIELD_VALUE(pPacketInfo, pPiRange, flowLabel, pIpv6Info->label);
+    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pPacketInfo, pPiRange, source, pIpv6Info->source);
+    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pPacketInfo, pPiRange, destination, pIpv6Info->destination);
 
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv6Info->protocol, pPacketInfo, protocol);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv6Info->trafficClass, pPacketInfo, typeOfService);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv6Info->highLimit, pPacketInfo, timeToLive);
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pIpv6Info->fragmentType, pPacketInfo, fragment);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, protocol, pIpv6Info->protocol);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, typeOfService, pIpv6Info->trafficClass);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, timeToLive, pIpv6Info->highLimit);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, fragment, pIpv6Info->fragmentType);
 
     return TRUE;
 }
@@ -748,13 +748,13 @@ static BOOLEAN _GetPIFromArg_Arp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_
         EXPECT(RtlUshortByteSwap(pArpPI->operation) <= MAXUINT8);
     }
 
-    OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(pArpPI->sourceIp, pPacketInfo, source.S_un.S_addr);
-    OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(pArpPI->targetIp, pPacketInfo, destination.S_un.S_addr);
+    OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(pPacketInfo, pPiRange, source.S_un.S_addr, pArpPI->sourceIp);
+    OVS_PI_UPDATE_ARPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destination.S_un.S_addr, pArpPI->targetIp);
 
-    OVS_PI_UPDATE_ARPINFO_ADDRESS(pArpPI->sourceMac, pPacketInfo, sourceMac);
-    OVS_PI_UPDATE_ARPINFO_ADDRESS(pArpPI->targetMac, pPacketInfo, destinationMac);
+    OVS_PI_UPDATE_ARPINFO_ADDRESS(pPacketInfo, pPiRange, sourceMac, pArpPI->sourceMac);
+    OVS_PI_UPDATE_ARPINFO_ADDRESS(pPacketInfo, pPiRange, destinationMac, pArpPI->targetMac);
 
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE((UINT8)RtlUshortByteSwap(pArpPI->operation), pPacketInfo, protocol);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, protocol, (UINT8)RtlUshortByteSwap(pArpPI->operation));
 
     return TRUE;
 }
@@ -763,7 +763,7 @@ static BOOLEAN _GetPIFromArg_Mpls(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout
 {
     const OVS_PI_MPLS* pMplsPI = pArg->data;
 
-    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pMplsPI->mplsLse, pPacketInfo, mplsTopLabelStackEntry);
+    OVS_PI_UPDATE_NETINFO_FIELD_VALUE(pPacketInfo, pPiRange, mplsTopLabelStackEntry, pMplsPI->mplsLse);
 
     return TRUE;
 }
@@ -772,50 +772,50 @@ static VOID _GetPIFromArg_Tcp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OV
 {
     const OVS_PI_TCP* pTcpPI = pTcpArg->data;
 
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pTcpPI->source, pPacketInfo, sourcePort);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pTcpPI->destination, pPacketInfo, destinationPort);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pTcpPI->source);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pTcpPI->destination);
 }
 
 static VOID _GetPIFromArg_Udp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pUdpArg)
 {
     const OVS_PI_UDP* pUdpPI = pUdpArg->data;
 
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pUdpPI->source, pPacketInfo, sourcePort);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pUdpPI->destination, pPacketInfo, destinationPort);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pUdpPI->source);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pUdpPI->destination);
 }
 
 static VOID _GetPIFromArg_Sctp(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pSctpArg)
 {
     const OVS_PI_SCTP* pSctpPI = pSctpArg->data;
 
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pSctpPI->source, pPacketInfo, sourcePort);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pSctpPI->destination, pPacketInfo, destinationPort);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, pSctpPI->source);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, pSctpPI->destination);
 }
 
 static VOID _GetPIFromArg_Icmp4(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp4Arg)
 {
     const OVS_PI_ICMP* pIcmpPI = pIcmp4Arg->data;
 
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(RtlUshortByteSwap(pIcmpPI->type), pPacketInfo, sourcePort);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(RtlUshortByteSwap(pIcmpPI->code), pPacketInfo, destinationPort);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpPI->type));
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpPI->code));
 }
 
 static VOID _GetPIFromArg_Icmp6(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp6Arg)
 {
     const OVS_PI_ICMP6* pIcmpv6PI = pIcmp6Arg->data;
 
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(RtlUshortByteSwap(pIcmpv6PI->type), pPacketInfo, sourcePort);
-    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(RtlUshortByteSwap(pIcmpv6PI->code), pPacketInfo, destinationPort);
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, sourcePort, RtlUshortByteSwap(pIcmpv6PI->type));
+    OVS_PI_UPDATE_TPINFO_FIELD_VALUE(pPacketInfo, pPiRange, destinationPort, RtlUshortByteSwap(pIcmpv6PI->code));
 }
 
 static VOID _GetPIFromArg_NeighborDiscovery(_Inout_ OVS_OFPACKET_INFO* pPacketInfo, _Inout_ OVS_PI_RANGE* pPiRange, _In_ const OVS_ARGUMENT* pIcmp6NdArg)
 {
     const OVS_PI_NEIGHBOR_DISCOVERY* pNdPacketInfo = pIcmp6NdArg->data;
 
-    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pNdPacketInfo->targetIp, pPacketInfo, neighborDiscovery.ndTargetIp);
+    OVS_PI_UPDATE_IPV6INFO_ADDRESS(pPacketInfo, pPiRange, neighborDiscovery.ndTargetIp, pNdPacketInfo->targetIp);
 
-    OVS_PI_UPDATE_IPV6INFO_BYTES(pNdPacketInfo->sourceMac, OVS_ETHERNET_ADDRESS_LENGTH, pPacketInfo, neighborDiscovery.ndSourceMac);
-    OVS_PI_UPDATE_IPV6INFO_BYTES(pNdPacketInfo->targetMac, OVS_ETHERNET_ADDRESS_LENGTH, pPacketInfo, neighborDiscovery.ndTargetMac);
+    OVS_PI_UPDATE_IPV6INFO_BYTES(pPacketInfo, pPiRange, neighborDiscovery.ndSourceMac, OVS_ETHERNET_ADDRESS_LENGTH, pNdPacketInfo->sourceMac);
+    OVS_PI_UPDATE_IPV6INFO_BYTES(pPacketInfo, pPiRange, neighborDiscovery.ndTargetMac, OVS_ETHERNET_ADDRESS_LENGTH, pNdPacketInfo->targetMac);
 
 }
 
