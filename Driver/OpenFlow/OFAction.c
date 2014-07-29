@@ -293,7 +293,7 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
     OVS_OFPORT* pDestOFPort = NULL;
     UINT32 ofPortNumber = (UINT32)-1;
 
-    for (UINT i = 0; i < pActionArgs->count; ++i)
+    for (UINT16 i = 0; i < pActionArgs->count; ++i)
     {
         const OVS_ARGUMENT* pArg = pActionArgs->args + i;
         OVS_ARGTYPE argType = pArg->type;
