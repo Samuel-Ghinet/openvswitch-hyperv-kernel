@@ -66,6 +66,78 @@ static void _UpdateRange(_Inout_ OVS_PI_RANGE* pPiRange, SIZE_T offset, SIZE_T s
     }
 }
 
+#define OVS_PI_SET_TP(pPacketInfo, pTpHeader)                                       \
+{                                                                                   \
+    (pPacketInfo)->tpInfo.sourcePort = (pTpHeader)->sourcePort;                     \
+    (pPacketInfo)->tpInfo.destinationPort = (pTpHeader)->destinationPort;           \
+}
+
+#define _OVS_PI_SET_IPV4_TP(Type, pTpHeader, pIpv4Head, pPacketInfo)            \
+Type* pTpHeader = (Type*)AdvanceIpv4Header((pIpv4Header));                      \
+                                                                                \
+OVS_PI_SET_TP((pPacketInfo), (pTpHeader))                                       \
+
+#define OVS_PI_SET_IPV4_TP(Type, pIpv4Head, pPacketInfo)                            \
+{                                                                                   \
+    _OVS_PI_SET_IPV4_TP(Type, pTpHeader, pIpv4Head, pPacketInfo)                    \
+}
+
+#define OVS_PI_SET_IPV6_TP_TCP(pPacketInfo, pTpHeader)                          \
+{                                                                               \
+    OVS_PI_SET_TP(pPacketInfo, pTpHeader)                                       \
+    (pPacketInfo)->tpInfo.tcpFlags = GetTcpFlags((pTpHeader)->flagsAndOffset);  \
+}
+
+#define OVS_PI_SET_IPV4_TP_TCP(pIpv4Head, pPacketInfo)                              \
+{                                                                                   \
+    _OVS_PI_SET_IPV4_TP(OVS_TCP_HEADER, pTpHeader, pIpv4Head, pPacketInfo)          \
+    (pPacketInfo)->tpInfo.tcpFlags = GetTcpFlags(pTpHeader->flagsAndOffset);        \
+}
+
+static VOID _ExtractIpv4_Icmp(const OVS_IPV4_HEADER* pIpv4Header, OVS_OFPACKET_INFO* pPacketInfo)
+{
+    OVS_ICMP_HEADER* const pIcmpHeader = (OVS_ICMP_HEADER*)AdvanceIpv4Header(pIpv4Header);
+
+    //packet too big and DF is set:
+    //if the packet that arrived was encapsulated in GRE (i.e. the packet, encapsulated, was too big for mtu),
+    //then we must update the ICMP's nextHopMtu in the packet, to account for the encapsulation bytes overhead
+    //(i.e. the protocol driver does not know we intend to encapsulate the packet, when considering the mtu)
+    //TODO: we should do similar for VXLAN!
+    if (pIcmpHeader->type == 3 && pIcmpHeader->code == 4)
+    {
+        OVS_ICMP_MESSAGE_DEST_UNREACH* pIcmpT3C4 = (OVS_ICMP_MESSAGE_DEST_UNREACH*)pIcmpHeader;
+
+        if (pIcmpT3C4->ipv4Header.Protocol == OVS_IPPROTO_GRE)
+        {
+            UINT16 nextHopMtu = pIcmpT3C4->nextHopMtu;
+            nextHopMtu = RtlUshortByteSwap(nextHopMtu);
+
+            if (nextHopMtu)
+            {
+                const OVS_GRE_HEADER_2890* pGre = AdvanceIpv4Header(&pIcmpT3C4->ipv4Header);
+                ULONG greSize = Gre_FrameHeaderSize(pGre);
+                OVS_CHECK(greSize <= OVS_MAX_GRE_HEADER_SIZE);
+
+                if (nextHopMtu > greSize + pIcmpT3C4->ipv4Header.HeaderLength * sizeof(DWORD))
+                {
+                    ULONG icmpHeaderSize;
+                    nextHopMtu -= (UINT16)greSize;
+
+                    pIcmpT3C4->nextHopMtu = RtlUshortByteSwap(nextHopMtu);
+
+                    icmpHeaderSize = OVS_ICMP_MESSAGE_DEST_UNREACH_SIZE_BARE + pIcmpT3C4->ipv4Header.HeaderLength * sizeof(DWORD)+8;
+                    pIcmpT3C4->header.checksum = (UINT16)ComputeIpChecksum((BYTE*)pIcmpT3C4, icmpHeaderSize);
+                    pIcmpT3C4->header.checksum = RtlUshortByteSwap(pIcmpT3C4->header.checksum);
+                }
+            }
+        }
+    }
+
+    //turn each byte as word & turn to BE
+    pPacketInfo->tpInfo.sourcePort = RtlUshortByteSwap(pIcmpHeader->type);
+    pPacketInfo->tpInfo.destinationPort = RtlUshortByteSwap(pIcmpHeader->code);
+}
+
 static BOOLEAN _ExtractIpv4(VOID* pNbBuffer, _Inout_ OVS_OFPACKET_INFO* pPacketInfo)
 {
     OVS_ETHERNET_HEADER* pEthHeader = (OVS_ETHERNET_HEADER*)pNbBuffer;
@@ -94,75 +166,86 @@ static BOOLEAN _ExtractIpv4(VOID* pNbBuffer, _Inout_ OVS_OFPACKET_INFO* pPacketI
         pPacketInfo->ipInfo.fragment = OVS_FRAGMENT_TYPE_FIRST_FRAG;
     }
 
-    //TRANSPORT LAYER
-    if (pPacketInfo->ipInfo.protocol == OVS_IPPROTO_TCP)
+    switch (pPacketInfo->ipInfo.protocol)
     {
-        OVS_TCP_HEADER* pTcpHeader = (OVS_TCP_HEADER*)AdvanceIpv4Header(pIpv4Header);
+    case OVS_IPPROTO_TCP:
+        OVS_PI_SET_IPV4_TP_TCP(pIpv4Header, pPacketInfo);
+        break;
 
-        pPacketInfo->tpInfo.sourcePort = pTcpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pTcpHeader->destinationPort;
+    case OVS_IPPROTO_UDP:
+        OVS_PI_SET_IPV4_TP(OVS_UDP_HEADER, pIpv4Header, pPacketInfo);
+        break;
 
-        pPacketInfo->tpInfo.tcpFlags = GetTcpFlags(pTcpHeader->flagsAndOffset);
-    }
-    else if (pPacketInfo->ipInfo.protocol == OVS_IPPROTO_UDP)
-    {
-        OVS_UDP_HEADER* pUdpHeader = (OVS_UDP_HEADER*)AdvanceIpv4Header(pIpv4Header);
+    case OVS_IPPROTO_SCTP:
+        OVS_PI_SET_IPV4_TP(OVS_SCTP_HEADER, pIpv4Header, pPacketInfo);
+        break;
 
-        pPacketInfo->tpInfo.sourcePort = pUdpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pUdpHeader->destinationPort;
-    }
-    else if (pPacketInfo->ipInfo.protocol == OVS_IPPROTO_SCTP)
-    {
-        OVS_SCTP_HEADER* pSctpHeader = (OVS_SCTP_HEADER*)AdvanceIpv4Header(pIpv4Header);
-
-        pPacketInfo->tpInfo.sourcePort = pSctpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pSctpHeader->destinationPort;
-    }
-    else if (pPacketInfo->ipInfo.protocol == OVS_IPPROTO_ICMP)
-    {
-        OVS_ICMP_HEADER* pIcmpHeader = (OVS_ICMP_HEADER*)AdvanceIpv4Header(pIpv4Header);
-
-        //packet too big and DF is set:
-        //if the packet that arrived was encapsulated in GRE (i.e. the packet, encapsulated, was too big for mtu),
-        //then we must update the ICMP's nextHopMtu in the packet, to account for the encapsulation bytes overhead
-        //(i.e. the protocol driver does not know we intend to encapsulate the packet, when considering the mtu)
-        //TODO: we should do similar for VXLAN!
-        if (pIcmpHeader->type == 3 && pIcmpHeader->code == 4)
-        {
-            OVS_ICMP_MESSAGE_DEST_UNREACH* pIcmpT3C4 = (OVS_ICMP_MESSAGE_DEST_UNREACH*)pIcmpHeader;
-
-            if (pIcmpT3C4->ipv4Header.Protocol == OVS_IPPROTO_GRE)
-            {
-                UINT16 nextHopMtu = pIcmpT3C4->nextHopMtu;
-                nextHopMtu = RtlUshortByteSwap(nextHopMtu);
-
-                if (nextHopMtu)
-                {
-                    const OVS_GRE_HEADER_2890* pGre = AdvanceIpv4Header(&pIcmpT3C4->ipv4Header);
-                    ULONG greSize = Gre_FrameHeaderSize(pGre);
-                    OVS_CHECK(greSize <= OVS_MAX_GRE_HEADER_SIZE);
-
-                    if (nextHopMtu > greSize + pIcmpT3C4->ipv4Header.HeaderLength * sizeof(DWORD))
-                    {
-                        ULONG icmpHeaderSize;
-                        nextHopMtu -= (UINT16)greSize;
-
-                        pIcmpT3C4->nextHopMtu = RtlUshortByteSwap(nextHopMtu);
-
-                        icmpHeaderSize = OVS_ICMP_MESSAGE_DEST_UNREACH_SIZE_BARE + pIcmpT3C4->ipv4Header.HeaderLength * sizeof(DWORD) + 8;
-                        pIcmpT3C4->header.checksum = (UINT16)ComputeIpChecksum((BYTE*)pIcmpT3C4, icmpHeaderSize);
-                        pIcmpT3C4->header.checksum = RtlUshortByteSwap(pIcmpT3C4->header.checksum);
-                    }
-                }
-            }
-        }
-
-        //turn each byte as word & turn to BE
-        pPacketInfo->tpInfo.sourcePort = RtlUshortByteSwap(pIcmpHeader->type);
-        pPacketInfo->tpInfo.destinationPort = RtlUshortByteSwap(pIcmpHeader->code);
+    case OVS_IPPROTO_ICMP:
+        _ExtractIpv4_Icmp(pIpv4Header, pPacketInfo);
+        break;
     }
 
     return TRUE;
+}
+
+static VOID _ExtractIcmp6_NeighborSolicitation(OVS_ICMP_HEADER* pIcmpHeader, OVS_OFPACKET_INFO* pPacketInfo, ULONG icmpLen)
+{
+    OVS_ICMP6_ND_OPTION* pOption = NULL;
+    OVS_ICMP6_NEIGHBOR_SOLICITATION* pNS = (OVS_ICMP6_NEIGHBOR_SOLICITATION*)pIcmpHeader;
+    BOOLEAN haveSourceMac = FALSE;
+    UINT optionLen = 0;
+
+    pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetIp = pNS->targetIp;
+    pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pNS + sizeof(OVS_ICMP6_NEIGHBOR_SOLICITATION));
+
+    icmpLen -= sizeof(OVS_ICMP6_NEIGHBOR_SOLICITATION);
+    while (icmpLen > 0)
+    {
+        OVS_CHECK(icmpLen >= 8);
+
+        if (pOption->type == OVS_ICMP6_ND_OPTION_SOURCE_LINK_ADDRESS)
+        {
+            haveSourceMac = TRUE;
+
+            OVS_ICMP6_ND_OPTION_LINK_ADDRESS* pLinkAddrOption = (OVS_ICMP6_ND_OPTION_LINK_ADDRESS*)pOption;
+            RtlCopyMemory(pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndSourceMac, pLinkAddrOption->macAddress, OVS_ETHERNET_ADDRESS_LENGTH);
+            break;
+        }
+
+        optionLen = pOption->length * 8;
+        icmpLen -= optionLen;
+        pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pOption + optionLen);
+    }
+}
+
+static VOID _ExtractIcmp6_NeighborAdvertisment(OVS_ICMP_HEADER* pIcmpHeader, OVS_OFPACKET_INFO* pPacketInfo, ULONG icmpLen)
+{
+    OVS_ICMP6_ND_OPTION* pOption = NULL;
+    OVS_ICMP6_NEIGHBOR_ADVERTISMENT* pNA = (OVS_ICMP6_NEIGHBOR_ADVERTISMENT*)pIcmpHeader;
+    BOOLEAN haveTargetMac = FALSE;
+    UINT optionLen = 0;
+
+    pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetIp = pNA->targetIp;
+    pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pNA + sizeof(OVS_ICMP6_NEIGHBOR_ADVERTISMENT));
+
+    icmpLen -= sizeof(OVS_ICMP6_NEIGHBOR_ADVERTISMENT);
+    while (icmpLen > 0)
+    {
+        OVS_CHECK(icmpLen >= 8);
+
+        if (pOption->type == OVS_ICMP6_ND_OPTION_TARGET_LINK_ADDRESS)
+        {
+            haveTargetMac = TRUE;
+
+            OVS_ICMP6_ND_OPTION_LINK_ADDRESS* pLinkAddrOption = (OVS_ICMP6_ND_OPTION_LINK_ADDRESS*)pOption;
+            RtlCopyMemory(pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetMac, pLinkAddrOption->macAddress, OVS_ETHERNET_ADDRESS_LENGTH);
+            break;
+        }
+
+        optionLen = pOption->length * 8;
+        icmpLen -= optionLen;
+        pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pOption + optionLen);
+    }
 }
 
 static VOID _ExtractIcmp6(VOID* pNbBuffer, ULONG nbLen, OVS_ICMP_HEADER* pIcmpHeader, _Inout_ OVS_OFPACKET_INFO* pPacketInfo)
@@ -172,67 +255,16 @@ static VOID _ExtractIcmp6(VOID* pNbBuffer, ULONG nbLen, OVS_ICMP_HEADER* pIcmpHe
         if (pIcmpHeader->type == OVS_ICMP6_ND_NEIGHBOR_ADVERTISMENT ||
             pIcmpHeader->type == OVS_ICMP6_ND_NEIGHBOR_SOLICITATION)
         {
-            OVS_ICMP6_ND_OPTION* pOption = NULL;
-            UINT offset = (UINT)((BYTE*)pIcmpHeader - (BYTE*)pNbBuffer);
-            UINT icmpLen = nbLen - offset;
+            ULONG offset = (ULONG)((BYTE*)pIcmpHeader - (BYTE*)pNbBuffer);
+            ULONG icmpLen = nbLen - offset;
 
             if (pIcmpHeader->type == OVS_ICMP6_ND_NEIGHBOR_SOLICITATION)
             {
-                OVS_ICMP6_NEIGHBOR_SOLICITATION* pNS = (OVS_ICMP6_NEIGHBOR_SOLICITATION*)pIcmpHeader;
-                BOOLEAN haveSourceMac = FALSE;
-                UINT optionLen = 0;
-                pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetIp = pNS->targetIp;
-                pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pNS + sizeof(OVS_ICMP6_NEIGHBOR_SOLICITATION));
-
-                icmpLen -= sizeof(OVS_ICMP6_NEIGHBOR_SOLICITATION);
-
-                while (icmpLen > 0)
-                {
-                    OVS_CHECK(icmpLen >= 8);
-
-                    if (pOption->type == OVS_ICMP6_ND_OPTION_SOURCE_LINK_ADDRESS)
-                    {
-                        haveSourceMac = TRUE;
-
-                        OVS_ICMP6_ND_OPTION_LINK_ADDRESS* pLinkAddrOption = (OVS_ICMP6_ND_OPTION_LINK_ADDRESS*)pOption;
-                        RtlCopyMemory(pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndSourceMac, pLinkAddrOption->macAddress, OVS_ETHERNET_ADDRESS_LENGTH);
-
-                        break;
-                    }
-
-                    optionLen = pOption->length * 8;
-                    icmpLen -= optionLen;
-                    pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pOption + optionLen);
-                }
+                _ExtractIcmp6_NeighborSolicitation(pIcmpHeader, pPacketInfo, icmpLen);
             }
             else if (pIcmpHeader->type == OVS_ICMP6_ND_NEIGHBOR_ADVERTISMENT)
             {
-                OVS_ICMP6_NEIGHBOR_ADVERTISMENT* pNA = (OVS_ICMP6_NEIGHBOR_ADVERTISMENT*)pIcmpHeader;
-                BOOLEAN haveTargetMac = FALSE;
-                UINT optionLen = 0;
-                pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetIp = pNA->targetIp;
-                pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pNA + sizeof(OVS_ICMP6_NEIGHBOR_ADVERTISMENT));
-
-                icmpLen -= sizeof(OVS_ICMP6_NEIGHBOR_ADVERTISMENT);
-
-                while (icmpLen > 0)
-                {
-                    OVS_CHECK(icmpLen >= 8);
-
-                    if (pOption->type == OVS_ICMP6_ND_OPTION_TARGET_LINK_ADDRESS)
-                    {
-                        haveTargetMac = TRUE;
-
-                        OVS_ICMP6_ND_OPTION_LINK_ADDRESS* pLinkAddrOption = (OVS_ICMP6_ND_OPTION_LINK_ADDRESS*)pOption;
-                        RtlCopyMemory(pPacketInfo->netProto.ipv6Info.neighborDiscovery.ndTargetMac, pLinkAddrOption->macAddress, OVS_ETHERNET_ADDRESS_LENGTH);
-
-                        break;
-                    }
-
-                    optionLen = pOption->length * 8;
-                    icmpLen -= optionLen;
-                    pOption = (OVS_ICMP6_ND_OPTION*)((BYTE*)pOption + optionLen);
-                }
+                _ExtractIcmp6_NeighborAdvertisment(pIcmpHeader, pPacketInfo, icmpLen);
             }
         }
     }
@@ -299,37 +331,51 @@ static BOOLEAN _ExtractIpv6(VOID* pNbBuffer, ULONG nbLen, _Inout_ OVS_OFPACKET_I
 
     pPacketInfo->ipInfo.protocol = extensionType;
 
-    if (extensionType == OVS_IPV6_EXTH_TCP)
+    switch (extensionType)
     {
-        OVS_TCP_HEADER* pTcpHeader = (OVS_TCP_HEADER*)buffer;
+    case OVS_IPV6_EXTH_TCP:
+        OVS_PI_SET_IPV6_TP_TCP(pPacketInfo, (OVS_TCP_HEADER*)buffer);
+        break;
 
-        pPacketInfo->tpInfo.sourcePort = pTcpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pTcpHeader->destinationPort;
+    case OVS_IPV6_EXTH_UDP:
+        OVS_PI_SET_TP(pPacketInfo, (OVS_TCP_HEADER*)buffer);
+        break;
 
-        pPacketInfo->tpInfo.tcpFlags = GetTcpFlags(pTcpHeader->flagsAndOffset);
-    }
-    else if (extensionType == OVS_IPV6_EXTH_UDP)
-    {
-        OVS_UDP_HEADER* pUdpHeader = (OVS_UDP_HEADER*)buffer;
+    case OVS_IPV6_EXTH_SCTP:
+        OVS_PI_SET_TP(pPacketInfo, (OVS_TCP_HEADER*)buffer);
+        break;
 
-        pPacketInfo->tpInfo.sourcePort = pUdpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pUdpHeader->destinationPort;
-    }
-    else if (extensionType == OVS_IPV6_EXTH_SCTP)
-    {
-        OVS_SCTP_HEADER* pSctpHeader = (OVS_SCTP_HEADER*)buffer;
-
-        pPacketInfo->tpInfo.sourcePort = pSctpHeader->sourcePort;
-        pPacketInfo->tpInfo.destinationPort = pSctpHeader->destinationPort;
-    }
-    else if (extensionType == OVS_IPV6_EXTH_ICMP6)
-    {
-        OVS_ICMP_HEADER* pIcmpHeader = (OVS_ICMP_HEADER*)buffer;
-
-        _ExtractIcmp6(pNbBuffer, nbLen, pIcmpHeader, pPacketInfo);
+    case OVS_IPV6_EXTH_ICMP6:
+        _ExtractIcmp6(pNbBuffer, nbLen, buffer, pPacketInfo);
+        break;
     }
 
     return TRUE;
+}
+
+static VOID _ExtractArp(OVS_ETHERNET_HEADER* pEthHeader, OVS_OFPACKET_INFO* pPacketInfo)
+{
+    OVS_ARP_HEADER* pArp = GetArpHeader(pEthHeader);
+
+    if (pArp->hardwareType == RtlUshortByteSwap(OVS_ARP_HARDWARE_TYPE_ETHERNET) &&
+        pArp->protocolType == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4) &&
+        pArp->harwareLength == OVS_ETHERNET_ADDRESS_LENGTH &&
+        pArp->protocolLength == OVS_IPV4_ADDRESS_LENGTH)
+    {
+        pPacketInfo->ipInfo.protocol = (UINT8)RtlUshortByteSwap(pArp->operation);
+
+        RtlCopyMemory(&pPacketInfo->netProto.arpInfo.source, pArp->senderProtocolAddress, OVS_IPV4_ADDRESS_LENGTH);
+        RtlCopyMemory(&pPacketInfo->netProto.arpInfo.destination, pArp->targetProtocolAddress, OVS_IPV4_ADDRESS_LENGTH);
+
+        RtlCopyMemory(&pPacketInfo->netProto.arpInfo.sourceMac, pArp->senderHardwareAddress, OVS_ETHERNET_ADDRESS_LENGTH);
+        RtlCopyMemory(&pPacketInfo->netProto.arpInfo.destinationMac, pArp->targetHardwareAddress, OVS_ETHERNET_ADDRESS_LENGTH);
+
+        if (RtlUshortByteSwap(pArp->operation) == OVS_ARP_OPERATION_REPLY)
+        {
+            //we must update our arp table, to be able to find dest eth addresses, given dest ipv4 addresses (for tunneling)
+            Arp_InsertTableEntry(pArp->senderProtocolAddress, pArp->senderHardwareAddress);
+        }
+    }
 }
 
 BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePort, _Out_ OVS_OFPACKET_INFO* pPacketInfo)
@@ -356,7 +402,6 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
         pPacketInfo->ethInfo.tci = pEthHeaderTagged->tci;
 
         OVS_CHECK(RtlUshortByteSwap(pPacketInfo->ethInfo.tci) & OVS_VLAN_TAG_PRESENT);
-
         pEthHeader = (OVS_ETHERNET_HEADER*)((BYTE*)pEthHeader + OVS_ETHERNET_VLAN_LEN);
     }
 
@@ -364,44 +409,20 @@ BOOLEAN PacketInfo_Extract(_In_ VOID* pNbBuffer, ULONG nbLen, UINT16 ofSourcePor
     //The NDIS filter part only cares about the 802.3 frames (ATM)
     pPacketInfo->ethInfo.type = pEthHeader->type;
 
-    //II. NETWORK LAYER
-    if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4))
+    switch (RtlUshortByteSwap(pPacketInfo->ethInfo.type))
     {
-        BOOLEAN ok = _ExtractIpv4(pNbBuffer, pPacketInfo);
+    case OVS_ETHERTYPE_IPV4:
+        return _ExtractIpv4(pNbBuffer, pPacketInfo);
 
-        return ok;
-    }
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_ARP))
-    {
-        OVS_ARP_HEADER* pArp = GetArpHeader(pEthHeader);
-
-        if (pArp->hardwareType == RtlUshortByteSwap(OVS_ARP_HARDWARE_TYPE_ETHERNET) &&
-            pArp->protocolType == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4) &&
-            pArp->harwareLength == OVS_ETHERNET_ADDRESS_LENGTH &&
-            pArp->protocolLength == OVS_IPV4_ADDRESS_LENGTH)
-        {
-            pPacketInfo->ipInfo.protocol = (UINT8)RtlUshortByteSwap(pArp->operation);
-
-            RtlCopyMemory(&pPacketInfo->netProto.arpInfo.source, pArp->senderProtocolAddress, OVS_IPV4_ADDRESS_LENGTH);
-            RtlCopyMemory(&pPacketInfo->netProto.arpInfo.destination, pArp->targetProtocolAddress, OVS_IPV4_ADDRESS_LENGTH);
-
-            RtlCopyMemory(&pPacketInfo->netProto.arpInfo.sourceMac, pArp->senderHardwareAddress, OVS_ETHERNET_ADDRESS_LENGTH);
-            RtlCopyMemory(&pPacketInfo->netProto.arpInfo.destinationMac, pArp->targetHardwareAddress, OVS_ETHERNET_ADDRESS_LENGTH);
-
-            if (RtlUshortByteSwap(pArp->operation) == OVS_ARP_OPERATION_REPLY)
-            {
-                //we must update our arp table, to be able to find dest eth addresses, given dest ipv4 addresses (for tunneling)
-                Arp_InsertTableEntry(pArp->senderProtocolAddress, pArp->senderHardwareAddress);
-            }
-        }
-    }
-    else if (pPacketInfo->ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6))
-    {
+    case OVS_ETHERTYPE_IPV6:
         return _ExtractIpv6(pNbBuffer, nbLen, pPacketInfo);
-    }
-    else
-    {
-        OVS_CHECK_RET(__UNEXPECTED__, FALSE);
+
+    case OVS_ETHERTYPE_ARP:
+        _ExtractArp(pEthHeader, pPacketInfo);
+        break;
+
+    default:
+        OVS_CHECK(__UNEXPECTED__);
     }
 
     return TRUE;
