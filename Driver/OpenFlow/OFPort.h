@@ -88,11 +88,11 @@ typedef struct _OVS_UPCALL_PORT_IDS
 typedef struct _OVS_WINL_PORT
 {
     UINT32            number;
-    OVS_OFPORT_TYPE    type;
-    const char*        name;
+    OVS_OFPORT_TYPE   type;
+    const char*       name;
     OVS_UPCALL_PORT_IDS    upcallPortIds;
 
-    OVS_OFPORT_STATS    stats;
+    OVS_OFPORT_STATS  stats;
 
     //group type: OVS_ARGTYPE_OFPORT_GROUP
     //only available option is  OVS_ARGTYPE_PORT_OPTION_DST_PORT
@@ -102,7 +102,7 @@ typedef struct _OVS_WINL_PORT
 typedef struct _OVS_TUNNELING_PORT_OPTIONS
 {
     //OVS_TUNNEL_OPTIONS_HAVE_*
-    DWORD    optionsFlags;
+    DWORD   optionsFlags;
 
     //OVS_TUNNEL_PORT_FLAG_*
     BE32    tunnelFlags;
@@ -110,10 +110,10 @@ typedef struct _OVS_TUNNELING_PORT_OPTIONS
     BE32    sourceIpv4;
     BE64    outKey;
     BE64    inKey;
-    UINT8    tos;
-    UINT8    ttl;
+    UINT8   tos;
+    UINT8   ttl;
 
-    UINT16        udpDestPort;
+    UINT16  udpDestPort;
 }OVS_TUNNELING_PORT_OPTIONS;
 
 /**********************************************************/
