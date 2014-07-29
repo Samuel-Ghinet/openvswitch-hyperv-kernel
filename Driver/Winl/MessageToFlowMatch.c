@@ -242,6 +242,8 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
     {
         if (pFlowMatch->haveMask)
         {
+            //TODO: this is buggy - create exact match args instead of exact match packet info!
+            //Also, do not wildcard tunnel info!
             UINT8* pStart = (UINT8*)&pFlowMatch->flowMask.packetInfo + pPiRange->startRange;
             UINT16 range = (UINT16)(pPiRange->endRange - pPiRange->startRange);
 
