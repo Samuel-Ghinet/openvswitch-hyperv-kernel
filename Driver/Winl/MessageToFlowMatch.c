@@ -515,10 +515,6 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
     }
 
     pEthTypeArg = FindArgument(pPIGroup, OVS_ARGTYPE_PI_ETH_TYPE);
-#if OVS_VERSION == OVS_VERSION_1_11
-    EXPECT(pEthAddrArg);
-#endif
-
     pEthAddrArg = FindArgument(pPIGroup, OVS_ARGTYPE_PI_ETH_ADDRESS);
     EXPECT(pEthAddrArg);
 

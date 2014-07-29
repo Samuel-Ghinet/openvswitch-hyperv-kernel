@@ -1266,17 +1266,9 @@ BOOLEAN CreateMsgFromFlow(_In_ const OVS_FLOW* pFlow, UINT8 command, _Inout_ OVS
     maskedPacketInfo = pFlow->maskedPacketInfo;
     packetInfoMask = pFlow->pMask->packetInfo;
 
-#if OVS_VERSION == OVS_VERSION_1_11
-    tickCount = pFlow->stats.lastUsedTime;
-    stats.noOfMatchedPackets = pFlow->stats.packetsMached;
-    stats.noOfMatchedBytes = pFlow->stats.bytesMatched;
-    tcpFlags = pFlow->stats.tcpFlags;
-#elif OVS_VERSION == OVS_VERSION_2_3
-    //TODO: Flow_GetStats()
     Flow_GetStats_Unsafe(pFlow, &stats);
     winlStats.noOfMatchedBytes = stats.bytesMatched;
     winlStats.noOfMatchedPackets = stats.packetsMached;
-#endif
 
     FLOW_UNLOCK(pFlow, &lockState);
 

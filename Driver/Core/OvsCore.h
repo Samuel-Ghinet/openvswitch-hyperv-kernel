@@ -28,11 +28,6 @@ limitations under the License.
 
 #define OVS_ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-#define OVS_VERSION_1_11        111
-#define OVS_VERSION_2_3            203
-
-#define OVS_VERSION OVS_VERSION_2_3
-
 typedef struct _OVS_FLOW                     OVS_FLOW;
 typedef struct _OVS_OFPACKET_INFO            OVS_OFPACKET_INFO;
 typedef struct _OF_PI_IPV4_TUNNEL            OF_PI_IPV4_TUNNEL;

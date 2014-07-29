@@ -734,9 +734,6 @@ static __inline BOOLEAN _VerifyGroup_Flow_PI(OVS_ARGUMENT* pArg, OVS_ARGUMENT* p
 
     if (options & OVS_VERIFY_OPTION_NEW_OR_SET)
     {
-#if OVS_VERSION == OVS_VERSION_1_11
-        EXPECT(FindArgument(pGroup, OVS_ARGTYPE_PI_ETH_TYPE));
-#endif
         EXPECT(FindArgument(pGroup, OVS_ARGTYPE_PI_ETH_ADDRESS));
     }
 

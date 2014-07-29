@@ -64,10 +64,8 @@ typedef struct _OVS_FLOW
     //list entry in OVS_FLOW_TABLE
     LIST_ENTRY       listEntry;
 
-#if OVS_VERSION >= OVS_VERSION_2_3
     //i.e. NUMA node id
     UINT lastStatsWriter;
-#endif
 
     //once set, cannot be modified
     OVS_OFPACKET_INFO    maskedPacketInfo;
@@ -79,12 +77,8 @@ typedef struct _OVS_FLOW
     //once set in a flow, the actions can only be replaced, but the struct OVS_ARGUMENT_GROUP itself cannot be modified
     OVS_ACTIONS*      pActions;
 
-#if OVS_VERSION == OVS_VERSION_1_11
-    OVS_FLOW_STATS    stats;
-#else
     //we should have one stats struct for each NUMA node
     OVS_FLOW_STATS**    statsArray;
-#endif
 }OVS_FLOW, *POVS_FLOW;
 
 #define FLOW_LOCK_READ(pFlow, pLockState) NdisAcquireRWLockRead(pFlow->pRwLock, pLockState, 0)
@@ -125,14 +119,8 @@ VOID Flow_DestroyNow_Unsafe(OVS_FLOW* pFlow);
 //NOTE: must lock with pFlow's lock
 void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow);
 
-#if OVS_VERSION == OVS_VERSION_1_11
-void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
-
-#elif OVS_VERSION >= OVS_VERSION_2_3
-
 void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb);
 void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlowStats);
-#endif
 
 /*********************************** FLOW MATCH ***********************************/
 void FlowMatch_Initialize(OVS_FLOW_MATCH* pFlowMatch, OVS_OFPACKET_INFO* pPacketInfo, OVS_FLOW_MASK* pFlowMask);

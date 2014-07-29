@@ -222,13 +222,6 @@ OVS_ERROR Flow_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
         FLOW_LOCK_WRITE(pFoundFlow, &lockState);
 
         OVS_REFCOUNT_DESTROY(pOldActions);
-
-#if OVS_VERSION == OVS_VERSION_1_11
-        if (FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_FLOW_CLEAR))
-        {
-            Flow_ClearStats_Unsafe(pFoundFlow);
-        }
-#endif
     }
 
     /*** reply ***/

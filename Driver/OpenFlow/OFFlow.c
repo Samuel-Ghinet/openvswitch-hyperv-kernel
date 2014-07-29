@@ -117,12 +117,6 @@ OVS_FLOW* Flow_Create()
 
 void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
 {
-#if OVS_VERSION == OVS_VERSION_1_11
-    pFlow->stats.lastUsedTime = 0;
-    pFlow->stats.tcpFlags = 0;
-    pFlow->stats.packetsMached = 0;
-    pFlow->stats.bytesMatched = 0;
-#elif OVS_VERSION >= OVS_VERSION_2_3
 
     USHORT maxNodeNumber = 0;
 
@@ -138,8 +132,6 @@ void Flow_ClearStats_Unsafe(OVS_FLOW* pFlow)
         if (pFlowStats)
             RtlZeroMemory(pFlowStats, sizeof(OVS_FLOW_STATS));
     }
-
-#endif
 }
 
 BOOLEAN FlowMask_Equal(const OVS_FLOW_MASK* pLhs, const OVS_FLOW_MASK* pRhs)
@@ -172,37 +164,6 @@ OVS_FLOW_MASK* FlowMask_Create()
 
     return pFlowMask;
 }
-
-#if OVS_VERSION == OVS_VERSION_1_11
-
-void Flow_UpdateTimeUsed_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
-{
-    UINT8 tcpFlags = 0;
-    ULONG bufferLen = 0;
-
-    if (pFlow->maskedPacketInfo.ipInfo.protocol == OVS_IPPROTO_TCP &&
-        (pFlow->maskedPacketInfo.ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV4) ||
-        pFlow->maskedPacketInfo.ethInfo.type == RtlUshortByteSwap(OVS_ETHERTYPE_IPV6)))
-    {
-        VOID* buffer = ONB_GetData(pOvsNb);
-
-        OVS_TCP_HEADER* pTcpHeader = GetTcpHeader(buffer);
-        tcpFlags = (UINT8)GetTcpFlags(pTcpHeader->flagsAndOffset);
-    }
-
-    bufferLen = ONB_GetDataLength(pOvsNb);
-
-    //NdisAcquireSpinLock(&pFlow->spinLock);
-    pFlow->stats.packetsMached++;
-    pFlow->stats.bytesMatched += bufferLen;
-
-    pFlow->stats.lastUsedTime = KeQueryPerformanceCounter(NULL).QuadPart;
-    pFlow->stats.tcpFlags |= tcpFlags;
-
-    //NdisReleaseSpinLock(&pFlow->spinLock);
-}
-
-#elif OVS_VERSION >= OVS_VERSION_2_3
 
 void Flow_UpdateStats_Unsafe(OVS_FLOW* pFlow, OVS_NET_BUFFER* pOvsNb)
 {
@@ -264,8 +225,6 @@ void Flow_GetStats_Unsafe(_In_ const OVS_FLOW* pFlow, _Out_ OVS_FLOW_STATS* pFlo
         }
     }
 }
-
-#endif
 
 #if OVS_DBGPRINT_FLOW
 

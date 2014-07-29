@@ -139,11 +139,7 @@ static BOOLEAN _CreateMsgFromPersistentPort(int i, _In_ const OVS_PERSISTENT_POR
     port.type = pPort->ofPortType;
     port.name = pPort->ovsPortName;
     port.stats = pPort->stats;
-#if OVS_VERSION == OVS_VERSION_1_11
-    port.upcallId = pPort->upcallPortId;
-#elif OVS_VERSION >= OVS_VERSION_2_3
     port.upcallPortIds = pPort->upcallPortIds;
-#endif
 
     ok = CreateMsgFromOFPort(&port, pContext->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pContext->dpIfIndex, pContext->pid, pContext->multipleUpcallPids);
     if (!ok)
@@ -291,11 +287,7 @@ OVS_ERROR OFPort_New(const OVS_MESSAGE* pMsg, const FILE_OBJECT* pFileObject)
     locked = TRUE;
 
     pPersPort->ofPortType = portType;
-#if OVS_VERSION == OVS_VERSION_1_11
-    pPersPort->upcallPortId = upcallPortId;
-#elif OVS_VERSION >= OVS_VERSION_2_3
     pPersPort->upcallPortIds = upcallPids;
-#endif
 
     //OPTIONS: optional
     pOptionsGroup = FindArgumentGroup(pMsg->pArgGroup, OVS_ARGTYPE_OFPORT_OPTIONS_GROUP);

@@ -30,11 +30,7 @@ typedef struct _OVS_DATAPATH_STATS
     //i.e. packets lost = not sent to user space (had no flow)
     UINT64 countLost;
     //# of flows present
-#if OVS_VERSION == OVS_VERSION_1_11
-    UINT64 countFlows;
-#elif OVS_VERSION >= OVS_VERSION_2_3
     UINT64 masksMatched;
-#endif
 }OVS_DATAPATH_STATS, *POVS_DATAPATH_STATS;
 
 typedef struct _OVS_DATAPATH_MEGAFLOW_STATS

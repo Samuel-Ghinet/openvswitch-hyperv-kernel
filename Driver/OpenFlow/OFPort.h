@@ -90,12 +90,7 @@ typedef struct _OVS_WINL_PORT
     UINT32            number;
     OVS_OFPORT_TYPE    type;
     const char*        name;
-#if OVS_VERSION == OVS_VERSION_1_11
-    //Used for userpace to kernel communication
-    UINT32            upcallId;
-#elif OVS_VERSION >= OVS_VERSION_2_3
     OVS_UPCALL_PORT_IDS    upcallPortIds;
-#endif
 
     OVS_OFPORT_STATS    stats;
 

@@ -68,20 +68,11 @@ OVS_DATAPATH* GetDefaultDatapath_Ref(const char* funcName)
 static void _GetDatapathStats_Unsafe(_In_ OVS_DATAPATH* pDatapath, _Out_ OVS_DATAPATH_STATS* pStats, _Out_ OVS_DATAPATH_MEGAFLOW_STATS* pMegaFlowStats)
 {
     OVS_FLOW_TABLE* pFlowTable = NULL;
-#if OVS_VERSION == OVS_VERSION_1_11
-    LOCK_STATE_EX lockState = { 0 };
-#endif
 
     pFlowTable = pDatapath->pFlowTable;
 
-#if OVS_VERSION == OVS_VERSION_1_11
-    FLOWTABLE_LOCK_READ(pFlowTable, &lockState);
-    pStats->countFlows = pFlowTable->countFlows;
-    FLOWTABLE_UNLOCK(pFlowTable, &lockState);
-#elif OVS_VERSION >= OVS_VERSION_2_3
     pMegaFlowStats->masksMatched = pDatapath->statistics.masksMatched;
     pMegaFlowStats->countMasks = FlowTable_CountMasks(pDatapath->pFlowTable);
-#endif
 
     pStats->flowTableMatches = pDatapath->statistics.flowTableMatches;
     pStats->flowTableMissed = pDatapath->statistics.flowTableMissed;
