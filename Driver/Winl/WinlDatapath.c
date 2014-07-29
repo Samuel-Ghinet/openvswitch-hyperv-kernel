@@ -76,6 +76,7 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     locked = TRUE;
     
     CHECK_E(_Datapath_SetName(pDatapath, pArgName->data));
+    CHECK_B_E(0 == pDatapath->switchIfIndex, OVS_ERROR_NODEV);
 
     pUserFeaturesArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
     if (pUserFeaturesArg)
@@ -85,12 +86,6 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     
     DATAPATH_UNLOCK(pDatapath, &lockState);
     locked = FALSE;
-
-    if (0 == pDatapath->switchIfIndex)
-    {
-        error = OVS_ERROR_NODEV;
-        goto Cleanup;
-    }
 
     CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
@@ -219,11 +214,7 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
         replyMsg.flags |= OVS_MESSAGE_FLAG_MULTIPART;
 
         msgs = KAlloc(2 * sizeof(OVS_MESSAGE));
-        if (!msgs)
-        {
-            error = OVS_ERROR_NOMEM;
-            goto Cleanup;
-        }
+        CHECK_B_E(msgs, OVS_ERROR_NOMEM);
 
         msgs[0] = replyMsg;
         msgs[1] = replyMsg;
