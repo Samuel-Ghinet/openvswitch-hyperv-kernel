@@ -28,7 +28,7 @@ static BOOLEAN _ParseArgGroup_FromAttributes(_In_ BYTE** ppBuffer, UINT16* pByte
 
 static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ OVS_ARGUMENT* pOutArg, OVS_ARGTYPE parentArgType, UINT16 targetType, UINT8 cmd)
 {
-    OVS_ARGUMENT* pAttribute = (OVS_ARGUMENT*)*pBuffer;
+    OVS_NL_ATTRIBUTE* pAttribute = (OVS_NL_ATTRIBUTE*)*pBuffer;
     OVS_ARGTYPE typeAsArg = OVS_ARGTYPE_INVALID;
 
     if (*pBytesLeft < OVS_ARGUMENT_HEADER_SIZE)
@@ -72,7 +72,9 @@ static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ 
     }
     else
     {
-        if (*pBytesLeft < pOutArg->length)
+        UINT16 alignedLeft = OVS_SIZE_ALIGNED_4(pOutArg->length);
+
+        if (*pBytesLeft < alignedLeft)
         {
             return FALSE;
         }
@@ -88,8 +90,8 @@ static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ 
             RtlCopyMemory(pOutArg->data, *pBuffer, pOutArg->length);
         }
 
-        *pBuffer += pOutArg->length;
-        *pBytesLeft -= pOutArg->length;
+        *pBuffer += alignedLeft;
+        *pBytesLeft -= alignedLeft;
     }
 
     return TRUE;
@@ -97,22 +99,22 @@ static BOOLEAN _ParseAttribute(_In_ BYTE** pBuffer, UINT16* pBytesLeft, _Inout_ 
 
 static BOOLEAN _CountAttributes(BYTE* buffer, ULONG totalLength, UINT16* pCount)
 {
-    OVS_ARGUMENT* pArg = NULL;
+    OVS_NL_ATTRIBUTE* pAttr = NULL;
     UINT16 count = 0;
     ULONG len = 0;
 
-    pArg = (OVS_ARGUMENT*)buffer;
+    pAttr = (OVS_NL_ATTRIBUTE*)buffer;
     ++count;
-    len += pArg->length;
+    len += OVS_SIZE_ALIGNED_4(pAttr->length);
 
     while (len < totalLength)
     {
-        pArg = (OVS_ARGUMENT*)((BYTE*)pArg + pArg->length);
+        pAttr = (OVS_NL_ATTRIBUTE*)((BYTE*)pAttr + OVS_SIZE_ALIGNED_4(pAttr->length));
 
         ++count;
-        len += pArg->length;
+        len += OVS_SIZE_ALIGNED_4(pAttr->length);
 
-        if (pArg->length <= 0)
+        if (pAttr->length <= 0)
         {
             DEBUGP(LOG_ERROR, "Asserting in _CountAttributes pArg->length <= 0\n");
             OVS_CHECK(0);
@@ -236,7 +238,7 @@ BOOLEAN ParseReceivedMessage(VOID* buffer, UINT16 length, _Out_ OVS_NLMSGHDR** p
         goto Cleanup;
 
     case OVS_MESSAGE_TARGET_MULTICAST:
-        ((OVS_MESSAGE_MULTICAST*)pNlMessage)->join = ((OVS_MESSAGE_MULTICAST*)pBufferedMsg)->join;
+        *((OVS_MESSAGE_MULTICAST*)pNlMessage) = *((OVS_MESSAGE_MULTICAST*)pBufferedMsg);
         goto Cleanup;
 
     case OVS_MESSAGE_TARGET_DATAPATH:
@@ -336,18 +338,20 @@ static VOID _DestroyAttribute(OVS_ATTRIBUTE* pAttribute)
         UINT16 i = 0;
         OVS_ARGUMENT* pAttrArray = pAttribute->data;
 
-        while (dataLen >= OVS_ARGUMENT_HEADER_SIZE)
+        while (dataLen > 0)
         {
             OVS_ARGUMENT* pChildAttr = pAttrArray + i;
+            ULONG alignedSize = OVS_SIZE_ALIGNED_4(pChildAttr->length);
 
             _DestroyAttribute(pChildAttr);
 
             ++i;
-            OVS_CHECK(dataLen >= pChildAttr->length);
-            dataLen -= pChildAttr->length;
+            OVS_CHECK(dataLen >= alignedSize);
+            dataLen -= alignedSize;
         }
 
-        OVS_CHECK((pAttrArray && dataLen != 0) || (!pAttrArray && dataLen == 0));
+        OVS_CHECK((pAttrArray && pAttribute->length > sizeof(OVS_NL_ATTRIBUTE)) || 
+            (!pAttrArray && pAttribute->length == sizeof(OVS_NL_ATTRIBUTE)));
 
         KFree(pAttrArray);
     }
@@ -373,7 +377,7 @@ static OVS_ARGUMENT* _ArgumentsToAttributes(ULONG target, ULONG cmd, OVS_ARGTYPE
 
     OVS_CHECK(count != 0);
 
-    pAttributes = KZAlloc(count);
+    pAttributes = KZAlloc(count * sizeof(OVS_ARGUMENT));
 
     for (UINT16 i = 0; i < count; ++i)
     {
@@ -402,7 +406,7 @@ static OVS_ARGUMENT* _ArgumentsToAttributes(ULONG target, ULONG cmd, OVS_ARGTYPE
             pAttr->data = pSubAttrs;
             pAttr->freeData = TRUE;
 
-            groupSize += pAttr->length;
+            groupSize += OVS_SIZE_ALIGNED_4(pAttr->length);
 
             if (!Reply_SetAttrType(parentArgType, pAttr))
             {
@@ -414,13 +418,13 @@ static OVS_ARGUMENT* _ArgumentsToAttributes(ULONG target, ULONG cmd, OVS_ARGTYPE
         }
         else
         {
-            //NOTE: arg data is not copied, the pointer is copied!
+            //NOTE: arg data is not copied, the data pointer is copied!
             RtlCopyMemory(pAttr, pArg, sizeof(OVS_ARGUMENT));
             pAttr->length = pArg->length + OVS_ARGUMENT_HEADER_SIZE;
             pAttr->isNested = FALSE;
             pAttr->freeData = TRUE;
 
-            groupSize += pAttr->length;
+            groupSize += OVS_SIZE_ALIGNED_4(pAttr->length);
 
             if (!Reply_SetAttrType(parentArgType, pAttr))
             {
@@ -469,26 +473,53 @@ static __inline VOID _WriteArgToBuffer_AsAttribute(UINT16 targetType, BYTE** pBu
         ULONG dataLen = pAttr->length - OVS_ARGUMENT_HEADER_SIZE;
         UINT16 i = 0;
         OVS_ARGUMENT* pAttrArray = pAttr->data;
+        UINT16 alignedLen = 0;
 
-        while (dataLen >= OVS_ARGUMENT_HEADER_SIZE)
+        while (dataLen > 0)
         {
             OVS_ARGUMENT* pChildAttr = pAttrArray + i;
+
+            alignedLen = OVS_SIZE_ALIGNED_4(pChildAttr->length);
 
             _WriteArgToBuffer_AsAttribute(targetType, pBuffer, typeAsArg, pChildAttr, pOffset);
 
             ++i;
-            OVS_CHECK(dataLen >= pChildAttr->length);
-            dataLen -= pChildAttr->length;
+            OVS_CHECK(dataLen >= alignedLen);
+            dataLen -= alignedLen;
         }
     }
     else
     {
         UINT16 dataLen = pAttr->length - OVS_ARGUMENT_HEADER_SIZE;
-
+        UINT16 alignedLen = OVS_SIZE_ALIGNED_4(dataLen);
+        
+        RtlZeroMemory(*pBuffer, alignedLen);
         RtlCopyMemory(*pBuffer, pAttr->data, dataLen);
-        *pBuffer += dataLen;
-        *pOffset += dataLen;
+
+        *pBuffer += alignedLen;
+        *pOffset += alignedLen;
     }
+}
+
+static ULONG _ComputeGroupAlignedSize_Recursive(OVS_ARGUMENT_GROUP* pGroup)
+{
+    ULONG alignedSize = 0;
+
+    OVS_FOR_EACH_ARG(pGroup,
+    {
+        alignedSize += sizeof(OVS_NL_ATTRIBUTE);
+
+        if (IsArgTypeGroup(argType))
+        {
+            alignedSize += _ComputeGroupAlignedSize_Recursive(pArg->data);
+        }
+        else
+        {
+            alignedSize += OVS_SIZE_ALIGNED_4(pArg->length);
+        }
+    });
+
+    return alignedSize;
 }
 
 BOOLEAN WriteMsgsToBuffer(_In_ OVS_NLMSGHDR* pMsgs, int countMsgs, OVS_BUFFER* pBuffer)
@@ -551,7 +582,7 @@ BOOLEAN WriteMsgsToBuffer(_In_ OVS_NLMSGHDR* pMsgs, int countMsgs, OVS_BUFFER* p
         else
         {
             OVS_MESSAGE* pMsg = (OVS_MESSAGE*)pNlMsg;
-            groupSize = pMsg->pArgGroup->groupSize + OVS_ARGUMENT_GROUP_HEADER_SIZE;
+            groupSize = _ComputeGroupAlignedSize_Recursive(pMsg->pArgGroup);
             bufSize = OVS_MESSAGE_HEADER_SIZE + groupSize;
 
             if (pMsg->type == OVS_MESSAGE_TARGET_PACKET)
