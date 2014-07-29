@@ -94,7 +94,7 @@ OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, _In_ const OVS_MESSAGE*
 OVS_DATAPATH* GetDefaultDatapath_Ref(const char* funcName);
 BOOLEAN CreateDefaultDatapath(NET_IFINDEX dpIfIndex);
 VOID Datapath_DestroyNow_Unsafe(OVS_DATAPATH* pDatapath);
-BOOLEAN Datapath_FlushFlows(OVS_DATAPATH* pDatapath);
+OVS_ERROR Datapath_FlushFlows(OVS_DATAPATH* pDatapath);
 
 OVS_FLOW_TABLE* Datapath_ReferenceFlowTable(OVS_DATAPATH* pDatapath);
 

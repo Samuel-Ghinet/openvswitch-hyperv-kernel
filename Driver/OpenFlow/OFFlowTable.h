@@ -44,6 +44,7 @@ typedef struct _OVS_FLOW_TABLE
 #define FLOWTABLE_LOCK_READ(pFlowTable, pLockState) NdisAcquireRWLockRead(pFlowTable->pRwLock, pLockState, 0)
 #define FLOWTABLE_LOCK_WRITE(pFlowTable, pLockState) NdisAcquireRWLockWrite(pFlowTable->pRwLock, pLockState, 0)
 #define FLOWTABLE_UNLOCK(pFlowTable, pLockState) NdisReleaseRWLock(pFlowTable->pRwLock, pLockState)
+#define FLOWTABLE_UNLOCK_IF(pFlowTable, pLockState, locked) { if ((locked) && (pFlowTable)) FLOWTABLE_UNLOCK((pFlowTable), pLockState); }
 
 VOID FlowTable_DestroyNow_Unsafe(OVS_FLOW_TABLE* pFlowTable);
 //must lock the pFlowTable to get the flow

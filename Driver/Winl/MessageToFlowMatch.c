@@ -30,22 +30,16 @@ limitations under the License.
 BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _Inout_ OVS_OFPACKET_INFO* pPacketInfo)
 {
     OF_PI_IPV4_TUNNEL* pTunnelInfo = &pPacketInfo->tunnelInfo;
-    OVS_PI_RANGE* pPiRange = NULL;
+    OVS_PI_RANGE piRange = { 0 };
     OVS_ARGUMENT* pDatapathInPortArg = NULL;
-    OVS_FLOW_MATCH flowMatch = { 0 };
 
     pPacketInfo->physical.ofInPort = OVS_INVALID_PORT_NUMBER;
     pPacketInfo->physical.packetPriority = 0;
     pPacketInfo->physical.packetMark = 0;
 
     RtlZeroMemory(pTunnelInfo, sizeof(OF_PI_IPV4_TUNNEL));
-    RtlZeroMemory(&flowMatch, sizeof(flowMatch));
-    flowMatch.pPacketInfo = pPacketInfo;
 
     OVS_CHECK(pArgGroup);
-
-    pPiRange = &flowMatch.piRange;
-    pPacketInfo = flowMatch.pPacketInfo;
 
     for (UINT i = 0; i < pArgGroup->count; ++i)
     {
@@ -55,24 +49,24 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
         switch (argType)
         {
         case OVS_ARGTYPE_PI_DATAPATH_HASH:
-            PIFromArg_DatapathHash(pPacketInfo, pPiRange, pArg);
+            PIFromArg_DatapathHash(pPacketInfo, &piRange, pArg);
             break;
 
         case OVS_ARGTYPE_PI_DATAPATH_RECIRCULATION_ID:
-            PIFromArg_DatapathRecirculationId(pPacketInfo, pPiRange, pArg);
+            PIFromArg_DatapathRecirculationId(pPacketInfo, &piRange, pArg);
             break;
 
         case OVS_ARGTYPE_PI_PACKET_PRIORITY:
-            PIFromArg_PacketPriority(pPacketInfo, pPiRange, pArg);
+            PIFromArg_PacketPriority(pPacketInfo, &piRange, pArg);
             break;
 
         case OVS_ARGTYPE_PI_PACKET_MARK:
-            PIFromArg_PacketMark(pPacketInfo, pPiRange, pArg);
+            PIFromArg_PacketMark(pPacketInfo, &piRange, pArg);
             break;
 
         case OVS_ARGTYPE_PI_DP_INPUT_PORT:
             pDatapathInPortArg = pArg;
-            if (!PIFromArg_DatapathInPort(pPacketInfo, pPiRange, pArg, /*is mask*/FALSE))
+            if (!PIFromArg_DatapathInPort(pPacketInfo, &piRange, pArg, /*is mask*/FALSE))
             {
                 return FALSE;
             }
@@ -82,7 +76,7 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
         case OVS_ARGTYPE_PI_TUNNEL_GROUP:
             OVS_CHECK(IsArgTypeGroup(pArg->type));
 
-            if (!PIFromArg_Tunnel(pArg->data, pPacketInfo, pPiRange, /*is mask*/ FALSE))
+            if (!PIFromArg_Tunnel(pArg->data, pPacketInfo, &piRange, /*is mask*/ FALSE))
             {
                 return FALSE;
             }
@@ -97,7 +91,7 @@ BOOLEAN GetPacketContextFromPIArgs(_In_ const OVS_ARGUMENT_GROUP* pArgGroup, _In
 
     if (!pDatapathInPortArg)
     {
-        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, pPiRange, FALSE);
+        PIFromArg_SetDefaultDatapathInPort(pPacketInfo, &piRange, FALSE);
     }
 
     return TRUE;
@@ -111,7 +105,7 @@ static BOOLEAN _VerifyMasks(_In_ const OVS_FLOW_MATCH* pFlowMatch, _In_ const OV
     BOOLEAN isWildcard = FALSE;
     BOOLEAN isIcmp6 = FALSE;
 
-    OVS_OFPACKET_INFO* pPacketInfo = NULL, *pMask = NULL;
+    const OVS_OFPACKET_INFO* pPacketInfo = NULL, *pMask = NULL;
 
     OVS_CHECK(pFlowMatch);
 
@@ -120,8 +114,8 @@ static BOOLEAN _VerifyMasks(_In_ const OVS_FLOW_MATCH* pFlowMatch, _In_ const OV
         return TRUE;
     }
 
-    pPacketInfo = pFlowMatch->pPacketInfo;
-    pMask = (pFlowMatch->pFlowMask ? &pFlowMatch->pFlowMask->packetInfo : NULL);
+    pPacketInfo = &(pFlowMatch->packetInfo);
+    pMask = (pFlowMatch->haveMask ? &(pFlowMatch->flowMask.packetInfo) : NULL);
 
     //NOTE: we must have key, but we need not have mask!
     OVS_CHECK(pPacketInfo);
@@ -528,8 +522,8 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
         }
     }
 
-    pPiRange = &pFlowMatch->piRange;
-    pPacketInfo = pFlowMatch->pPacketInfo;
+    pPiRange = &(pFlowMatch->piRange);
+    pPacketInfo = &(pFlowMatch->packetInfo);
 
     ok = GetPacketInfoFromArguments(pPacketInfo, pPiRange, pPIGroup, /*isMask*/ FALSE);
     if (!ok)
@@ -539,12 +533,12 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
 
     if (!pPIMaskGroup)
     {
-        if (pFlowMatch->pFlowMask)
+        if (pFlowMatch->haveMask)
         {
-            UINT8* pStart = (UINT8*)&pFlowMatch->pFlowMask->packetInfo + pPiRange->startRange;
+            UINT8* pStart = (UINT8*)&pFlowMatch->flowMask.packetInfo + pPiRange->startRange;
             UINT16 range = (UINT16)(pPiRange->endRange - pPiRange->startRange);
 
-            pFlowMatch->pFlowMask->piRange = *pPiRange;
+            pFlowMatch->flowMask.piRange = *pPiRange;
             memset(pStart, OVS_PI_MASK_MATCH_EXACT(UINT8), range);
         }
     }
@@ -568,9 +562,9 @@ BOOLEAN GetFlowMatchFromArguments(_Inout_ OVS_FLOW_MATCH* pFlowMatch, _In_ const
             }
         }
 
-        OVS_CHECK(pFlowMatch->pFlowMask);
-        pPiRange = &pFlowMatch->pFlowMask->piRange;
-        pPacketInfo = &pFlowMatch->pFlowMask->packetInfo;
+        OVS_CHECK(pFlowMatch->haveMask);
+        pPiRange = &pFlowMatch->flowMask.piRange;
+        pPacketInfo = &pFlowMatch->flowMask.packetInfo;
 
         ok = GetPacketInfoFromArguments(pPacketInfo, pPiRange, pPIMaskGroup, /*is mask*/TRUE);
         if (!ok)
