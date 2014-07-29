@@ -28,6 +28,8 @@ limitations under the License.
 
 #include <Netioapi.h>
 
+//NOTE: Assuming the verification part has done its job (arg & msg verification), we can use the input data as valid
+
 static OVS_ERROR _Datapath_SetName(OVS_DATAPATH* pDatapath, const char* newName)
 {
     ULONG dpNameLen = 0;
@@ -60,31 +62,20 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     LOCK_STATE_EX lockState = { 0 };
     OVS_ERROR error = OVS_ERROR_NOERROR;
     UINT32 upcallPid = 0;
+    BOOLEAN locked = FALSE;
 
     pArgName = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_NAME);
-    if (!pArgName)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    OVS_CHECK(pArgName);
 
     pArgUpcallPid = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_UPCALL_PORT_ID);
-    if (!pArgUpcallPid)
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    OVS_CHECK(pArgUpcallPid);
 
     upcallPid = GET_ARG_DATA(pArgUpcallPid, UINT32);
 
     DATAPATH_LOCK_WRITE(pDatapath, &lockState);
+    locked = TRUE;
     
-    error = _Datapath_SetName(pDatapath, pArgName->data);
-    if (error != OVS_ERROR_NOERROR)
-    {
-        DATAPATH_UNLOCK(pDatapath, &lockState);
-        goto Cleanup;
-    }
+    CHECK_E(_Datapath_SetName(pDatapath, pArgName->data));
 
     pUserFeaturesArg = FindArgument(pMsg->pArgGroup, OVS_ARGTYPE_DATAPATH_USER_FEATURES);
     if (pUserFeaturesArg)
@@ -93,6 +84,7 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     }
     
     DATAPATH_UNLOCK(pDatapath, &lockState);
+    locked = FALSE;
 
     if (0 == pDatapath->switchIfIndex)
     {
@@ -100,26 +92,14 @@ OVS_ERROR WinlDatapath_New(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
         goto Cleanup;
     }
 
-    if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
-    {
-        DestroyArgumentGroup(replyMsg.pArgGroup);
-        replyMsg.pArgGroup = NULL;
-
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
-
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
-    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
-    if (error != OVS_ERROR_NOERROR)
-    {
-        goto Cleanup;
-    }
+
+    CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
 
 Cleanup:
-
+    DATAPATH_UNLOCK_IF(pDatapath, &lockState, locked);
     DestroyArgumentGroup(replyMsg.pArgGroup);
-
     return error;
 }
 
@@ -143,10 +123,7 @@ OVS_ERROR WinlDatapath_Delete(OVS_DATAPATH** ppDatapath, const OVS_MESSAGE* pMsg
     }
 
     RtlZeroMemory(&replyMsg, sizeof(replyMsg));
-    if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_DELETE, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
-    {
-        error = OVS_ERROR_INVAL;
-    }
+    error = CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_DELETE, &replyMsg, pDatapath->switchIfIndex, pMsg->pid);
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
@@ -163,11 +140,7 @@ OVS_ERROR WinlDatapath_Delete(OVS_DATAPATH** ppDatapath, const OVS_MESSAGE* pMsg
     replyMsg.command = OVS_MESSAGE_COMMAND_NEW;
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
 
-    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
-    if (error != OVS_ERROR_NOERROR)
-    {
-        goto Cleanup;
-    }
+    CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
 
 Cleanup:
     OVS_REFCOUNT_DEREF_AND_DESTROY(pDatapath);
@@ -185,11 +158,7 @@ OVS_ERROR WinlDatapath_Get(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     OVS_ERROR error = OVS_ERROR_NOERROR;
 
     RtlZeroMemory(&replyMsg, sizeof(replyMsg));
-    if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
 
     if (pMsg->flags & OVS_MESSAGE_FLAG_DUMP)
     {
@@ -197,13 +166,9 @@ OVS_ERROR WinlDatapath_Get(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
     }
 
     replyMsg.command = OVS_MESSAGE_COMMAND_NEW;
-    OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
 
-    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
-    if (error != OVS_ERROR_NOERROR)
-    {
-        goto Cleanup;
-    }
+    OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
+    CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
 
 Cleanup:
     DestroyArgumentGroup(replyMsg.pArgGroup);
@@ -230,18 +195,10 @@ OVS_ERROR WinlDatapath_Set(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, con
 
     DATAPATH_UNLOCK(pDatapath, &lockState);
 
-    if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
-    {
-        error = OVS_ERROR_INVAL;
-        goto Cleanup;
-    }
+    CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
 
     OVS_CHECK(replyMsg.type == OVS_MESSAGE_TARGET_DATAPATH);
-    error = WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE);
-    if (error != OVS_ERROR_NOERROR)
-    {
-        goto Cleanup;
-    }
+    CHECK_E(WriteMsgsToDevice((OVS_NLMSGHDR*)&replyMsg, 1, pFileObject, OVS_MULTICAST_GROUP_NONE));
 
 Cleanup:
     DestroyArgumentGroup(replyMsg.pArgGroup);
@@ -257,11 +214,7 @@ OVS_ERROR WinlDatapath_Dump(OVS_DATAPATH* pDatapath, const OVS_MESSAGE* pMsg, co
 
     if (!pDatapath->deleted)
     {
-        if (!CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid))
-        {
-            error = OVS_ERROR_INVAL;
-            goto Cleanup;
-        }
+        CHECK_E(CreateMsgFromDatapath(pDatapath, pMsg->sequence, OVS_MESSAGE_COMMAND_NEW, &replyMsg, pDatapath->switchIfIndex, pMsg->pid));
 
         replyMsg.flags |= OVS_MESSAGE_FLAG_MULTIPART;
 

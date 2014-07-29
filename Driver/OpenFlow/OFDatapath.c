@@ -78,15 +78,15 @@ static void _GetDatapathStats_Unsafe(_In_ OVS_DATAPATH* pDatapath, _Out_ OVS_DAT
     pStats->countLost = pDatapath->statistics.countLost;
 }
 
-BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
+OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid)
 {
     OVS_ARGUMENT_GROUP* pArgGroup = NULL;
     OVS_ARGUMENT* pNameArg = NULL, *pStatsArg = NULL, *pMFStatsArg = NULL, *pUserFeaturesArg = NULL;
     char* datapathName = NULL;
     OVS_DATAPATH_STATS dpStats = { 0 };
     OVS_DATAPATH_MEGAFLOW_STATS dpMegaFlowStats = { 0 };
-    BOOLEAN ok = TRUE;
     ULONG nameLen = 0;
+    OVS_ERROR error = OVS_ERROR_NOERROR;
     LOCK_STATE_EX lockState;
     UINT32 userFeatures = 0;
 
@@ -106,7 +106,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pArgGroup = KZAlloc(sizeof(OVS_ARGUMENT_GROUP));
     if (!pArgGroup)
     {
-        return FALSE;
+        return OVS_ERROR_NOMEM;
     }
 
     AllocateArgumentsToGroup(4, pArgGroup);
@@ -114,7 +114,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pNameArg = CreateArgumentStringA_Alloc(OVS_ARGTYPE_DATAPATH_NAME, datapathName);
     if (!pNameArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -124,7 +124,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_STATS, &dpStats);
     if (!pStatsArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -134,7 +134,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pMFStatsArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_MEGAFLOW_STATS, &dpMegaFlowStats);
     if (!pMFStatsArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -144,7 +144,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
     pUserFeaturesArg = CreateArgument_Alloc(OVS_ARGTYPE_DATAPATH_USER_FEATURES, &userFeatures);
     if (!pUserFeaturesArg)
     {
-        ok = FALSE;
+        error = OVS_ERROR_NOMEM;
         goto Cleanup;
     }
 
@@ -168,7 +168,7 @@ BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cm
 Cleanup:
     KFree(datapathName);
 
-    if (ok)
+    if (error != OVS_ERROR_NOERROR)
     {
         KFree(pNameArg);
         KFree(pStatsArg);
@@ -181,11 +181,9 @@ Cleanup:
         DestroyArgument(pUserFeaturesArg);
 
         FreeGroupWithArgs(pArgGroup);
-
-        return FALSE;
     }
 
-    return ok;
+    return error;
 }
 
 BOOLEAN CreateDefaultDatapath(NET_IFINDEX dpIfIndex)

@@ -19,6 +19,7 @@ limitations under the License.
 #include "precomp.h"
 #include "Ethernet.h"
 #include "OFFlow.h"
+#include "Error.h"
 
 typedef struct _OVS_FLOW_TABLE OVS_FLOW_TABLE;
 
@@ -86,8 +87,9 @@ typedef struct _OVS_DATAPATH
 #define DATAPATH_LOCK_READ(pDatapath, pLockState) NdisAcquireRWLockRead(pDatapath->pRwLock, pLockState, 0)
 #define DATAPATH_LOCK_WRITE(pDatapath, pLockState) NdisAcquireRWLockWrite(pDatapath->pRwLock, pLockState, 0)
 #define DATAPATH_UNLOCK(pDatapath, pLockState) NdisReleaseRWLock(pDatapath->pRwLock, pLockState)
+#define DATAPATH_UNLOCK_IF(pDatapath, pLockState, locked) { if (pDatapath && locked) NdisReleaseRWLock(pDatapath->pRwLock, pLockState); }
 
-BOOLEAN CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid);
+OVS_ERROR CreateMsgFromDatapath(OVS_DATAPATH* pDatapath, UINT32 sequence, UINT8 cmd, _Inout_ OVS_MESSAGE* pMsg, UINT32 dpIfIndex, UINT32 pid);
 
 OVS_DATAPATH* GetDefaultDatapath_Ref(const char* funcName);
 BOOLEAN CreateDefaultDatapath(NET_IFINDEX dpIfIndex);
