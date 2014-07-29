@@ -10,7 +10,7 @@ typedef enum
 } OVS_MSG_KIND;
 
 #define OVS_PARSE_ARGS(pGroup, args)                                    \
-    OVS_ARGUMENT* args[OVS_ARGTYPE_MAX_COUNT];                    \
+    OVS_ARGUMENT* args[OVS_ARGTYPE_MAX_COUNT] = {0};                    \
     \
     OVS_FOR_EACH_ARG((pGroup),                                        \
     \
@@ -68,7 +68,7 @@ static const OVS_ARG_ALLOWED s_argsAllowed[2][OVS_GENL_TARGET_COUNT][OVS_ARG_ALL
 
         [OVS_GENL_TARGET_TO_INDEX(OVS_MESSAGE_TARGET_DATAPATH)] =
         {
-            { OVS_MESSAGE_COMMAND_NEW, 2, { OVS_ARGTYPE_DATAPATH_NAME, OVS_ARGTYPE_DATAPATH_UPCALL_PORT_ID } },
+            { OVS_MESSAGE_COMMAND_NEW, 3, { OVS_ARGTYPE_DATAPATH_NAME, OVS_ARGTYPE_DATAPATH_UPCALL_PORT_ID, OVS_ARGTYPE_DATAPATH_USER_FEATURES } },
             { OVS_MESSAGE_COMMAND_SET, 3, { OVS_ARGTYPE_DATAPATH_NAME } },
             { OVS_MESSAGE_COMMAND_GET, 3, { OVS_ARGTYPE_DATAPATH_NAME } },
             { OVS_MESSAGE_COMMAND_DELETE, 3, { OVS_ARGTYPE_DATAPATH_NAME } },
@@ -131,7 +131,7 @@ static __inline BOOLEAN _ArgAllowed(OVS_MSG_KIND request, OVS_MESSAGE_TARGET_TYP
 {
     for (int i = 0; i < OVS_ARG_ALLOWED_ENTRIES; ++i)
     {
-        const OVS_ARG_ALLOWED* pArgAllowed = &(s_argsAllowed[request][target][i]);
+        const OVS_ARG_ALLOWED* pArgAllowed = &(s_argsAllowed[request][OVS_GENL_TARGET_TO_INDEX(target)][i]);
 
         if (pArgAllowed->cmd == cmd)
         {
@@ -253,25 +253,29 @@ static const OVS_ARG_REQUIRED s_argsRequired[2][OVS_GENL_TARGET_COUNT][OVS_ARG_R
 
 static __inline BOOLEAN _HaveAllRequiredArgs(OVS_MSG_KIND request, OVS_MESSAGE_TARGET_TYPE target, OVS_MESSAGE_COMMAND_TYPE cmd, OVS_ARGUMENT_GROUP* pArgGroup)
 {
-    BOOLEAN haveAll = FALSE;
+    BOOLEAN haveAll = TRUE;
 
     OVS_PARSE_ARGS(pArgGroup, args);
 
-    for (int i = 0; i < OVS_ARG_ALLOWED_ENTRIES; ++i)
+    for (int i = 0; i < OVS_ARG_REQUIRED_ENTRIES; ++i)
     {
-        const OVS_ARG_REQUIRED* pArgRequired = &(s_argsRequired[request][target][i]);
+        const OVS_ARG_REQUIRED* pArgRequired = &(s_argsRequired[request][OVS_GENL_TARGET_TO_INDEX(target)][i]);
 
         if (pArgRequired->cmd == cmd)
         {
+            BOOLEAN have = FALSE;
+
             for (int j = 0; j < pArgRequired->countArgs; ++j)
             {
-                haveAll = OVS_ARG_HAVE_IN_ARRAY(args, pArgRequired->args[j]);
-                if (haveAll)
+                have = OVS_ARG_HAVE_IN_ARRAY(args, pArgRequired->args[j]);
+                if (!have)
                 {
-                    return TRUE;
+                    haveAll = FALSE;
                 }
                 //we continue if not found for the case: "must have one arg of ..."
             }
+
+            return haveAll;
         }
     }
 
@@ -464,10 +468,13 @@ static BOOLEAN _GenlVerifier(OVS_MESSAGE* pMsg, OVS_MSG_KIND reqOrReply)
     EXPECT(_CommandAllowed(reqOrReply, pMsg->type, pMsg->command));
     EXPECT(_HaveAllRequiredArgs(reqOrReply, pMsg->type, pMsg->command, pMsg->pArgGroup));
 
+    mainArgType = MessageTargetTypeToArgType(pMsg->type);
+
     OVS_FOR_EACH_ARG(pMsg->pArgGroup,
     {
-        const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(MessageTargetTypeToArgType(pMsg->type));
+        const OVS_ARG_VERIFY_INFO* pVerify = FindArgVerificationGroup(mainArgType);
         OVS_VERIFY_OPTIONS options = _GetOptionsForArgGroup(pMsg->command, argType, reqOrReply);
+        Func f = NULL;
 
         if (!_ArgAllowed(reqOrReply, pMsg->type, pMsg->command, argType))
         {
@@ -475,13 +482,13 @@ static BOOLEAN _GenlVerifier(OVS_MESSAGE* pMsg, OVS_MSG_KIND reqOrReply)
             OVS_CHECK_RET(__UNEXPECTED__, FALSE);
         }
 
-        if (!pVerify->f[ArgTypeToIndex(argType)](pArg, NULL, options))
+        f = pVerify->f[ArgTypeToIndex(argType)];
+        if (f && !f(pArg, NULL, options))
         {
             OVS_CHECK_RET(__UNEXPECTED__, FALSE);
         }
     });
 
-    mainArgType = MessageTargetTypeToArgType(pMsg->type);
     if (!_VerifyGroup_SizeAndDuplicates_Recursive(pMsg->pArgGroup, mainArgType))
     {
         OVS_CHECK_RET(__UNEXPECTED__, FALSE);
@@ -508,6 +515,7 @@ BOOLEAN VerifyMessage(_In_ const OVS_NLMSGHDR* pMsg, UINT isRequest)
 
         _GenlVerifier(pGenlMsg, isRequest ? OVS_MSG_REQUEST : OVS_MSG_REPLY);
     }
+        return TRUE;
 
     case OVS_MESSAGE_TARGET_CONTROL:
         //TODO add functionality for checking

@@ -193,8 +193,8 @@ BOOLEAN Reply_SetAttrType(OVS_ARGTYPE parentArgType, _Inout_ OVS_ARGUMENT* pArg)
     OVS_CHECK_RET(pGroup, FALSE);
     OVS_CHECK_RET(pArg->type >= minArg && pArg->type <= maxArg, FALSE);
 
-    attrType = pGroup->group[OVS_ARG_TOINDEX(pArg->type, DATAPATH)];
-    OVS_CHECK_RET(attrType <= MAXUINT16, FALSE);
+    attrType = pGroup->group[ArgTypeToIndex(pArg->type)];
+    OVS_CHECK_RET(attrType > 0 && attrType <= MAXUINT16, FALSE);
 
     pArg->type = (UINT16)attrType;
 
