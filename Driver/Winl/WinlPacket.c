@@ -48,16 +48,33 @@ static LONG _NextUpcallSequence()
     return result;
 }
 
+static OVS_NET_BUFFER* _CreateONBFromArg(OVS_ARGUMENT* pOnbArg)
+{
+    OVS_NET_BUFFER* pOvsNb = NULL;
+    OVS_BUFFER buffer = { 0 };
+    ULONG additionalSize = max(Gre_BytesNeeded(0xFFFF), Vxlan_BytesNeeded(0xFFFF));
+    OVS_ETHERNET_HEADER* pEthHeader = NULL;
+
+    buffer.size = pOnbArg->length;
+    buffer.offset = 0;
+    buffer.p = pOnbArg->data;
+
+    pOvsNb = ONB_CreateFromBuffer(&buffer, additionalSize);
+    OVS_CHECK_RET(pOvsNb, NULL);
+
+    pEthHeader = (OVS_ETHERNET_HEADER*)ONB_GetData(pOvsNb);
+    OVS_CHECK(RtlUshortByteSwap(pEthHeader->type) >= OVS_ETHERTYPE_802_3_MIN);
+
+    return pOvsNb;
+}
+
 VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
-    OVS_ETHERNET_HEADER* ethHeader = NULL;
     BOOLEAN ok = FALSE;
     LOCK_STATE_EX lockState = { 0 };
-    OVS_BUFFER buffer = { 0 };
     OVS_NIC_INFO sourcePort = { 0 };
-    ULONG additionalSize = max(Gre_BytesNeeded(0xFFFF), Vxlan_BytesNeeded(0xFFFF));
     OVS_ARGUMENT* pArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pActionsArgs = NULL;
     OVS_ACTIONS* pTargetActions = NULL;
@@ -71,36 +88,12 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
         return;
     }
 
-    buffer.size = pArg->length;
-    buffer.offset = 0;
-    buffer.p = pArg->data;
-
-    //i.e. packet info
-    pPacketInfoArgs = FindArgumentGroup(pArgGroup, OVS_ARGTYPE_PACKET_PI_GROUP);
-    if (!pPacketInfoArgs)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: have no arg key!\n");
-        return;
-    }
-
-    pActionsArgs = FindArgumentGroup(pArgGroup, OVS_ARGTYPE_PACKET_ACTIONS_GROUP);
-    if (!pActionsArgs)
-    {
-        DEBUGP(LOG_ERROR, __FUNCTION__ " fail: have no arg group actions!\n");
-        return;
-    }
-
-    pOvsNb = ONB_CreateFromBuffer(&buffer, additionalSize);
-
+    pOvsNb = _CreateONBFromArg(pArg);
     if (!pOvsNb)
     {
         DEBUGP(LOG_ERROR, __FUNCTION__ " fail: could not create ONB!\n");
         return;
     }
-
-    ethHeader = (OVS_ETHERNET_HEADER*)ONB_GetData(pOvsNb);
-
-    OVS_CHECK(RtlUshortByteSwap(ethHeader->type) >= OVS_ETHERTYPE_802_3_MIN);
 
     pFlow = Flow_Create();
     if (!pFlow)
