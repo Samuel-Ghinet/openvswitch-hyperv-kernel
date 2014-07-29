@@ -353,6 +353,7 @@ static OVS_ERROR _OFPort_GetUpcallPids(OVS_ARGUMENT_GROUP* pArgGroup, BOOLEAN mu
 
         pUpcallPids->count = countPids;
         pUpcallPids->ids = KZAlloc(pArg->length);
+        CHECK_B_E(pUpcallPids->ids, OVS_ERROR_NOMEM);
 
         RtlCopyMemory(pUpcallPids->ids, pArg->data, pArg->length);
     }
@@ -360,6 +361,8 @@ static OVS_ERROR _OFPort_GetUpcallPids(OVS_ARGUMENT_GROUP* pArgGroup, BOOLEAN mu
     {
         pUpcallPids->count = 1;
         pUpcallPids->ids = KZAlloc(sizeof(UINT));
+        CHECK_B_E(pUpcallPids->ids, OVS_ERROR_NOMEM);
+
         pUpcallPids->ids[0] = GET_ARG_DATA(pArg, UINT32);
     }
 
