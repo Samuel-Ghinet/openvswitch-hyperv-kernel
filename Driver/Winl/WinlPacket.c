@@ -97,13 +97,39 @@ Cleanup:
     return pFlow;
 }
 
+static VOID _SetOnbMetadata(OVS_NET_BUFFER* pOvsNb, OVS_FLOW* pFlow, OVS_SWITCH_INFO* pSwitchInfo)
+{
+    pOvsNb->pActions = pFlow->pActions;
+    pOvsNb->pOriginalPacketInfo = &pFlow->maskedPacketInfo;
+    pOvsNb->packetPriority = pFlow->maskedPacketInfo.physical.packetPriority;
+    pOvsNb->packetMark = pFlow->maskedPacketInfo.physical.packetMark;
+
+    pOvsNb->pDestinationPort = NULL;
+    pOvsNb->sendToPortNormal = FALSE;
+
+    pOvsNb->pSwitchInfo = pSwitchInfo;
+    pOvsNb->sendFlags = 0;
+
+    if (pOvsNb->pOriginalPacketInfo->physical.ofInPort != OVS_INVALID_PORT_NUMBER)
+    {
+        OVS_OFPORT* pSourceOFPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ofInPort);
+
+        pOvsNb->pSourcePort = pSourceOFPort;
+    }
+
+    else
+    {
+        pOvsNb->pSourcePort = OFPort_FindInternal_Ref();
+    }
+
+    pOvsNb->pTunnelInfo = NULL;
+}
+
 VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* pArgGroup, const FILE_OBJECT* pFileObject)
 {
     OVS_NET_BUFFER* pOvsNb = NULL;
     OVS_FLOW* pFlow = NULL;
     BOOLEAN ok = FALSE;
-    LOCK_STATE_EX lockState = { 0 };
-    OVS_NIC_INFO sourcePort = { 0 };
     OVS_ARGUMENT* pOnbArg = NULL;
     OVS_ARGUMENT_GROUP* pPacketInfoArgs = NULL, *pActionsArgs = NULL;
     OVS_ACTIONS* pTargetActions = NULL;
@@ -127,53 +153,10 @@ VOID WinlPacket_Execute(OVS_SWITCH_INFO* pSwitchInfo, _In_ OVS_ARGUMENT_GROUP* p
     pFlow = _CreateFlowFromArgs(pOvsNb, pPacketInfoArgs, pActionsArgs);
     CHECK_GC(pFlow);
 
+    OVS_REFCOUNT_REFERENCE(pFlow->pActions)
+
     //while we will process the packet, we do not allow its actions to be destroyed
-    pOvsNb->pActions = OVS_REFCOUNT_REFERENCE(pTargetActions);
-    pOvsNb->pOriginalPacketInfo = &pFlow->maskedPacketInfo;
-    pOvsNb->packetPriority = pFlow->maskedPacketInfo.physical.packetPriority;
-    pOvsNb->packetMark = pFlow->maskedPacketInfo.physical.packetMark;
-
-    pOvsNb->pDestinationPort = NULL;
-    pOvsNb->sendToPortNormal = FALSE;
-    //pOvsNb->pSourceNic = &sourcePort;
-
-    pOvsNb->pSwitchInfo = pSwitchInfo;
-    pOvsNb->sendFlags = 0;
-
-    if (pOvsNb->pOriginalPacketInfo->physical.ofInPort != OVS_INVALID_PORT_NUMBER)
-    {
-        OVS_OFPORT* pSourceOFPort = OFPort_FindByNumber_Ref(pOvsNb->pOriginalPacketInfo->physical.ofInPort);
-        NDIS_SWITCH_PORT_ID portId = NDIS_SWITCH_DEFAULT_PORT_ID;
-
-        //NOTE: actually, the portId of of port CAN change (when mapping it to a hyper-v switch port)
-        //pershaps make it volatile and use it with interlocked ops?
-        if (pSourceOFPort && pSourceOFPort->portId != NDIS_SWITCH_DEFAULT_PORT_ID)
-        {
-            OVS_NIC_LIST_ENTRY* pNicEntry = NULL;
-
-            portId = pSourceOFPort->portId;
-
-            FWDINFO_LOCK_READ(pSwitchInfo->pForwardInfo, &lockState);
-
-            //actually, pNicEntry might have been deleted, even before Packet_Execute
-            pNicEntry = Sctx_FindNicByPortId_Unsafe(pSwitchInfo->pForwardInfo, portId);
-            if (pNicEntry)
-            {
-                NicListEntry_To_NicInfo(pNicEntry, &sourcePort);
-            }
-
-            FWDINFO_UNLOCK(pSwitchInfo->pForwardInfo, &lockState);
-        }
-
-        pOvsNb->pSourcePort = pSourceOFPort;
-    }
-
-    else
-    {
-        pOvsNb->pSourcePort = OFPort_FindInternal_Ref();
-    }
-
-    pOvsNb->pTunnelInfo = NULL;
+    _SetOnbMetadata(pOvsNb, pFlow, pSwitchInfo);
 
     ok = ExecuteActions(pOvsNb, OutputPacketToPort);
 
