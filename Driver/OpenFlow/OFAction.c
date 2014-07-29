@@ -390,6 +390,16 @@ BOOLEAN ExecuteActions(_Inout_ OVS_NET_BUFFER* pOvsNb, _In_ const OutputToPortCa
         case OVS_ARGTYPE_ACTION_RECIRCULATION:
             //TODO: use copy-on-write for OVS_NET_BUFFER, OR
             //copy the ONB only if there are more arguments in pArg->data
+            if (i < pActionArgs->count - 1)
+            {
+                OVS_NET_BUFFER* pDuplicateOnb = ONB_Duplicate(pOvsNb);
+                if (pDuplicateOnb)
+                {
+                    ok = _ExecuteAction_Recirculation(pDuplicateOnb, pArg->data);
+                    continue;
+                }
+            }
+
             ok = _ExecuteAction_Recirculation(pOvsNb, pArg->data);
             break;
         }
